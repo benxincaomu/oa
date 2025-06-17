@@ -1,0 +1,30 @@
+spring:
+  application: 
+    name: oa
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    password: oa
+    url: jdbc:postgresql://10.0.0.130:5432/oa?characterEncoding=utf8&stringtype=unspecified&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useUnicode=true&&TimeZone=Asia/Shanghai
+    username: oa
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: redisPwd
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+
+logging:
+  level:
+    root: info
+  file: 
+    path: /home/sunft/oa/logs/
+    name: /home/sunft/oa/logs/oa.log
+  pattern:
+    dateformat: yyyy-MM-dd HH:mm:ss,Asia/Shanghai,zh-CN
+    file: "%date{yyyy-MM-dd HH:mm:ss.SSS,Asia/Shanghai,zh-CN} %-5level [%-15.15(%thread)] %-50.50(%logger{50}) : %msg%n"
+
+
