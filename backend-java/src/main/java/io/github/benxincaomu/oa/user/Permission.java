@@ -2,7 +2,7 @@ package io.github.benxincaomu.oa.user;
 
 import org.hibernate.annotations.Comment;
 
-import io.github.benxincaomu.oa.base.BaseEntity;
+import io.github.benxincaomu.oa.base.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;

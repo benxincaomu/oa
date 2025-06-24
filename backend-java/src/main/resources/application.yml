@@ -8,18 +8,31 @@ spring:
     username: oa
   data:
     redis:
-      host: localhost
+      host: 10.0.0.130
       port: 6379
       password: redisPwd
+      repositories:
+        enabled: false
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
 
-
 logging:
   level:
     root: info
+    com.zaxxer.hikari.pool: info
+    org.camunda.bpm.engine: info
+    javax.management: info
+    sun.rmi: info
+    org.postgresql.jdbc: info
+    org.springframework.orm: info
+    org.springframework.data: info
+    io.lettuce: info
+    
+
+
+
   file: 
     path: /home/sunft/oa/logs/
     name: /home/sunft/oa/logs/oa.log
