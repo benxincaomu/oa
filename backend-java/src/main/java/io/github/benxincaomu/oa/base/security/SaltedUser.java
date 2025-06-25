@@ -6,17 +6,17 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 
 public class SaltedUser extends User {
-    private io.github.benxincaomu.oa.user.User user;
+    private io.github.benxincaomu.oa.bussiness.user.User user;
 
     public SaltedUser(String username, String password, boolean enabled, boolean accountNonExpired,
             boolean credentialsNonExpired, boolean accountNonLocked,
-            Collection<? extends GrantedAuthority> authorities,io.github.benxincaomu.oa.user.User user) {
+            Collection<? extends GrantedAuthority> authorities,io.github.benxincaomu.oa.bussiness.user.User user) {
         super(username, password, enabled, accountNonExpired, credentialsNonExpired, accountNonLocked, authorities);
         this.user = user;
         
     }
 
-    public io.github.benxincaomu.oa.user.User getUser() {
+    public io.github.benxincaomu.oa.bussiness.user.User getUser() {
         return user;
     }
 

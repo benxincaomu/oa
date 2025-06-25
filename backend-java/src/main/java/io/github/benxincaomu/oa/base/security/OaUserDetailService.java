@@ -9,8 +9,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import io.github.benxincaomu.oa.user.User;
-import io.github.benxincaomu.oa.user.UserService;
+import io.github.benxincaomu.oa.bussiness.user.User;
+import io.github.benxincaomu.oa.bussiness.user.UserService;
 import jakarta.annotation.Resource;
 
 // @Service

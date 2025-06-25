@@ -9,12 +9,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-import io.github.benxincaomu.oa.base.utils.StringGenerator;
-import io.github.benxincaomu.oa.tenant.Tenant;
-import io.github.benxincaomu.oa.tenant.TenantRepository;
-import io.github.benxincaomu.oa.user.User;
-import io.github.benxincaomu.oa.user.UserRepository;
-import io.github.benxincaomu.oa.user.UserService;
+import io.github.benxincaomu.oa.bussiness.tenant.Tenant;
+import io.github.benxincaomu.oa.bussiness.tenant.TenantRepository;
+import io.github.benxincaomu.oa.bussiness.user.User;
+import io.github.benxincaomu.oa.bussiness.user.UserRepository;
+import io.github.benxincaomu.oa.bussiness.user.UserService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 

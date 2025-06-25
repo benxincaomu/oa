@@ -8,8 +8,7 @@ import org.springframework.data.redis.repository.configuration.EnableRedisReposi
 
 @EnableJpaAuditing
 @SpringBootApplication
-@EnableJpaRepositories(basePackages = { "io.github.benxincaomu.oa.user" ,"io.github.benxincaomu.oa.tenant"}
-)
+@EnableJpaRepositories(basePackages = { "io.github.benxincaomu.oa.bussiness" })
 @EnableRedisRepositories(basePackages = "io.github.benxincaomu.oa.base")
 public class OaApplication {
 

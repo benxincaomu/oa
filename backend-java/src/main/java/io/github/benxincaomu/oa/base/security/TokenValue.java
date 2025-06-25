@@ -7,8 +7,8 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.redis.core.RedisHash;
 
 import io.github.benxincaomu.oa.base.consts.Const;
-import io.github.benxincaomu.oa.user.Permission;
-import io.github.benxincaomu.oa.user.Role;
+import io.github.benxincaomu.oa.bussiness.user.Permission;
+import io.github.benxincaomu.oa.bussiness.user.Role;
 
 /**
  * token存储结构

@@ -18,13 +18,13 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(final HttpSecurity httpSecurity) throws Exception {
         httpSecurity
-                .authorizeHttpRequests(ahr -> ahr.requestMatchers(HttpMethod.POST, "/user/login").permitAll()
+                .authorizeHttpRequests(ahr -> ahr.requestMatchers(HttpMethod.POST, SecurityConsts.PUBLIC_URLS).permitAll()
                         .anyRequest().authenticated())
                 .csrf(http -> http.disable())
                 .formLogin(hs -> hs.disable())
                 .httpBasic(hbc -> hbc.disable())
                 .sessionManagement(ss -> ss.disable())
-                .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
+                // .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
 
         ;
         return httpSecurity.build();

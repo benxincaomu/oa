@@ -10,8 +10,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import io.github.benxincaomu.oa.user.User;
-import io.github.benxincaomu.oa.user.UserService;
+import io.github.benxincaomu.oa.bussiness.user.User;
+import io.github.benxincaomu.oa.bussiness.user.UserService;
 import jakarta.annotation.Resource;
 
 // @Component
