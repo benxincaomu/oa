@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.web.PagedModel;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -58,6 +59,10 @@ public class UserController {
         return page;
     }
 
+    /**
+     * 新增用户
+     * @param user 用户信息
+     */
     @PostMapping()
     public void saveUser(@RequestBody User user) {
         userService.saveUser(user);

@@ -13,7 +13,7 @@ import io.github.benxincaomu.oa.bussiness.user.Role;
 /**
  * token存储结构
  */
-@RedisHash(value = Const.TOKEN_KEY_PREFIX)
+@RedisHash(value = Const.TOKEN_KEY_PREFIX,timeToLive = 60 * 60 * 24 * 7)
 public class TokenValue implements Serializable{
     private static final long serialVersionUID = -8504023267671780124L;
 

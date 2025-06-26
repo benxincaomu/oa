@@ -39,6 +39,18 @@ public class UserService {
         return userRepository.save(user).getId() == null?0 :1;
     }
 
+    public int insert(User user){
+        boolean exists = userRepository.existsByUserName(user.getUserName());
+        if (exists) {
+            throw new RuntimeException("userName exists.");
+        }
+        String salt = StringGenerator.generate(8);
+        user.setSalt(salt);
+        user.setPassword(DigestUtils.md5Hex(user.getPassword() + salt));
+        return userRepository.save(user).getId() == null?0 :1;
+    }
+
+
     public Page<User> users(Integer currPage, Integer pageSize, String userName, String name) {
         currPage = currPage == null || currPage < 0 ? 0 : currPage;
         pageSize = pageSize == null || pageSize < 1 ? 20 : currPage;

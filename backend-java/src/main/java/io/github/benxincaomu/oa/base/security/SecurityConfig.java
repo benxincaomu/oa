@@ -24,7 +24,7 @@ public class SecurityConfig {
                 .formLogin(hs -> hs.disable())
                 .httpBasic(hbc -> hbc.disable())
                 .sessionManagement(ss -> ss.disable())
-                // .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
 
         ;
         return httpSecurity.build();
