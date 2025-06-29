@@ -15,6 +15,7 @@ public class OaAuthManager implements AuthenticationManager {
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
         logger.info("authenticate:"+authentication.getName());
+        
         return authentication;
     }
 

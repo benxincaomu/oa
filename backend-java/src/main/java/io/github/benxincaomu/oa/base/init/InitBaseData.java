@@ -56,7 +56,7 @@ public class InitBaseData {
             if (tenants.hasContent()){
                 user.setTenantId(tenants.getContent().get(0).getId());
             }
-            userService.saveUser(user);
+            userService.insert(user);
             logger.info("user is \"admin\" and password is \"{}\"",password);
         }
     }

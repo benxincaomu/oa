@@ -18,7 +18,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(final HttpSecurity httpSecurity) throws Exception {
         httpSecurity
-                .authorizeHttpRequests(ahr -> ahr.requestMatchers(HttpMethod.POST, SecurityConsts.PUBLIC_URLS).permitAll()
+                .authorizeHttpRequests(ahr -> ahr.requestMatchers(SecurityConsts.PUBLIC_URLS).permitAll()
                         .anyRequest().authenticated())
                 .csrf(http -> http.disable())
                 .formLogin(hs -> hs.disable())

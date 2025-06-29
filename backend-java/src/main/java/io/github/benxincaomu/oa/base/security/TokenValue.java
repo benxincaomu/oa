@@ -13,16 +13,18 @@ import io.github.benxincaomu.oa.bussiness.user.Role;
 /**
  * token存储结构
  */
-@RedisHash(value = Const.TOKEN_KEY_PREFIX,timeToLive = 60 * 60 * 24 * 7)
+@RedisHash(value = Const.TOKEN_KEY_PREFIX,timeToLive = 60 * 60 * 24)
 public class TokenValue implements Serializable{
     private static final long serialVersionUID = -8504023267671780124L;
 
     
     @Id
     private String token;
-    private Long uid;
+    private Long userId;
     private String userName;
     private Role role;
+
+    private String salt;
     private List<Permission> permissions;
     public String getUserName() {
         return userName;
@@ -48,12 +50,19 @@ public class TokenValue implements Serializable{
     public void setToken(String token) {
         this.token = token;
     }
-    public Long getUid() {
-        return uid;
+    public Long getUserId() {
+        return userId;
     }
-    public void setUid(Long uid) {
-        this.uid = uid;
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
+    public String getSalt() {
+        return salt;
+    }
+    public void setSalt(String salt) {
+        this.salt = salt;
+    }
+  
 
     
     

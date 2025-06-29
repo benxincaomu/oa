@@ -1,0 +1,121 @@
+import { Button, Form, Input, Modal,message } from "antd";
+import "@ant-design/v5-patch-for-react-19";
+import { useEffect, useState } from "react";
+import axios from "axios";
+function Login() {
+    const [open, setOpen] = useState(false);
+    const [form] = Form.useForm();
+    const [token, setToken] = useState("");
+    const [name , setName] = useState("");
+    const [messageApi, contextHolder] = message.useMessage();
+    useEffect(() => {
+        console.log(typeof window);
+        const tmpToken = localStorage.getItem("token");
+        console.log(tmpToken);
+        if (tmpToken) {
+            setToken(tmpToken);
+        }
+        const name = localStorage.getItem("name");
+        if (name) {
+            setName(name);
+        }
+    }, []);
+    useEffect(() => {
+        localStorage.setItem("token", token);
+    }, [token]);
+
+    useEffect(() => {
+        localStorage.setItem("name", name);
+    }, [name]);
+    const saveToken = (token: string) => {
+        setToken(token);
+    };
+
+    const handleLogin = (values: any) => {
+        console.log("提交的登录信息:", values);
+        values["remember"] = true;
+        axios
+            .post("/user/login", values)
+            .then((response) => {
+                // console.log("登录成功:", response.data);
+                if (response.data.code === 200) {
+                    saveToken(response.data.data);
+                    setOpen(false);
+                    messageApi.info("登录成功");
+                    axios.get("/user/myInfo", {  
+                        headers: {
+                            token: response.data.data,
+                        },
+                    })
+                        .then((resp) => {
+                            console.log("获取用户数据成功:", resp.data);
+                            setName(resp.data.data.name);
+                        })
+                        .catch((error) => {
+                            console.error("Error loading users:", error);
+                        });
+                }else{
+                    messageApi.error("登录失败");
+                }
+            })
+            .catch((error) => {
+                console.error("登录失败:", error);
+                messageApi.error("登录失败");
+            });
+        // TODO: 调用登录接口
+    };
+    return (
+        <div
+            style={{
+                height: "100%",
+                display: "flex",
+                justifyContent: "flex-end",
+                alignItems: "center",
+            }}
+        >
+            {name
+                ? <div style={{color:"#ffffff"}}>{name}</div>
+                : <Button onClick={() => setOpen(true)}>登录</Button>}
+
+            <Modal
+                title="登陆"
+                open={open}
+                centered
+                onCancel={() => {
+                    setOpen(false);
+                }}
+                footer={null}
+            >
+                <Form form={form} layout="vertical" onFinish={handleLogin}>
+                    <Form.Item
+                        label="用户名"
+                        name="userName"
+                        rules={[{ required: true }]}
+                    >
+                        <Input placeholder="请输入用户名" />
+                    </Form.Item>
+
+                    <Form.Item
+                        label="密码"
+                        name="password"
+                        rules={[{ required: true }]}
+                    >
+                        <Input.Password placeholder="请输入密码" />
+                    </Form.Item>
+                    <Button
+                        type="primary"
+                        htmlType="submit"
+                        block
+                        style={{ marginTop: 16 }}
+                    >
+                        登录
+                    </Button>
+                    <Button block style={{ marginTop: 16 }}>
+                        取消
+                    </Button>
+                </Form>
+            </Modal>
+        </div>
+    );
+}
+export default Login;

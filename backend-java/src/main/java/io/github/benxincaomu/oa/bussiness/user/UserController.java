@@ -1,5 +1,6 @@
 package io.github.benxincaomu.oa.bussiness.user;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.codec.digest.DigestUtils;
@@ -7,23 +8,31 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.web.PagedModel;
-import org.springframework.http.MediaType;
+import org.springframework.lang.NonNull;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.github.benxincaomu.oa.base.consts.Const;
+import io.github.benxincaomu.oa.base.security.SaltedUser;
 import io.github.benxincaomu.oa.base.security.TokenValue;
 import io.github.benxincaomu.oa.base.security.TokenValueRepository;
 import io.github.benxincaomu.oa.base.utils.StringGenerator;
+import io.github.benxincaomu.oa.bussiness.user.vo.SimpleUserInfo;
 import jakarta.annotation.Resource;
 
 @RestController
 @RequestMapping("user")
 public class UserController {
+
+    private final UserRepository userRepository;
 
     @Resource
     private UserService userService;
@@ -34,9 +43,6 @@ public class UserController {
     @Resource
     private PermissionRepository permissionRepository;
 
-    // @Resource
-    // private RedisTemplate<String, TokenValue> tokenRedisTemplate;
-
     @Resource
     private TokenValueRepository tokenValueRepository;
 
@@ -44,6 +50,10 @@ public class UserController {
     private RedisTemplate<String, String> redisTemplate;
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
+
+    UserController(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     /**
      * 
@@ -61,11 +71,22 @@ public class UserController {
 
     /**
      * 新增用户
+     * 
      * @param user 用户信息
      */
     @PostMapping()
-    public void saveUser(@RequestBody User user) {
-        userService.saveUser(user);
+    public String insert(@RequestBody User user) {
+        return userService.insert(user);
+    }
+
+    @DeleteMapping("{id}")
+    public void disableUser(@PathVariable Long id) {
+        userService.changeUserEnable(id, false);
+    }
+
+    @PutMapping
+    public void updateUser(@RequestBody User user) {
+        userService.updateUser(user);
     }
 
     @GetMapping("{id}")
@@ -77,6 +98,12 @@ public class UserController {
         return userService.getUserById(id);
     }
 
+    /**
+     * 登录
+     * 
+     * @param login 登录信息
+     * @return token
+     */
     @PostMapping("login")
     public String login(@RequestBody User login) {
         logger.info("loggin");
@@ -89,6 +116,7 @@ public class UserController {
             throw new RuntimeException("password error.");
         }
         TokenValue tokenValue = new TokenValue();
+        tokenValue.setUserId(user.getId());
 
         tokenValue.setUserName(user.getUserName());
         // 获取角色权限
@@ -98,18 +126,57 @@ public class UserController {
 
             List<Permission> permissions = permissionRepository.findByRoleId(role.getId());
             tokenValue.setPermissions(permissions);
+        }else{
+            tokenValue.setPermissions(new ArrayList<Permission>());
         }
 
         String token = StringGenerator.generate(28) + System.currentTimeMillis();
 
-        // tokenRedisTemplate.opsForValue().set(Const.TOKEN_KEY_PREFIX+token, tokenValue);
 
         tokenValue.setToken(token);
+        tokenValue.setSalt(user.getSalt());
         tokenValueRepository.save(tokenValue);
-        redisTemplate.opsForValue().set(Const.UID_TOKEN_PREFIX+user.getId(), token);
+        redisTemplate.opsForValue().set(Const.UID_TOKEN_PREFIX + user.getId(), token);
 
         return token;
-        
 
     }
+
+    /**
+     * 分配角色
+     * 
+     * @param userId 用户id
+     * @param roleId 角色id
+     */
+    @PostMapping("dispatcherRole")
+    public void dispatcherRole(@Validated @NonNull Long userId,  @Validated @NonNull Long roleId) {
+        userService.dispatcherRole(userId, roleId);
+    }
+
+
+    @GetMapping("currUser")
+    public User getCurrUser(){
+        Object details = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if(details instanceof SaltedUser){ 
+            SaltedUser user = (SaltedUser) details;
+            return userService.getFullInfoUser(user.getUserId(), null);
+        }
+        return null;
+    }
+
+    @GetMapping("/myInfo")
+    public SimpleUserInfo myInfo(){
+        Object details = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if(details instanceof SaltedUser){ 
+            SaltedUser user = (SaltedUser) details;
+            User u = userService.getUserById(user.getUserId());
+            SimpleUserInfo simpleUserInfo = new SimpleUserInfo();
+            simpleUserInfo.setName(u.getName());
+            simpleUserInfo.setToken(((TokenValue)SecurityContextHolder.getContext().getAuthentication().getCredentials()).getToken());
+            simpleUserInfo.setUserName(u.getUserName());
+            return simpleUserInfo;
+        }
+        return null;
+    }
+
 }
