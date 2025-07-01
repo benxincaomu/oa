@@ -102,7 +102,7 @@ const UserManager = () => {
             key: "action",
             render: (_: any, record: User) => (
                 <Space size="middle">
-                    <a onClick={() => console.log("编辑:", record)}>编辑</a>
+                    {/* <a onClick={() => console.log("编辑:", record)}>编辑</a> */}
                     <Popconfirm title="确定删除吗？" onConfirm={(e) => handleDelete(record.id)} okText="确定" cancelText="取消">
 
                         <a
@@ -112,6 +112,16 @@ const UserManager = () => {
                             style={{ color: "red" }}
                         >
                             删除
+                        </a>
+                    </Popconfirm>
+                    <Popconfirm title="确定要禁用吗？" okText="确定" cancelText="取消">
+                        <a
+                            onClick={() => {
+
+                            }}
+                            style={{ color: "blue" }}
+                        >
+                            j禁用
                         </a>
                     </Popconfirm>
                 </Space>

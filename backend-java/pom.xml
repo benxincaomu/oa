@@ -50,11 +50,11 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
-        <dependency>
+        <!-- <dependency>
             <groupId>org.camunda.bpm.springboot</groupId>
             <artifactId>camunda-bpm-spring-boot-starter</artifactId>
             <version>7.23.0</version>
-        </dependency>
+        </dependency> -->
 
         <!-- https://mvnrepository.com/artifact/commons-codec/commons-codec -->
         <dependency>

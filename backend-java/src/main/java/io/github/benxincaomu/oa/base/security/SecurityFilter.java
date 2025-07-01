@@ -7,14 +7,21 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.benxincaomu.notry.exception.handler.ResponseMessage;
+import com.github.benxincaomu.notry.utils.Asserts;
+
+import io.github.benxincaomu.oa.base.response.OaResponseCode;
 import io.github.benxincaomu.oa.bussiness.user.Permission;
 import io.github.benxincaomu.oa.bussiness.user.Role;
+import io.micrometer.core.ipc.http.HttpSender.Response;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import jakarta.servlet.FilterChain;
@@ -46,10 +53,25 @@ public class SecurityFilter extends OncePerRequestFilter {
             return;
         }
         String token = request.getHeader("token");
+        if(token == null){
+            ResponseMessage<String> responseMessage = new ResponseMessage<>(OaResponseCode.TOKEN_NOT_EXIST,null);
+            response.setHeader("Content-Type", "application/json;charset=UTF-8");
+            ObjectMapper objectMapper = new ObjectMapper();
+            response.getWriter().write(objectMapper.writeValueAsString(responseMessage));
+            response.getWriter().flush();
+            return;
+        }
         Optional<TokenValue> tokenValue = tokenValueRepository.findById(token);
         if (!tokenValue.isPresent()) {
-            throw new RuntimeException("token不存在");
-        }
+            // throw new BadCredentialsException("token不存在");
+            ResponseMessage<String> responseMessage = new ResponseMessage<>(OaResponseCode.TOKEN_NOT_EXIST,null);
+            response.setHeader("Content-Type", "application/json;charset=UTF-8");
+            ObjectMapper objectMapper = new ObjectMapper();
+            response.getWriter().write(objectMapper.writeValueAsString(responseMessage));
+            response.getWriter().flush();
+            return;
+        } 
+        // Asserts.isTrue(tokenValue.isPresent(), OaResponseCode.TOKEN_NOT_EXIST);
         TokenValue tv = tokenValue.get();
         // Role role = tokenValue.get().getRole();
         List<Permission> permissions = tv.getPermissions();

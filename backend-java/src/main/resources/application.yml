@@ -6,6 +6,12 @@ spring:
     password: oa
     url: jdbc:postgresql://10.0.0.130:5432/oa?characterEncoding=utf8&stringtype=unspecified&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useUnicode=true&&TimeZone=Asia/Shanghai
     username: oa
+    hikari: 
+      connectionTimeout: 10000
+      idle-timeout: 30000
+      minimum-idle: 4
+      maximum-pool-size: 10
+      
   data:
     redis:
       host: 10.0.0.130
@@ -17,7 +23,8 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
-
+  jackson: 
+    default-property-inclusion: NON_NULL
 logging:
   level:
     root: info
@@ -29,15 +36,11 @@ logging:
     org.springframework.orm: info
     org.springframework.data: info
     io.lettuce: info
-    
-
-
-
   file: 
     path: /home/sunft/oa/logs/
     name: /home/sunft/oa/logs/oa.log
   pattern:
     dateformat: yyyy-MM-dd HH:mm:ss,Asia/Shanghai,zh-CN
-    file: "%date{yyyy-MM-dd HH:mm:ss.SSS,Asia/Shanghai,zh-CN} %-5level [%-15.15(%thread)] %-50.50(%logger{50}) : %msg%n"
+    file: "%date{yyyy-MM-dd HH:mm:ss.SSS,Asia/Shanghai,zh-CN} %-5level [%-15.15(%thread)] %-50.50(%logger{50}) : %msg%n" 
 
 
