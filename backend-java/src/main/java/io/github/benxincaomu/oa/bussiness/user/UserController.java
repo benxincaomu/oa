@@ -21,10 +21,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.github.benxincaomu.oa.base.consts.Const;
+import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;
 import io.github.benxincaomu.oa.base.security.SaltedUser;
 import io.github.benxincaomu.oa.base.security.TokenValue;
 import io.github.benxincaomu.oa.base.security.TokenValueRepository;
 import io.github.benxincaomu.oa.base.utils.StringGenerator;
+import io.github.benxincaomu.oa.bussiness.user.vo.PermissionIdName;
 import io.github.benxincaomu.oa.bussiness.user.vo.SimpleUserInfo;
 import jakarta.annotation.Resource;
 
@@ -32,16 +34,21 @@ import jakarta.annotation.Resource;
 @RequestMapping("user")
 public class UserController {
 
-    private final UserRepository userRepository;
-
     @Resource
     private UserService userService;
 
     @Resource
     private RoleRepository roleRepository;
 
+    
     @Resource
     private PermissionRepository permissionRepository;
+
+    @Resource
+    private PermissionService permissionService;
+
+    @Resource
+    private RoleService roleService;
 
     @Resource
     private TokenValueRepository tokenValueRepository;
@@ -50,10 +57,6 @@ public class UserController {
     private RedisTemplate<String, String> redisTemplate;
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
-
-    UserController(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
 
     /**
      * 
@@ -64,7 +67,7 @@ public class UserController {
      * @return
      */
     @GetMapping("list")
-    public PagedModel<User> users(Integer currPage, Integer pageSize, String userName, String name) {
+    public PagedModel<User> list(Integer currPage, Integer pageSize, String userName, String name) {
         PagedModel<User> page = new PagedModel<>(userService.users(currPage, pageSize, userName, name));
         return page;
     }
@@ -124,10 +127,11 @@ public class UserController {
         tokenValue.setRole(role);
         if (role != null) {
 
-            List<Permission> permissions = permissionRepository.findByRoleId(role.getId());
+            List<PermissionIdName> permissions = permissionService.getMenuTreeByRoleId(role.getId());
+            
             tokenValue.setPermissions(permissions);
         }else{
-            tokenValue.setPermissions(new ArrayList<Permission>());
+            tokenValue.setPermissions(new ArrayList<PermissionIdName>());
         }
 
         String token = StringGenerator.generate(28) + System.currentTimeMillis();
@@ -135,6 +139,7 @@ public class UserController {
 
         tokenValue.setToken(token);
         tokenValue.setSalt(user.getSalt());
+        tokenValue.setTenantId(user.getTenantId());
         tokenValueRepository.save(tokenValue);
         redisTemplate.opsForValue().set(Const.UID_TOKEN_PREFIX + user.getId(), token);
 
@@ -142,16 +147,6 @@ public class UserController {
 
     }
 
-    /**
-     * 分配角色
-     * 
-     * @param userId 用户id
-     * @param roleId 角色id
-     */
-    @PostMapping("dispatcherRole")
-    public void dispatcherRole(@Validated @NonNull Long userId,  @Validated @NonNull Long roleId) {
-        userService.dispatcherRole(userId, roleId);
-    }
 
 
     @GetMapping("currUser")
@@ -177,6 +172,36 @@ public class UserController {
             return simpleUserInfo;
         }
         return null;
+    }
+
+
+    @GetMapping("/getRoleIdByUserId/{userId}")
+    public Long getRoleIdByUserId(@PathVariable("userId") Long userId){
+        return userService.getRoleIdByUserId(userId);
+
+    }
+
+    /**
+     * 分配角色
+     * @param userRole 用户角色
+     */
+    @PostMapping("/assignRole")
+    public void assignRole(@RequestBody UserRole userRole){
+        userService.assignRole(userRole);
+    }
+
+    @PostMapping("/logout")
+    public void logout(){
+        Long userId = JpaAuditorAware.getCurrentUserId();
+        if(userId != null){
+            String token = redisTemplate.opsForValue().get(Const.UID_TOKEN_PREFIX + userId);
+            if(token != null){
+
+                tokenValueRepository.deleteById(token);
+                redisTemplate.delete(Const.UID_TOKEN_PREFIX + userId);
+            }
+        }
+
     }
 
 }

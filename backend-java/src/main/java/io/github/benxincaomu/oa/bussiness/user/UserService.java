@@ -15,8 +15,8 @@ import org.springframework.stereotype.Service;
 
 import com.github.benxincaomu.notry.utils.Asserts;
 
-import io.github.benxincaomu.oa.base.response.OaResponseCode;
 import io.github.benxincaomu.oa.base.utils.StringGenerator;
+import io.github.benxincaomu.oa.base.web.OaResponseCode;
 import io.github.benxincaomu.oa.bussiness.tenant.TenantRepository;
 import jakarta.annotation.Resource;
 import jakarta.transaction.Transactional;
@@ -40,6 +40,7 @@ public class UserService {
 
     @Resource
     private PermissionRepository permissionRepository;
+
 
     public int updateUser(User user) {
         user.setPassword(null);
@@ -65,8 +66,8 @@ public class UserService {
     }
 
     public Page<User> users(Integer currPage, Integer pageSize, String userName, String name) {
-        currPage = currPage == null || currPage < 0 ? 0 : currPage;
-        pageSize = pageSize == null || pageSize < 1 ? 20 : currPage;
+        currPage = currPage == null || currPage < 0 ? 0 : currPage-1;
+        pageSize = pageSize == null || pageSize < 1 ? 20 : pageSize;
 
         PageRequest page = PageRequest.of(currPage, pageSize, Sort.by("createAt"));
 
@@ -113,13 +114,11 @@ public class UserService {
 
     /**
      * 分配用户角色
-     * @param userId 用户id
-     * @param roleId 角色id
+     * @param userRole 用户角色
      */
-    public void dispatcherRole(Long userId, Long roleId) {
-        UserRole userRole = new UserRole();
-        userRole.setUserId(userId);
-        userRole.setRoleId(roleId);
+    @Transactional
+    public void assignRole(UserRole userRole) {
+        userRoleRepository.deleteByUserId(userRole.getUserId());
 
         userRoleRepository.save(userRole);
 
@@ -148,5 +147,9 @@ public class UserService {
             
         }
         return user;
+    }
+
+    public Long getRoleIdByUserId(Long userId) {
+        return userRoleRepository.getRoleIdByUserId(userId);
     }
 }

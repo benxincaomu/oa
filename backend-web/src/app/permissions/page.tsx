@@ -2,15 +2,26 @@
 
 import { Form, Input, Button, Select, Space, Table, Modal } from 'antd';
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import axios from 'axios';
-interface ParentPermission {
+interface Permission {
     id: number;
     name: string;
+    parentId: number;
+    type: number;
+    description: string;
+    value: string;
 
 }
 
+
 const Permissions = () => {
     const [searchForm] = Form.useForm();
+    const typeMap = new Map<number, string>();
+    typeMap.set(1, '目录菜单');
+    typeMap.set(2, '页面菜单');
+    typeMap.set(3, '请求链接');
+    typeMap.set(4, '页面控制');
     const columns = [
         {
             title: '权限名称',
@@ -21,6 +32,9 @@ const Permissions = () => {
             title: '权限类型',
             dataIndex: 'type',
             key: 'type',
+            render: (_: any, record: any) => {
+                return <Space size="middle">{typeMap.get(record.type)}</Space>;
+            },
         },
         {
             title: '权限描述',
@@ -49,12 +63,32 @@ const Permissions = () => {
         name: "用户管理",
         value: "/usermanage",
     }];
+    const [permissions, setPermissions] = useState<Permission[]>([]);
+    const [test, setTest] = useState<string>("");
+    const loadPermissions = async () => {
+        // console.log("提交的权限信息:", localStorage.getItem("token"));
+        await axios.get("/permission/list", {
+            headers: {
+                "token": localStorage.getItem("token"),
+            },
+        }).then((res) => {
+            console.log("获取权限数据成功:", res.data);
+            setPermissions(res.data.data.content);
+        });
+    };
+
+    /* useEffect(() => {
+        console.log(typeof window);
+        console.log("提交的权限信息:", localStorage.getItem("token"));
+        loadPermissions();
+    }, [test]); */
 
     // 添加权限相关
     const [addOpen, setAddOpen] = useState(false);
     const [addForm] = Form.useForm();
     const handleAddPermission = (values: any) => {
         setAddOpen(true);
+
         axios.post("/permission", values, {
             headers: {
                 "Content-Type": "application/json",
@@ -62,7 +96,7 @@ const Permissions = () => {
             },
         });
     };
-    const [parentPermissions, setParentPermissions] = useState<ParentPermission[]>([]);
+    const [parentPermissions, setParentPermissions] = useState<Permission[]>([]);
     const getParentPermissions = (type: number) => {
         let typeTmp = 0;
         switch (type) {
@@ -89,18 +123,18 @@ const Permissions = () => {
                 setParentPermissions(response.data.data);
             });
     };
+
     return (
         <div>
-            <header>
+            <head>
                 <title>权限管理</title>
-            </header>
-            <Form form={searchForm} layout="inline">
+            </head>
+            <Form form={searchForm} layout="inline" onFinish={(values) => loadPermissions()}>
                 <Form.Item label="权限名称" name="name">
                     <Input placeholder="请输入权限名称" />
                 </Form.Item>
-                <Form.Item label="权限类型" name="type">
-                    <Select placeholder="请选择权限类型" defaultValue="">
-                        <Select.Option value={null} >请选择</Select.Option>
+                <Form.Item label="权限类型" name="type" >
+                    <Select placeholder="请选择权限类型">
                         <Select.Option value={1}>目录菜单</Select.Option>
                         <Select.Option value={2}>页面菜单</Select.Option>
                         <Select.Option value={3}>请求链接</Select.Option>
@@ -110,7 +144,7 @@ const Permissions = () => {
 
                 <Form.Item>
 
-                    <Button type='primary'>查询</Button>
+                    <Button type='primary' htmlType='submit'>查询</Button>
                 </Form.Item>
                 <Form.Item>
 
@@ -119,16 +153,19 @@ const Permissions = () => {
                     }}>添加权限</Button>
                 </Form.Item>
             </Form>
-            <Table columns={columns} dataSource={permissionData} rowKey={(record) => record.id} />
-            <Modal title="添加权限" open={addOpen} onCancel={() => { setAddOpen(false) }} footer={null}>
-                <Form form={addForm} onFinish={values => handleAddPermission(values)} layout='horizontal'>
-                    <Form.Item label="权限名称" name="name">
+            <Table columns={columns} dataSource={permissions} rowKey={(record) => record.id} bordered />
+            <Modal title="添加权限" open={addOpen} onCancel={() => {
+                setAddOpen(false);
+                addForm.resetFields();
+            }} footer={null} >
+                <Form form={addForm} onFinish={values => handleAddPermission(values)} layout='horizontal' labelCol={{ span: 6 }} wrapperCol={{ span: 16 }} >
+                    <Form.Item label="权限名称" name="name" rules={[{ required: true }]}>
                         <Input placeholder="请输入权限名称" />
                     </Form.Item>
-                    <Form.Item label="权限描述" name="description">
+                    <Form.Item label="权限描述" name="description" >
                         <Input placeholder="请输入权限描述" />
                     </Form.Item>
-                    <Form.Item label="权限类型" name="type">
+                    <Form.Item label="权限类型" name="type" rules={[{ required: true }]}>
                         <Select placeholder="请选择权限类型" onChange={(value) => getParentPermissions(value)}>
                             <Select.Option value={1}>目录菜单</Select.Option>
                             <Select.Option value={2}>页面菜单</Select.Option>
@@ -139,12 +176,14 @@ const Permissions = () => {
                     <Form.Item
                         label="权限值"
                         name="value"
-                        rules={[]}
+                        rules={[{ required: true }]}
                     >
                         <Input />
                     </Form.Item>
                     <Form.Item label="上级权限" name="parentId" >
-                        <Select placeholder="请选择上级权限" fieldNames={{ label: 'name', value: 'id' }} options={parentPermissions} />
+                        <Select placeholder="请选择上级权限" fieldNames={{ label: 'name', value: 'id' }} options={parentPermissions} showSearch
+                            optionFilterProp="name"
+                        />
 
                     </Form.Item>
                     <Form.Item labelCol={{ span: 4 }} wrapperCol={{ span: 8, offset: 16 }}>

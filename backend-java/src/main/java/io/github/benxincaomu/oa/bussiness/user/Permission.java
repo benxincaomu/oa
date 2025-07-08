@@ -14,7 +14,7 @@ import jakarta.persistence.Transient;
 @Table(name = "permission")
 public class Permission extends BaseEntity {
     @Comment("权限类型:1--目录菜单，2--页面菜单,3--请求url，4--页面控制")
-    private int type;
+    private Integer type;
 
     @Comment("权限名称")
     @Column(columnDefinition = "varchar(10) ")
@@ -36,14 +36,7 @@ public class Permission extends BaseEntity {
     private List<Permission> children;
 
 
-    public int getType() {
-        return type;
-    }
-
-
-    public void setType(int type) {
-        this.type = type;
-    }
+  
 
 
     public String getName() {
@@ -93,6 +86,16 @@ public class Permission extends BaseEntity {
 
     public void setChildren(List<Permission> children) {
         this.children = children;
+    }
+
+
+    public Integer getType() {
+        return type;
+    }
+
+
+    public void setType(Integer type) {
+        this.type = type;
     }
 
     

@@ -2,10 +2,9 @@
 // import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import "@ant-design/v5-patch-for-react-19";
-import { Layout } from "antd";
+import { Layout ,message} from "antd";
 import React from "react";
-import Login from "./login/Login.tsx";
+import Login from "./login/Login";
 const { Header, Sider, Content, Footer } = Layout;
 
 const geistSans = Geist({
@@ -28,11 +27,13 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const [messageApi, contextHolder] = message.useMessage();
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        {contextHolder}
         <Layout style={{ minHeight: "100vh" }}>
           <Header>
             <Login />

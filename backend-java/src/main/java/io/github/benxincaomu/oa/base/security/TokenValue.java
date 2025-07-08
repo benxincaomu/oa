@@ -9,6 +9,7 @@ import org.springframework.data.redis.core.RedisHash;
 import io.github.benxincaomu.oa.base.consts.Const;
 import io.github.benxincaomu.oa.bussiness.user.Permission;
 import io.github.benxincaomu.oa.bussiness.user.Role;
+import io.github.benxincaomu.oa.bussiness.user.vo.PermissionIdName;
 
 /**
  * token存储结构
@@ -24,7 +25,16 @@ public class TokenValue implements Serializable {
     private Role role;
 
     private String salt;
-    private List<Permission> permissions;
+    private Long tenantId;
+    private List<PermissionIdName> permissions;
+
+    public Long getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(Long tenantId) {
+        this.tenantId = tenantId;
+    }
 
     public String getUserName() {
         return userName;
@@ -42,11 +52,11 @@ public class TokenValue implements Serializable {
         this.role = role;
     }
 
-    public List<Permission> getPermissions() {
+    public List<PermissionIdName> getPermissions() {
         return permissions;
     }
 
-    public void setPermissions(List<Permission> permissions) {
+    public void setPermissions(List<PermissionIdName> permissions) {
         this.permissions = permissions;
     }
 

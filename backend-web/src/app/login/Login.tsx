@@ -1,17 +1,17 @@
-import { Button, Form, Input, Modal,message } from "antd";
-import "@ant-design/v5-patch-for-react-19";
+"use client"
+import { Button, Form, Input, Modal, message ,Space} from "antd";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import service from "../base/service";
 function Login() {
     const [open, setOpen] = useState(false);
     const [form] = Form.useForm();
     const [token, setToken] = useState("");
-    const [name , setName] = useState("");
+    const [name, setName] = useState("");
     const [messageApi, contextHolder] = message.useMessage();
     useEffect(() => {
-        console.log(typeof window);
+        console.log("login token:", localStorage.getItem('token'));
         const tmpToken = localStorage.getItem("token");
-        console.log(tmpToken);
         if (tmpToken) {
             setToken(tmpToken);
         }
@@ -42,7 +42,7 @@ function Login() {
                     saveToken(response.data.data);
                     setOpen(false);
                     messageApi.info("登录成功");
-                    axios.get("/user/myInfo", {  
+                    axios.get("/user/myInfo", {
                         headers: {
                             token: response.data.data,
                         },
@@ -54,7 +54,7 @@ function Login() {
                         .catch((error) => {
                             console.error("Error loading users:", error);
                         });
-                }else{
+                } else {
                     messageApi.error("登录失败");
                 }
             })
@@ -63,6 +63,14 @@ function Login() {
                 messageApi.error("登录失败");
             });
         // TODO: 调用登录接口
+    };
+    const handleLogout = () => { 
+        service.post("/user/logout").then((response)=>{
+            message.success("登出成功");
+            localStorage.removeItem("token");
+            localStorage.removeItem("name");
+            window.location.href="/";
+        });
     };
     return (
         <div
@@ -74,8 +82,16 @@ function Login() {
             }}
         >
             {name
-                ? <div style={{color:"#ffffff"}}>{name}</div>
-                : <Button onClick={() => setOpen(true)}>登录</Button>}
+                ? (<Space>
+                    <div style={{ color: "#ffffff" }}>{name}</div>
+                    <a onClick={()=>{
+                        handleLogout();
+                    }}>登出</a>
+                </Space>
+                )
+                : (<Button onClick={() => setOpen(true)}>登录</Button>)
+
+            }
 
             <Modal
                 title="登陆"

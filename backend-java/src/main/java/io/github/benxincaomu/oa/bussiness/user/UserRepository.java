@@ -21,4 +21,5 @@ public interface UserRepository extends JpaRepository<User, Long>{
     @Modifying
     @Query("update User set enable = :enable where id = :id")
     public void updateEnable(@Param("id") Long id, @Param("enable") boolean enable);
+
 }

@@ -22,7 +22,7 @@ import jakarta.persistence.MappedSuperclass;
 
 @MappedSuperclass
 @Access(AccessType.FIELD)
-@EntityListeners(AuditingEntityListener.class)
+@EntityListeners({AuditingEntityListener.class,TenantIdEntityListener.class})
 public abstract class BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,6 +30,7 @@ public abstract class BaseEntity {
     @Comment("自增主键")
     private Long id;
 
+    @TenantId
     @Comment("租户id")
     private Long tenantId;
 

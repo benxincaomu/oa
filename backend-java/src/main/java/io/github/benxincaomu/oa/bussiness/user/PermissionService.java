@@ -1,5 +1,6 @@
 package io.github.benxincaomu.oa.bussiness.user;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -13,31 +14,37 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
-import io.github.benxincaomu.oa.bussiness.user.vo.ParentPermission;
+import io.github.benxincaomu.oa.bussiness.user.vo.PermissionIdName;
 import jakarta.annotation.Resource;
 
 @Service
 public class PermissionService {
+
+    private final RolePermissionRepository rolePermissionRepository;
 
     @Resource
     private PermissionRepository permissionRepository;
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    public List<Permission> findAllWithParentId() {
-        List<Permission> top = permissionRepository.findTop();
+    PermissionService(RolePermissionRepository rolePermissionRepository) {
+        this.rolePermissionRepository = rolePermissionRepository;
+    }
+
+    public List<PermissionIdName> findAllMenuTree() {
+        List<PermissionIdName> top = permissionRepository.findTopMenu();
         if (!CollectionUtils.isEmpty(top)) {
-            for (Permission permission : top) {
+            for (PermissionIdName permission : top) {
                 permission.setChildren(findWithParentId(permission.getId()));
             }
         }
-        return null;
+        return top;
     }
 
-    List<Permission> findWithParentId(Long parentId) {
-        List<Permission> byParentId = permissionRepository.findByParentId(parentId);
+    List<PermissionIdName> findWithParentId(Long parentId) {
+        List<PermissionIdName> byParentId = permissionRepository.findByParentMenuId(parentId);
         if (!CollectionUtils.isEmpty(byParentId)) {
-            for (Permission permission : byParentId) {
+            for (PermissionIdName permission : byParentId) {
                 permission.setChildren(findWithParentId(permission.getId()));
             }
         }
@@ -72,7 +79,29 @@ public class PermissionService {
     }
 
 
-    public List<ParentPermission>findByType(Integer type) {
+    public List<PermissionIdName>findByType(Integer type) {
         return permissionRepository.findIdAndNameByType(type);
     }
+
+    public List<PermissionIdName> getMenuTreeByRoleId(Long roleId) {
+        // List<PermissionIdName> permissions = rolePermissionRepository.findTreeByRoleId(roleId);
+        List<PermissionIdName> permissions = rolePermissionRepository.findPermissionIdNameByRoleId(roleId,null);
+
+
+        return permissions;
+    }
+
+
+    List<PermissionIdName> fillPersmissionByRoleId(Long roleId,Long parentId) { 
+        List<PermissionIdName> permissions = rolePermissionRepository.findPermissionIdNameByRoleId(roleId,parentId);
+        if(!CollectionUtils.isEmpty(permissions)){
+            for(PermissionIdName permission:permissions){
+                permission.setChildren(fillPersmissionByRoleId(roleId,permission.getId()));
+            }
+        }
+
+        return permissions;
+    }
+
+    
 }

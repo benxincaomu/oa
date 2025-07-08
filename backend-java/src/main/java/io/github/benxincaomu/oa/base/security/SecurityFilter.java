@@ -18,9 +18,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benxincaomu.notry.exception.handler.ResponseMessage;
 import com.github.benxincaomu.notry.utils.Asserts;
 
-import io.github.benxincaomu.oa.base.response.OaResponseCode;
+import io.github.benxincaomu.oa.base.web.OaResponseCode;
 import io.github.benxincaomu.oa.bussiness.user.Permission;
 import io.github.benxincaomu.oa.bussiness.user.Role;
+import io.github.benxincaomu.oa.bussiness.user.vo.PermissionIdName;
 import io.micrometer.core.ipc.http.HttpSender.Response;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
@@ -74,15 +75,15 @@ public class SecurityFilter extends OncePerRequestFilter {
         // Asserts.isTrue(tokenValue.isPresent(), OaResponseCode.TOKEN_NOT_EXIST);
         TokenValue tv = tokenValue.get();
         // Role role = tokenValue.get().getRole();
-        List<Permission> permissions = tv.getPermissions();
         final List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+        /* List<PermissionIdName> permissions = tv.getPermissions();
         if (permissions != null && permissions.size() > 0) {
             permissions.forEach(permission -> {
-                SimpleGrantedAuthority authority = new SimpleGrantedAuthority(permission.getValue());
+                SimpleGrantedAuthority authority = new SimpleGrantedAuthority(permission.getName());
                 authorities.add(authority);
             });
-        }
-        SaltedUser user = new SaltedUser(tv.getUserName(), tv.getSalt(), true, true, true, true, authorities, tv.getUserId(),tv.getSalt());
+        } */
+        SaltedUser user = new SaltedUser(tv.getUserName(), tv.getSalt(), true, true, true, true, authorities, tv.getUserId(),tv.getSalt(),tv.getTenantId());
 
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 user, tv, authorities);

@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import io.github.benxincaomu.oa.bussiness.user.vo.ParentPermission;
+import io.github.benxincaomu.oa.bussiness.user.vo.PermissionIdName;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Resource;
 
@@ -26,7 +26,7 @@ public class PermissionController {
         return permissionService.insert(permission);
     }
 
-    @PostMapping("list")
+    @GetMapping("list")
     public PagedModel<Permission> list(String name,Integer type,Integer currPage,Integer pageSize){
         PagedModel<Permission> page = new PagedModel<>(permissionService.permissions(name, type, currPage, pageSize));
         return page;
@@ -38,8 +38,14 @@ public class PermissionController {
      * @return
      */
     @GetMapping("permissionsByType")
-    public List<ParentPermission> permissionsByType(@Validated @Nonnull Integer type){
+    public List<PermissionIdName> permissionsByType(@Validated @Nonnull Integer type){
 
         return permissionService.findByType(type);
+    }
+
+    @GetMapping("getMenuTree")
+    public List<PermissionIdName> getMenuTree(){
+        return permissionService.findAllMenuTree();
+
     }
 }

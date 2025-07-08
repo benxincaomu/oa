@@ -10,16 +10,36 @@ import io.github.benxincaomu.oa.base.security.SaltedUser;
 
 
 @Component
-public class JpaAuditorAware  implements AuditorAware<Long> {
+public final class JpaAuditorAware  implements AuditorAware<Long> {
 
     @Override
     public Optional<Long> getCurrentAuditor() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof SaltedUser) {
             SaltedUser user = (SaltedUser) principal;
-            return Optional.of(user.getUserId());
+            return Optional.ofNullable(user.getUserId());
         }
+        
         return Optional.empty();
+    }
+
+    public static Long getCurrentUserId() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof SaltedUser) {
+            SaltedUser user = (SaltedUser) principal;
+            return user.getUserId();
+        }
+        
+        return null;
+    }
+    public static Long getCurrentTenantId() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof SaltedUser) {
+            SaltedUser user = (SaltedUser) principal;
+            return user.getTenantId();
+        }
+        
+        return null;
     }
 
 }
