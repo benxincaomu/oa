@@ -85,7 +85,7 @@ public class PermissionService {
 
     public List<PermissionIdName> getMenuTreeByRoleId(Long roleId) {
         // List<PermissionIdName> permissions = rolePermissionRepository.findTreeByRoleId(roleId);
-        List<PermissionIdName> permissions = rolePermissionRepository.findPermissionIdNameByRoleId(roleId,null);
+        List<PermissionIdName> permissions = fillPersmissionByRoleId(roleId,null);
 
 
         return permissions;

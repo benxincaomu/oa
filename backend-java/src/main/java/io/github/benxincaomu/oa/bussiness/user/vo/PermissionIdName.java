@@ -22,6 +22,8 @@ public class PermissionIdName {
 
     private Integer type;
 
+    private String value;
+
     @Transient
     List<PermissionIdName> children;
 
@@ -63,6 +65,14 @@ public class PermissionIdName {
 
     public void setChildren(List<PermissionIdName> children) {
         this.children = children;
+    }
+
+    public String getValue() {
+        return value;
+    }
+
+    public void setValue(String value) {
+        this.value = value;
     }
     
     

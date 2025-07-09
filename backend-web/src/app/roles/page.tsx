@@ -35,7 +35,7 @@ const getPermissionIdsByPermissions = (permissions: PermissionNode[]) => {
     let permissionIds: number[] = [];
     if (permissions != null && permissions.length > 0) {
         for (let i = 0; i < permissions.length; i++) {
-            if (permissions[i].type != 1) {
+            if (permissions[i].type != 1 && permissions[i].children.length == 0) {
                 permissionIds.push(permissions[i].id);
             }
             permissionIds = permissionIds.concat(getPermissionIdsByPermissions(permissions[i].children));
@@ -157,36 +157,36 @@ const RoleManager = () => {
             }
         });
     };
-    const saveAuth = async () => { 
+    const saveAuth = async () => {
         // messageApi.info("正在保存权限...");
         // console.log("saveAuth",checkedIds.concat(halfCheckedIds));
         axios.post("/role/auth", {
             roleId: operatingRoleId,
             permissionIds: checkedIds.concat(halfCheckedIds)
-        },{
+        }, {
             headers: {
                 "token": localStorage.getItem("token"),
             },
-        }).then(res => { 
+        }).then(res => {
             if (res.data.code === 200) {
                 messageApi.info("授权成功");
                 setAuthOpen(false);
-            }else{
+            } else {
                 messageApi.error("授权失败");
             }
         });
-        
+
     };
 
     const [halfCheckedIds, setHalfCheckedIds] = useState<number[]>([]);
     const getHalfCheckedIds = () => {
         const halfCheckedIds: number[] = [];
-        
+
         return halfCheckedIds;
     };
     const getHalfCheckedIdsDeep = (permissions: PermissionNode[]) => {
         const halfCheckedIds: number[] = [];
-        for(let i = 0; i < permissions.length; i++){
+        for (let i = 0; i < permissions.length; i++) {
 
         }
         return halfCheckedIds;
@@ -231,15 +231,15 @@ const RoleManager = () => {
                 setAuthOpen(false)
                 authForm.resetFields();
             }} footer={null} >
-                <Form id='authForm' form={authForm} onFinish={()=>{saveAuth()}} >
+                <Form id='authForm' form={authForm} onFinish={() => { saveAuth() }} >
                     <Tree
                         checkable
                         defaultExpandAll
                         defaultCheckedKeys={ownedPermissionIds}
-                        onCheck={(checkedKeys,info) => {
+                        onCheck={(checkedKeys, info) => {
                             setCheckedIds(checkedKeys as number[]);
                             setHalfCheckedIds(info.halfCheckedKeys as number[]);
-                            console.log('onCheck', checkedKeys,info);
+                            console.log('onCheck', checkedKeys, info);
                         }}
                         treeData={permissions}
                     />

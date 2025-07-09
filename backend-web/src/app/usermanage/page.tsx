@@ -157,8 +157,9 @@ const UserManager = () => {
         }, 1000);
     }, []);
     const beforeAssignRole = (user: User) => {
-        if (roles.length == 0) {
-            service.get("role/listAll").then((res) => {
+        console.log("beforeAssignRole", roles.length);
+        if (roles.length === 0) {
+            service.get("/role/listAll").then((res) => {
                 setRoles(res.data);
             });
         }

@@ -1,9 +1,10 @@
 "use client"
 
-import { Form, Input, Button, Select, Space, Table, Modal } from 'antd';
+import { Form, Input, Button, Select, Space, Table, Modal, message } from 'antd';
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import axios from 'axios';
+import service from '../base/service';
 interface Permission {
     id: number;
     name: string;
@@ -16,6 +17,7 @@ interface Permission {
 
 
 const Permissions = () => {
+    const [messageApi, contextHolder] = message.useMessage();
     const [searchForm] = Form.useForm();
     const typeMap = new Map<number, string>();
     typeMap.set(1, '目录菜单');
@@ -89,11 +91,15 @@ const Permissions = () => {
     const handleAddPermission = (values: any) => {
         setAddOpen(true);
 
-        axios.post("/permission", values, {
+        service.post("/permission", values, {
             headers: {
                 "Content-Type": "application/json",
-                "token": localStorage.getItem("token"),
+                
             },
+        }).then((res) => { 
+            messageApi.info(res.data);
+            loadPermissions();
+            setAddOpen(false);
         });
     };
     const [parentPermissions, setParentPermissions] = useState<Permission[]>([]);
@@ -157,7 +163,7 @@ const Permissions = () => {
             <Modal title="添加权限" open={addOpen} onCancel={() => {
                 setAddOpen(false);
                 addForm.resetFields();
-            }} footer={null} >
+            }}  footer={null} >
                 <Form form={addForm} onFinish={values => handleAddPermission(values)} layout='horizontal' labelCol={{ span: 6 }} wrapperCol={{ span: 16 }} >
                     <Form.Item label="权限名称" name="name" rules={[{ required: true }]}>
                         <Input placeholder="请输入权限名称" />

@@ -22,7 +22,7 @@ public interface RolePermissionRepository extends JpaRepository<RolePermission, 
      * @param parentId
      * @return
      */
-    @Query("select p.id as id,p.name as name,p.parentId as parentId,p.type type from Permission p,RolePermission rp where rp.roleId = :roleId and rp.permissionId = p.id "
+    @Query("select p.id as id,p.name as name,p.parentId as parentId,p.type type,p.value as value from Permission p,RolePermission rp where rp.roleId = :roleId and rp.permissionId = p.id "
             +
             "and CASE WHEN :parentId IS NULL THEN p.parentId IS NULL ELSE p.parentId = :parentId END")
     List<PermissionIdName> findPermissionIdNameByRoleId(@Param("roleId") Long roleId, @Param("parentId") Long parentId);
@@ -54,5 +54,5 @@ public interface RolePermissionRepository extends JpaRepository<RolePermission, 
     List<PermissionIdName> findTreeByRoleId(Long roleId);
 
 
-    
+
 }

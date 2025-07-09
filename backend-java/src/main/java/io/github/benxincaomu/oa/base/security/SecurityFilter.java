@@ -12,6 +12,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -49,13 +50,17 @@ public class SecurityFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        if (excludeUrls.contains(request.getServletPath())) {
-            filterChain.doFilter(request, response);
-            return;
+        String servletPath = request.getServletPath();
+        AntPathMatcher matcher = new AntPathMatcher();
+        for (String url : SecurityConsts.PUBLIC_URLS) {
+            if (matcher.match(url, servletPath)) {
+                filterChain.doFilter(request, response);
+                return;
+            }
         }
         String token = request.getHeader("token");
-        if(token == null){
-            ResponseMessage<String> responseMessage = new ResponseMessage<>(OaResponseCode.TOKEN_NOT_EXIST,null);
+        if (token == null) {
+            ResponseMessage<String> responseMessage = new ResponseMessage<>(OaResponseCode.TOKEN_NOT_EXIST, null);
             response.setHeader("Content-Type", "application/json;charset=UTF-8");
             ObjectMapper objectMapper = new ObjectMapper();
             response.getWriter().write(objectMapper.writeValueAsString(responseMessage));
@@ -65,25 +70,30 @@ public class SecurityFilter extends OncePerRequestFilter {
         Optional<TokenValue> tokenValue = tokenValueRepository.findById(token);
         if (!tokenValue.isPresent()) {
             // throw new BadCredentialsException("token不存在");
-            ResponseMessage<String> responseMessage = new ResponseMessage<>(OaResponseCode.TOKEN_NOT_EXIST,null);
+            ResponseMessage<String> responseMessage = new ResponseMessage<>(OaResponseCode.TOKEN_NOT_EXIST, null);
+            response.setHeader("Content-Type", "application/json;charset=UTF-8");
+            ObjectMapper objectMapper = new ObjectMapper();
+            response.getWriter().write(objectMapper.writeValueAsString(responseMessage));
+            response.getWriter().flush();
+            return;
+        }
+        TokenValue tv = tokenValue.get();
+
+        Set<String> urls = tv.getUrls();
+        boolean match = urls.stream().anyMatch(url -> matcher.match(url, servletPath));
+        if (!match) {
+            ResponseMessage<String> responseMessage = new ResponseMessage<>(OaResponseCode.NO_PERMISSION, null);
             response.setHeader("Content-Type", "application/json;charset=UTF-8");
             ObjectMapper objectMapper = new ObjectMapper();
             response.getWriter().write(objectMapper.writeValueAsString(responseMessage));
             response.getWriter().flush();
             return;
         } 
-        // Asserts.isTrue(tokenValue.isPresent(), OaResponseCode.TOKEN_NOT_EXIST);
-        TokenValue tv = tokenValue.get();
-        // Role role = tokenValue.get().getRole();
+            
         final List<SimpleGrantedAuthority> authorities = new ArrayList<>();
-        /* List<PermissionIdName> permissions = tv.getPermissions();
-        if (permissions != null && permissions.size() > 0) {
-            permissions.forEach(permission -> {
-                SimpleGrantedAuthority authority = new SimpleGrantedAuthority(permission.getName());
-                authorities.add(authority);
-            });
-        } */
-        SaltedUser user = new SaltedUser(tv.getUserName(), tv.getSalt(), true, true, true, true, authorities, tv.getUserId(),tv.getSalt(),tv.getTenantId());
+
+        SaltedUser user = new SaltedUser(tv.getUserName(), tv.getSalt(), true, true, true, true, authorities,
+                tv.getUserId(), tv.getSalt(), tv.getTenantId());
 
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 user, tv, authorities);

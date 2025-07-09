@@ -16,7 +16,7 @@ public interface PermissionRepository extends JpaRepository<Permission,Long>{
     @Query("select p from Permission p,RolePermission rp where rp.roleId = :roleId and rp.permissionId = p.id")
     List<Permission> findByRoleId(Long roleId);
 
-    @Query("select p.id as id,p.name as name,p.parentId as parentId from Permission p where p.parentId = :parentId and p.type in (1,2)")
+    @Query("select p.id as id,p.name as name,p.parentId as parentId from Permission p where p.parentId = :parentId ")
     List<PermissionIdName> findByParentMenuId(Long parentId);
 
     @Query("select p.id as id,p.name as name,p.parentId as parentId from Permission p where p.parentId is null")

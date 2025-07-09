@@ -11,6 +11,7 @@ import jakarta.persistence.Table;
 @Comment("角色权限")
 public class RolePermission  extends BaseEntity{
     
+    
     @Comment("角色id")
     private Long roleId;
 

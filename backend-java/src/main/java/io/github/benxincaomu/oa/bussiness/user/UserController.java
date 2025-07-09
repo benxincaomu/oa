@@ -1,7 +1,11 @@
 package io.github.benxincaomu.oa.bussiness.user;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
+import java.util.Stack;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
@@ -128,10 +132,31 @@ public class UserController {
         if (role != null) {
 
             List<PermissionIdName> permissions = permissionService.getMenuTreeByRoleId(role.getId());
+            Set<String> urls = new HashSet<>();
+            Stack<PermissionIdName> stack = new Stack<>();
+            stack.addAll(permissions);
+            while (!stack.isEmpty()) { 
+                PermissionIdName permission = stack.pop();
+                List<PermissionIdName> children = permission.getChildren();
+                if(children!=null){
+
+                    Iterator<PermissionIdName> iterator = children.iterator();
+                    while (iterator.hasNext()) {
+                        PermissionIdName next = iterator.next();
+                        if(next.getType() == Permission.TYPE_3){
+                            urls.add(next.getValue());
+                            iterator.remove();
+                        }else if(next.getType() == Permission.TYPE_1 || next.getType() == Permission.TYPE_2){
+                            stack.push(next);
+                        }
+                    }
+                }
+            }
+            tokenValue.setUrls(urls);
             
-            tokenValue.setPermissions(permissions);
+            tokenValue.setMenus(permissions);
         }else{
-            tokenValue.setPermissions(new ArrayList<PermissionIdName>());
+            tokenValue.setMenus(new ArrayList<PermissionIdName>());
         }
 
         String token = StringGenerator.generate(28) + System.currentTimeMillis();

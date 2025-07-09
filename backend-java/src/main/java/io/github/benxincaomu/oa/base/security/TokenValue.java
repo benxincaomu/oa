@@ -2,12 +2,12 @@ package io.github.benxincaomu.oa.base.security;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.redis.core.RedisHash;
 
 import io.github.benxincaomu.oa.base.consts.Const;
-import io.github.benxincaomu.oa.bussiness.user.Permission;
 import io.github.benxincaomu.oa.bussiness.user.Role;
 import io.github.benxincaomu.oa.bussiness.user.vo.PermissionIdName;
 
@@ -26,7 +26,9 @@ public class TokenValue implements Serializable {
 
     private String salt;
     private Long tenantId;
-    private List<PermissionIdName> permissions;
+    private List<PermissionIdName> menus;
+    private Set<String> urls;
+    private List<PermissionIdName> buttons;
 
     public Long getTenantId() {
         return tenantId;
@@ -52,12 +54,28 @@ public class TokenValue implements Serializable {
         this.role = role;
     }
 
-    public List<PermissionIdName> getPermissions() {
-        return permissions;
+    public Set<String> getUrls() {
+        return urls;
     }
 
-    public void setPermissions(List<PermissionIdName> permissions) {
-        this.permissions = permissions;
+    public List<PermissionIdName> getMenus() {
+        return menus;
+    }
+
+    public void setMenus(List<PermissionIdName> menus) {
+        this.menus = menus;
+    }
+
+    public List<PermissionIdName> getButtons() {
+        return buttons;
+    }
+
+    public void setButtons(List<PermissionIdName> buttons) {
+        this.buttons = buttons;
+    }
+
+    public void setUrls(Set<String> urls) {
+        this.urls = urls;
     }
 
     public String getToken() {
