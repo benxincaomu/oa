@@ -1,5 +1,5 @@
 "use client"
-import { Button, Form, Input, Modal, message ,Space} from "antd";
+import { Button, Form, Input, Modal, message, Space } from "antd";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import service from "../base/service";
@@ -19,6 +19,14 @@ function Login() {
         if (name) {
             setName(name);
         }
+        service.get("/user/myInfo")
+            .then((resp) => {
+                console.log("获取用户数据成功:", resp.data);
+                setName(resp.data.name);
+            })
+            .catch((error) => {
+                console.error("Error loading users:", error);
+            });
     }, []);
     useEffect(() => {
         localStorage.setItem("token", token);
@@ -42,18 +50,8 @@ function Login() {
                     saveToken(response.data.data);
                     setOpen(false);
                     messageApi.info("登录成功");
-                    axios.get("/user/myInfo", {
-                        headers: {
-                            token: response.data.data,
-                        },
-                    })
-                        .then((resp) => {
-                            console.log("获取用户数据成功:", resp.data);
-                            setName(resp.data.data.name);
-                        })
-                        .catch((error) => {
-                            console.error("Error loading users:", error);
-                        });
+                    window.location.reload();
+
                 } else {
                     messageApi.error("登录失败");
                 }
@@ -64,12 +62,12 @@ function Login() {
             });
         // TODO: 调用登录接口
     };
-    const handleLogout = () => { 
-        service.post("/user/logout").then((response)=>{
+    const handleLogout = () => {
+        service.post("/user/logout").then((response) => {
             message.success("登出成功");
             localStorage.removeItem("token");
             localStorage.removeItem("name");
-            window.location.href="/";
+            window.location.href = "/";
         });
     };
     return (
@@ -84,7 +82,7 @@ function Login() {
             {name
                 ? (<Space>
                     <div style={{ color: "#ffffff" }}>{name}</div>
-                    <a onClick={()=>{
+                    <a onClick={() => {
                         handleLogout();
                     }}>登出</a>
                 </Space>

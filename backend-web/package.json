@@ -6,9 +6,11 @@
     "dev": "PORT=3001 next dev --turbopack --hostname=0.0.0.0",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "export": "next build && next export"
   },
   "dependencies": {
+    "@ant-design/cssinjs": "^1.23.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "antd": "^5.26.3",

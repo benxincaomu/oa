@@ -17,6 +17,8 @@ import com.github.benxincaomu.notry.utils.Asserts;
 
 import io.github.benxincaomu.oa.base.utils.StringGenerator;
 import io.github.benxincaomu.oa.base.web.OaResponseCode;
+import io.github.benxincaomu.oa.bussiness.organization.DepartmentUser;
+import io.github.benxincaomu.oa.bussiness.organization.DepartmentUserRepository;
 import io.github.benxincaomu.oa.bussiness.tenant.TenantRepository;
 import jakarta.annotation.Resource;
 import jakarta.transaction.Transactional;
@@ -40,6 +42,9 @@ public class UserService {
 
     @Resource
     private PermissionRepository permissionRepository;
+
+    @Resource
+    private DepartmentUserRepository departmentUserRepository;
 
 
     public int updateUser(User user) {
@@ -151,5 +156,15 @@ public class UserService {
 
     public Long getRoleIdByUserId(Long userId) {
         return userRoleRepository.getRoleIdByUserId(userId);
+    }
+
+    public Long getDeptIdByUserId(Long userId) {
+        return departmentUserRepository.findDeptIdByUserId(userId).orElse(0L);
+    }
+
+    @Transactional
+    public void assignDept(DepartmentUser departmentUser) {
+        departmentUserRepository.deleteByUserId(departmentUser.getUserId());
+        departmentUserRepository.save(departmentUser);
     }
 }

@@ -73,5 +73,6 @@ public class RoleController {
         }
         roleService.auth(authVo.getRoleId(), rolePermissions);
     }
+    
 
 }

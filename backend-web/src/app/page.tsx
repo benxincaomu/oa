@@ -1,9 +1,12 @@
 "use client"
-import React from 'react';
+import React ,{useEffect}from 'react';
 
 const App: React.FC = () => {
+  useEffect(() => {
+    document.title = "首页";
+  }, []);
   return (
-    <div>index</div>
+    <div>首页</div>
   );
 };
 

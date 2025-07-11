@@ -30,7 +30,7 @@ public class DepartmentService {
      */
     @Transactional
     public int insert(Department department){
-        Asserts.isTrue(departmentRepository.existsByName(department.getName()), OaResponseCode.DEPT_NAME_EXITS);
+        Asserts.isFalse(departmentRepository.existsByName(department.getName()), OaResponseCode.DEPT_NAME_EXITS);
         return departmentRepository.save(department).getId() == null?0 :1;
     }
     @Transactional
@@ -59,8 +59,8 @@ public class DepartmentService {
     }
 
     public List<DeptVo> findDeptTree() { 
-
-        return null;
+        List<DeptVo> deptVos = departmentRepository.findAllByParentId(null);
+        return deptVos;
     }
     List<DeptVo> findDeptByParentId(Long parentId){
         List<DeptVo> depts = departmentRepository.findAllByParentId(parentId);
@@ -71,5 +71,27 @@ public class DepartmentService {
         }
         return depts;
 
+    }
+    @Transactional
+    public List<DeptVo> findAllDeptAsTree() {
+        List<DeptVo> depts = findAllDeptAsTree(null);
+        return depts;
+    }
+
+    List<DeptVo> findAllDeptAsTree(Long parentId) {
+        List<DeptVo> depts = departmentRepository.findAllByParentId(parentId);
+        if (!CollectionUtils.isEmpty(depts)) {
+            for (DeptVo dept : depts) {
+                dept.setChildren(findAllDeptAsTree(dept.getId()));
+            }
+        }
+        return depts;
+    }
+
+    public Department getById(Long id) {
+        return departmentRepository.findById(id).orElse(null);
+    }
+    public List<DeptVo> listAll() {
+        return departmentRepository.listAll();
     }
 }

@@ -1,7 +1,8 @@
 "use client"
-import { Form, Input, Button, Select, Space, Table, Modal, message, Tree } from 'antd';
+import { Form, Input, Button, Select, Space, Table, Modal, message, Tree,ConfigProvider } from 'antd';
 import React, { use, useEffect, useState } from 'react';
 import axios from 'axios';
+import type { AppProps } from 'next/app';
 
 interface Role {
     id: number;
@@ -211,7 +212,14 @@ const RoleManager = () => {
                     <Button type='primary' onClick={(e) => { setAddOpen(true) }}>新增角色</Button>
                 </Form.Item>
             </Form>
-            <Table columns={columns} dataSource={roles} rowKey="id" />
+            <Table
+                columns={columns}
+                dataSource={roles}
+                rowKey="id"
+                bordered={true}
+                rowHoverable = {false}
+                rowClassName={(record, index) => index % 2 === 0 ? 'row-class-0' : 'row-class-1'}
+            />
             <Modal title="新增角色" open={addOpen} onCancel={() => { setAddOpen(false) }} footer={null} >
                 <Form onFinish={(values) => handleAddRole(values)}>
                     <Form.Item label="角色名称" name="name">

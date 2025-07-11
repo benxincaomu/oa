@@ -74,16 +74,16 @@ const Permissions = () => {
                 "token": localStorage.getItem("token"),
             },
         }).then((res) => {
-            console.log("获取权限数据成功:", res.data);
+            // console.log("获取权限数据成功:", res.data);
             setPermissions(res.data.data.content);
         });
     };
 
-    /* useEffect(() => {
-        console.log(typeof window);
-        console.log("提交的权限信息:", localStorage.getItem("token"));
-        loadPermissions();
-    }, [test]); */
+    useEffect(() => {
+        setTimeout(() => {
+            loadPermissions();
+        }, 300);
+    }, [test]);
 
     // 添加权限相关
     const [addOpen, setAddOpen] = useState(false);
@@ -100,6 +100,7 @@ const Permissions = () => {
             messageApi.info(res.data);
             loadPermissions();
             setAddOpen(false);
+            addForm.resetFields();
         });
     };
     const [parentPermissions, setParentPermissions] = useState<Permission[]>([]);
@@ -159,7 +160,7 @@ const Permissions = () => {
                     }}>添加权限</Button>
                 </Form.Item>
             </Form>
-            <Table columns={columns} dataSource={permissions} rowKey={(record) => record.id} bordered />
+            <Table columns={columns} dataSource={permissions} rowKey={(record) => record.id} bordered = {true} />
             <Modal title="添加权限" open={addOpen} onCancel={() => {
                 setAddOpen(false);
                 addForm.resetFields();

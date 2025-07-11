@@ -1,6 +1,6 @@
 "use client"; // 因为使用了 React State 和交互，必须是 Client Component
 
-import { Button, Form, Input, message, Modal, Space, Table, Popconfirm, Select } from "antd";
+import { Button, Form, Input, message, Modal, Space, Table, Popconfirm, Select, TreeSelect } from "antd";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import service from "../base/service";
@@ -19,6 +19,7 @@ interface Role {
 }
 
 const UserManager = () => {
+    const [messageApi, contextHolder] = message.useMessage();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [addUserFrom] = Form.useForm();
     const [editUserForm] = Form.useForm();
@@ -49,10 +50,16 @@ const UserManager = () => {
             })
             .catch((error) => {
                 console.error("Error loading users:", error);
-                message.error("加载用户失败");
+                messageApi.error("加载用户失败");
             });
     };
 
+    useEffect(() => {
+        document.title = "用户管理";
+        setTimeout(() => {
+            loadUsers();
+        }, 500);
+    }, []);
     /**
      * 添加用户
      * @param values the form values
@@ -66,11 +73,11 @@ const UserManager = () => {
             }
         }).then((res) => {
             if (res.data.code === 200) {
-                message.success("添加用户成功");
+                messageApi.success("添加用户成功");
                 addUserFrom.resetFields();
                 setIsModalOpen(false);
             } else {
-                message.error("添加用户失败");
+                messageApi.error("添加用户失败");
             }
         });
     };
@@ -81,7 +88,7 @@ const UserManager = () => {
                 token: localStorage.getItem("token") || "",
             },
         }).then(() => {
-            message.success("用户删除成功");
+            messageApi.success("用户删除成功");
             loadUsers();
         });
     };
@@ -142,6 +149,10 @@ const UserManager = () => {
                     <a onClick={() => {
                         beforeAssignRole(record as User);
                     }}>分配角色</a>
+                    <a onClick={() => { 
+                        onAssignDeptOpen(record as User); 
+
+                    }}>分配部门</a>
                 </Space>
             ),
         },
@@ -150,14 +161,8 @@ const UserManager = () => {
     // 角色相关
     const [assignRoleForm] = Form.useForm();
     const [roles, setRoles] = useState<Role[]>([]);
-    useEffect(() => {
-        setTimeout(() => {
-
-            loadUsers();
-        }, 1000);
-    }, []);
     const beforeAssignRole = (user: User) => {
-        console.log("beforeAssignRole", roles.length);
+        // console.log("beforeAssignRole", roles.length);
         if (roles.length === 0) {
             service.get("/role/listAll").then((res) => {
                 setRoles(res.data);
@@ -192,19 +197,52 @@ const UserManager = () => {
     const onAssignFinish = (values: any) => {
         console.log("Received values of form: ", values);
         service.post("/user/assignRole", { ...values }).then(res => {
-            message.success("分配成功");
+            messageApi.success("分配成功");
             onAssignClose();
         });
     };
+    // 分配部门相关
+    const [assignDeptOpen, setAssignDeptOpen] = useState(false);
+    const [deptId, setDeptId] = useState(0);
+    const [assignDeptForm] = Form.useForm();
+    const [depts, setDepts] = useState<any[]>([]);
+
+    const onAssignDeptOpen = (user: User) => {
+        console.log("user",user);
+        setOperatingUser(user);
+        setUserId(user.id);
+        service.get(`/user/getDeptIdByUserId/${user.id}`).then(res => {
+            setDeptId(res.data);
+            setAssignDeptOpen(true);
+        });
+        if (depts.length == 0) {
+            service.get("/organize/listTree").then((res) => {
+                // console.log(res);
+                setDepts(res.data);
+            });
+        }
+
+    };
+    const onAssignDeptClose = () => {
+        setAssignDeptOpen(false);
+        setOperatingUser(nullUser);
+        setDeptId(0);
+        assignDeptForm.resetFields();
+        
+    };
+    const onAssignDeptFinish = (values: any) => {
+        values.userId=operatingUser.id;
+        service.post("/user/assignDept", values).then((res) => {
+            console.log(res);
+            onAssignDeptClose();
+            messageApi.success("操作成功");
+        });
+    };
+
     return (
         <div>
-            <div
-                style={{
-                    marginBottom: 16,
-                    display: "flex",
-                    justifyContent: "space-between",
-                }}
-            >
+            {contextHolder}
+            <div>
                 {/* 搜索框 */}
                 <Form
                     form={searchUserForm}
@@ -236,6 +274,8 @@ const UserManager = () => {
                 columns={columns}
                 pagination={{ pageSize: 20 }}
                 rowKey={(record) => record.id}
+                bordered={true}
+                rowClassName={(record, index) => index % 2 === 0 ? 'row-class-0' : 'row-class-1'}
                 onChange={(pagination, filters, sorter, extra) => {
                     setCurrPage(pagination.current || 1);
                     setPageSize(pagination.pageSize || 20);
@@ -329,7 +369,7 @@ const UserManager = () => {
                     form={assignRoleForm}
                 >
                     <Form.Item label="角色" name="roleId" rules={[{ required: true, message: '请选择角色' }]} >
-                        <Select showSearch options={roles} fieldNames={{ label: 'name', value: 'id' }} defaultValue={roleId > 0 ? roleId : null} placeholder="请选择角色" />
+                        <Select showSearch options={roles} fieldNames={{ label: 'name', value: 'id' }} placeholder="请选择角色" />
                     </Form.Item>
                     <Form.Item name="userId" initialValue={userId}>
                         <Input type="hidden" />
@@ -337,6 +377,44 @@ const UserManager = () => {
                     <Form.Item labelCol={{ span: 4 }} wrapperCol={{ span: 8, offset: 16 }}>
                         <Button type="primary" htmlType="submit">
                             提交
+                        </Button>
+                    </Form.Item>
+                </Form>
+            </Modal>
+
+            <Modal
+                title="分配部门"
+                open={assignDeptOpen}
+                footer={null}
+                onCancel={() => {
+                    onAssignDeptClose();
+                }}
+                closable={false}
+            >
+                <Form
+                    name="assign"
+                    labelCol={{ span: 4 }}
+                    wrapperCol={{ span: 20 }}
+                    onFinish={(values) => {
+                        onAssignDeptFinish(values);
+                    }}
+                    autoComplete="off"
+                    form={assignDeptForm}
+                >
+                    <Form.Item label="部门" name="departmentId" rules={[{ required: true, message: '请选择角色' }]} >
+                        <TreeSelect showSearch treeData={depts} fieldNames={{ label: 'name', value: 'id' }} treeNodeFilterProp="name"  placeholder="请选择部门" defaultValue={deptId}/>
+                    </Form.Item>
+                    {/* <Form.Item name="userId" hidden >
+                        <Input type="hidden" value={userId} />
+                    </Form.Item> */}
+                    <Form.Item labelCol={{ span: 4 }} wrapperCol={{ span: 8, offset: 16 }}>
+                        <Button type="primary" htmlType="submit">
+                            提交
+                        </Button>
+                        <Button onClick={() => {
+                            onAssignDeptClose();
+                        }}>
+                            取消
                         </Button>
                     </Form.Item>
                 </Form>

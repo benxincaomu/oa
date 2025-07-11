@@ -1,9 +1,13 @@
 package io.github.benxincaomu.oa.bussiness.organization;
 
+import java.util.List;
+
 import org.hibernate.annotations.Comment;
 
 import io.github.benxincaomu.oa.base.entity.BaseEntity;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 @Table(name = "department")
@@ -20,6 +24,7 @@ public class Department extends BaseEntity{
 
     @Comment("部门编码")
     private String code;
+
     
 
     public String getName() {
@@ -46,5 +51,7 @@ public class Department extends BaseEntity{
         this.code = code;
     }
 
+
+    
     
 }

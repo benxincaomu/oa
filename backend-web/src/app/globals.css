@@ -1,8 +1,12 @@
 @import "tailwindcss";
 
+@import "tailwindcss";
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --border-color: #a5a4a4;
+  --padding-md: 1rem;
 }
 
 @theme inline {
@@ -16,6 +20,7 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --border-color: #333;
   }
 }
 
@@ -23,4 +28,32 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* 统一边框样式 */
+/* table{
+  border-collapse: collapse !important;
+}
+
+.ant-table-cell {
+  border: 1px solid var(--border-color) !important;
+} */
+
+
+/* 表格行样式 */
+.row-class-0 {
+  background-color: #d6d4d4;
+}
+
+.row-class-1 {
+  background-color: #8f8d8d;
+}
+
+
+
+
+/* 可选：使用 TailwindCSS 的 @layer 统一管理 */
+.ant-table-row:hover {
+  background-color: #706868 !important;
+  transition: background-color 0.3s ease;
 }

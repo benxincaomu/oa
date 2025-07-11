@@ -15,6 +15,9 @@ service.interceptors.request.use(
         const token = localStorage.getItem('token');
         if (token) {
             config.headers['token'] = token;
+        }else{
+            message.error('请先登录');
+            return new Promise(() => {});
         }
         return config;
     },
@@ -29,16 +32,17 @@ service.interceptors.response.use(
         const res = response.data;
         if (res.code === 10002) {
             localStorage.removeItem('token');
+            localStorage.removeItem('name');
             window.location.reload();
         }else if (res.code !== 200) {
             message.error(res.message || '操作失败');
-            return Promise.reject(new Error(res.message));
+            return new Promise(() => {});
         }
         return res;
     },
     (error) => {
         message.error('网络请求失败');
-        return Promise.reject(error);
+        return new Promise(() => {});
     }
 );
 

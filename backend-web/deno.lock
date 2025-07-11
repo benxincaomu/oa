@@ -1,6 +1,7 @@
 {
   "version": "5",
   "specifiers": {
+    "npm:@ant-design/cssinjs@^1.23.0": "1.23.0_react@18.3.1_react-dom@18.3.1__react@18.3.1",
     "npm:@emotion/react@^11.14.0": "11.14.0_react@18.3.1",
     "npm:@emotion/styled@^11.14.0": "11.14.1_@emotion+react@11.14.0__react@18.3.1_react@18.3.1",
     "npm:@eslint/eslintrc@3": "3.3.1",
@@ -16,7 +17,6 @@
     "npm:mobx-react@^9.2.0": "9.2.0_mobx@6.13.7_react@18.3.1",
     "npm:next@15.3.4": "15.3.4_react@18.3.1_react-dom@18.3.1__react@18.3.1",
     "npm:prop-types@^15.8.1": "15.8.1",
-    "npm:rc-tree@^5.13.1": "5.13.1_react@18.3.1_react-dom@18.3.1__react@18.3.1",
     "npm:react-dom@18.3.1": "18.3.1_react@18.3.1",
     "npm:react-helmet@^6.1.0": "6.1.0_react@18.3.1",
     "npm:react@18.3.1": "18.3.1",
@@ -3718,6 +3718,7 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
+        "npm:@ant-design/cssinjs@^1.23.0",
         "npm:@emotion/react@^11.14.0",
         "npm:@emotion/styled@^11.14.0",
         "npm:@eslint/eslintrc@3",

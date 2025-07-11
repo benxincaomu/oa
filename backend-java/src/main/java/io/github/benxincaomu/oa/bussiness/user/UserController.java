@@ -30,6 +30,7 @@ import io.github.benxincaomu.oa.base.security.SaltedUser;
 import io.github.benxincaomu.oa.base.security.TokenValue;
 import io.github.benxincaomu.oa.base.security.TokenValueRepository;
 import io.github.benxincaomu.oa.base.utils.StringGenerator;
+import io.github.benxincaomu.oa.bussiness.organization.DepartmentUser;
 import io.github.benxincaomu.oa.bussiness.user.vo.PermissionIdName;
 import io.github.benxincaomu.oa.bussiness.user.vo.SimpleUserInfo;
 import jakarta.annotation.Resource;
@@ -199,6 +200,12 @@ public class UserController {
         return null;
     }
 
+    @GetMapping("/getMyMenus")
+    public List<PermissionIdName> getMyMenus() {
+        
+        return ((TokenValue)SecurityContextHolder.getContext().getAuthentication().getCredentials()).getMenus();
+    }
+
 
     @GetMapping("/getRoleIdByUserId/{userId}")
     public Long getRoleIdByUserId(@PathVariable("userId") Long userId){
@@ -227,6 +234,16 @@ public class UserController {
             }
         }
 
+    }
+
+    @GetMapping("/getDeptIdByUserId/{userId}")
+    public Long getDeptIdByUserId(@PathVariable("userId") Long userId){
+        return userService.getDeptIdByUserId(userId);
+    }
+
+    @PostMapping("/assignDept")
+    public void assignDept(@RequestBody DepartmentUser departmentUser){
+        userService.assignDept(departmentUser);
     }
 
 }

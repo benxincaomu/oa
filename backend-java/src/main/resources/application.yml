@@ -34,6 +34,10 @@ spring:
           order_inserts: true
           order_updates: true
           return-first-only: false
+        enhancer:
+          enableLazyInitialization: true
+          enableAssociationManagement: true
+          enableDirtyTracking: true
       
   jackson: 
     default-property-inclusion: NON_NULL

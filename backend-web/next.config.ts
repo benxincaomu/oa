@@ -1,20 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  async redirects() {
-    return [
-      {
-        source: '/:path*.js',
-        destination: '/:path*.js',
-        permanent: true,
-      },
-      {
-        source: '/:path*.ts',
-        destination: '/:path*.ts',
-        permanent: true,
-      },
-    ];
-  },
+  output: "export",
+  
   /* config options here */
   async rewrites() {
     return [
