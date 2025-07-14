@@ -11,11 +11,13 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import io.github.benxincaomu.oa.base.security.SaltedUser;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 
 public class TenantIdEntityListener {
 
     private final Logger logger = LoggerFactory.getLogger(TenantIdEntityListener.class);
 
+    @PreUpdate
     @PrePersist
     public void touchForCreate(Object target) {
         // 获取所有字段（包括父类）
@@ -39,11 +41,12 @@ public class TenantIdEntityListener {
                             | SecurityException e) {
                         logger.error("设置tenantId失败", e);
                     }
-                    // ((BaseEntity) target).setTenantId(user.getTenantId());
                 }
             }
         }
     }
+   
+    
 
     /**
      * 递归获取类及其所有父类的字段

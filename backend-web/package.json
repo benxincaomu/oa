@@ -11,9 +11,10 @@
   },
   "dependencies": {
     "@ant-design/cssinjs": "^1.23.0",
+    "@ant-design/icons": "^6.0.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
-    "antd": "^5.26.3",
+    "antd": "5.26.4",
     "axios": "^1.10.0",
     "grapesjs": "^0.22.9",
     "mobx-react": "^9.2.0",

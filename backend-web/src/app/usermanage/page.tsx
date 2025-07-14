@@ -1,7 +1,7 @@
 "use client"; // 因为使用了 React State 和交互，必须是 Client Component
 
 import { Button, Form, Input, message, Modal, Space, Table, Popconfirm, Select, TreeSelect } from "antd";
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import axios from "axios";
 import service from "../base/service";
 
@@ -22,7 +22,6 @@ const UserManager = () => {
     const [messageApi, contextHolder] = message.useMessage();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [addUserFrom] = Form.useForm();
-    const [editUserForm] = Form.useForm();
     const [searchUserForm] = Form.useForm();
 
     const [users, setUsers] = useState<User[]>([]);
@@ -170,11 +169,13 @@ const UserManager = () => {
         }
         service.get(`/user/getRoleIdByUserId/${user.id}`).then(res => {
             if (res.data) {
-                setRoleId(res.data);
+                // setRoleId(res.data);
+                assignRoleForm.setFieldValue("roleId", res.data);
             }
             setOperatingUser(user as User);
             setUserId(user.id);
             setAssignOpen(true);
+            
         });
     }
     const onAssignClose = () => {
@@ -203,22 +204,22 @@ const UserManager = () => {
     };
     // 分配部门相关
     const [assignDeptOpen, setAssignDeptOpen] = useState(false);
-    const [deptId, setDeptId] = useState(0);
     const [assignDeptForm] = Form.useForm();
     const [depts, setDepts] = useState<any[]>([]);
 
     const onAssignDeptOpen = (user: User) => {
-        console.log("user",user);
+        // console.log("user",user);
         setOperatingUser(user);
         setUserId(user.id);
         service.get(`/user/getDeptIdByUserId/${user.id}`).then(res => {
-            setDeptId(res.data);
+            assignDeptForm.setFieldValue("departmentId", res.data);
             setAssignDeptOpen(true);
+            // assignDeptForm.resetFields();
         });
         if (depts.length == 0) {
             service.get("/organize/listTree").then((res) => {
-                // console.log(res);
-                setDepts(res.data);
+                setDepts([{id:0,name:"无部门"}].concat(res.data));
+                // setDepts(res.data);
             });
         }
 
@@ -226,8 +227,8 @@ const UserManager = () => {
     const onAssignDeptClose = () => {
         setAssignDeptOpen(false);
         setOperatingUser(nullUser);
-        setDeptId(0);
         assignDeptForm.resetFields();
+        
         
     };
     const onAssignDeptFinish = (values: any) => {
@@ -392,7 +393,6 @@ const UserManager = () => {
                 closable={false}
             >
                 <Form
-                    name="assign"
                     labelCol={{ span: 4 }}
                     wrapperCol={{ span: 20 }}
                     onFinish={(values) => {
@@ -402,7 +402,7 @@ const UserManager = () => {
                     form={assignDeptForm}
                 >
                     <Form.Item label="部门" name="departmentId" rules={[{ required: true, message: '请选择角色' }]} >
-                        <TreeSelect showSearch treeData={depts} fieldNames={{ label: 'name', value: 'id' }} treeNodeFilterProp="name"  placeholder="请选择部门" defaultValue={deptId}/>
+                        <TreeSelect showSearch treeData={depts} fieldNames={{ label: 'name', value: 'id' }} treeNodeFilterProp="name"  placeholder="请选择部门" />
                     </Form.Item>
                     {/* <Form.Item name="userId" hidden >
                         <Input type="hidden" value={userId} />
@@ -411,6 +411,7 @@ const UserManager = () => {
                         <Button type="primary" htmlType="submit">
                             提交
                         </Button>
+                        &nbsp;&nbsp;
                         <Button onClick={() => {
                             onAssignDeptClose();
                         }}>

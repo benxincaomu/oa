@@ -1,0 +1,113 @@
+"use client"
+import { Button, Form, Input, Select, Space, message } from "antd";
+import { useEffect, useState } from "react";
+import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import service from "@/app/base/service";
+import { off } from "process";
+
+type Props = {
+    wid: number;
+};
+
+const BeanDesign = ({ wid }: Props) => {
+    const [messageApi, contextHolder] = message.useMessage();
+    const [form] = Form.useForm();
+    const [id, setId] = useState(0);
+    const onSave = (values: any) => {
+        console.log("Received values of form: ", values);
+        service.post("/entityDefinition", values).then(res => {
+            messageApi.success("保存成功");
+            setId(res.data);
+
+        });
+    };
+    const [columnTypes, setColumnTypes] = useState<any[]>([]);
+
+    useEffect(() => {
+        service.get(`/entityDefinition/getColumnTypes`).then(res => {
+            setColumnTypes(res.data);
+        });
+    }, []);
+
+    useEffect(() => {
+        if (id > 0) {
+            form.setFieldValue("id", id);
+        }
+    }, [id]);
+    useEffect(() => {
+        console.log("BeanDesign wid", wid);
+        if (wid > 0) {
+            service.get("/entityDefinition/getByWorkbenchId/" + wid).then(res => {
+                if (res.data) {
+                    form.setFieldsValue(res.data);
+                }
+            });
+            form.setFieldValue("workbenchId", wid);
+        }
+    }, [wid]);
+    const formListSpan = {
+        labelCol: { span: 8 }, wrapperCol: { span: 18 }
+    };
+
+    return (
+        <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+            {contextHolder}
+            <Form form={form} layout="horizontal" labelCol={{ span: 3 }} style={{ maxWidth: "50%", minWidth: '670px' }} onFinish={(values) => { onSave(values) }}>
+                <Form.Item name={"workbenchId"} initialValue={wid} hidden>
+                    <Input />
+                </Form.Item>
+                <Form.Item name={"id"} hidden>
+                    <Input />
+                </Form.Item>
+                <Form.Item label="实体名称" name="entityName">
+                    <Input placeholder="请输入实体名称" />
+                </Form.Item>
+                <Form.Item label="描述" name="entityDesc">
+                    <Input.TextArea placeholder="请输入描述" />
+                </Form.Item>
+
+                <Form.List name="columns" children={(fields, { add, remove }) => (
+                    <>
+                        {fields.map((field, index) => (
+
+                            <Space style={{ display: 'flex', marginBottom: 8 }} key={field.key}>
+                                {/* <span className="background-grey">字段{index + 1}</span> */}
+                                <Form.Item name={[field.name, "sort"]} initialValue={index} hidden>
+                                    <Input />
+                                </Form.Item>
+
+                                <Form.Item {...formListSpan} name={[field.name, "columnName"]} label="字段名">
+                                    <Input />
+                                </Form.Item>
+                                <Form.Item  {...formListSpan} name={[field.name, "columnType"]} label="类型"  style={{minWidth:"240px"}}>
+                                    <Select options={columnTypes} fieldNames={{ label: 'value', value: 'key' }} placeholder="请选择字段类型" style={{minWidth:"180px"}}/>
+                                    {/* 
+                                    <Input />
+                                    
+                                    */}
+                                </Form.Item>
+                                <Form.Item style={{ width: '20px' }} wrapperCol={{ offset: 24 }}>
+                                    <MinusCircleOutlined onClick={() => remove(index)} />
+                                </Form.Item>
+                            </Space>
+
+                        ))}
+                        <Form.Item>
+                            <Button type="dashed" onClick={() => add()} block >
+                                增加字段
+                            </Button>
+                        </Form.Item>
+                    </>
+                )} />
+
+                <Form.Item >
+                    <Button type="primary" htmlType="submit">
+                        提交
+                    </Button>
+                </Form.Item>
+            </Form>
+        </div>
+    );
+};
+
+export default BeanDesign;

@@ -2,7 +2,6 @@
 import axios from 'axios';
 import { message } from 'antd';
 const service = axios.create({
-    baseURL: '/', // 所有请求都会带上这个前缀
     timeout: 5000, // 超时时间
     headers: {
         'Content-Type': 'application/json',
@@ -30,6 +29,7 @@ service.interceptors.request.use(
 service.interceptors.response.use(
     (response) => {
         const res = response.data;
+        console.log(res);
         if (res.code === 10002) {
             localStorage.removeItem('token');
             localStorage.removeItem('name');

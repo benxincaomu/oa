@@ -29,27 +29,26 @@ function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [messageApi, contextHolder] = message.useMessage();
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+       
       >
-        {contextHolder}
-        <Layout style={{ minHeight: "100vh" }}>
+        <Layout style={{ minHeight: "100vh",maxHeight: "100vh" }}>
           <Header>
             <Login />
           </Header>
 
-          <Layout>
-            <Sider width={200} style={{ background: "#fff" }}>
+          <Layout style={{height: "100%"}}>
+            <Sider >
               {/* 左侧菜单内容 */}
+              
               <SideMenu />
             </Sider>
 
             <Content style={{ margin: "24px 16px 0" }}>
               {/* 主体内容区域 */}
-              <div style={{ padding: 24, background: "#fff", minHeight: 360 }}>
+              <div className ="height-100" style={{ padding: 24,  minHeight: 360 }}>
                 {children}
               </div>
             </Content>
@@ -65,7 +64,7 @@ function RootLayout({
   );
 }
 
-RootLayout.getInitialProps = async (ctx: DocumentContext) => {
+/* RootLayout.getInitialProps = async (ctx: DocumentContext) => {
   const cache = createCache();
   const originalRenderPage = ctx.renderPage;
   ctx.renderPage = () =>
@@ -88,6 +87,6 @@ RootLayout.getInitialProps = async (ctx: DocumentContext) => {
       </>
     ),
   };
-};
+};  */
 
 export default RootLayout;

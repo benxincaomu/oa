@@ -9,7 +9,6 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*", // 
         destination: "http://127.0.0.1:8080/:path*", // 转发到你的后端服务
-
       },
       
     ];
