@@ -1,8 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "export",
-  
+   output: "export",
   /* config options here */
   async rewrites() {
     return [
@@ -13,6 +12,7 @@ const nextConfig: NextConfig = {
       
     ];
   },
+
 };
 
 export default nextConfig;

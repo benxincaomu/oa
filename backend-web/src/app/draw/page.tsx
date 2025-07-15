@@ -39,7 +39,7 @@ const WorkflowDesign: React.FC<BpmnModelerComponentProps> = ({
             const modeler = new BpmnModeler({
                 container: containerRef.current,
                 height: '81vh',
-                /* width: '70%', */
+                width: '70%',
                 propertiesPanel: {
                     parent: propertiesPanelRef.current,
                 },
