@@ -29,7 +29,6 @@ service.interceptors.request.use(
 service.interceptors.response.use(
     (response) => {
         const res = response.data;
-        console.log(res);
         if (res.code === 10002) {
             localStorage.removeItem('token');
             localStorage.removeItem('name');
@@ -41,7 +40,7 @@ service.interceptors.response.use(
         return res;
     },
     (error) => {
-        message.error('网络请求失败');
+        message.error('网络请求失败',error);
         return new Promise(() => {});
     }
 );

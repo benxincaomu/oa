@@ -1,27 +1,13 @@
 "use client";
 // import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "antd/dist/reset.css"
-import { Layout, message } from "antd";
+import { Layout} from "antd";
 import React from "react";
-import { createCache, extractStyle, StyleProvider } from '@ant-design/cssinjs';
-import type { DocumentContext } from 'next/document';
 import Login from "./login/Login";
 import SideMenu from "./login/Menu";
 
 const { Header, Sider, Content, Footer } = Layout;
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 
 
 function RootLayout({
@@ -64,29 +50,6 @@ function RootLayout({
   );
 }
 
-/* RootLayout.getInitialProps = async (ctx: DocumentContext) => {
-  const cache = createCache();
-  const originalRenderPage = ctx.renderPage;
-  ctx.renderPage = () =>
-    originalRenderPage({
-      enhanceApp: (App) => (props) => (
-        <StyleProvider cache={cache}>
-          <App {...props} />
-        </StyleProvider>
-      ),
-    });
 
-  const initialProps = await Document.getInitialProps(ctx);
-  const style = extractStyle(cache, true);
-  return {
-    ...initialProps,
-    styles: (
-      <>
-        {initialProps.styles}
-        <style dangerouslySetInnerHTML={{ __html: style }} />
-      </>
-    ),
-  };
-};  */
 
 export default RootLayout;

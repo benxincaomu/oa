@@ -5,13 +5,15 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import service from '@/app/base/service';
 import { Tabs } from 'antd';
 import BeanDesign from './BeanDesign';
+import PageDesign from './PageDesign';
+import WorkflowDesign from './WorkflowDesign';
 
 const Design = () => {
   const params = useSearchParams();
   const [wid, setWid] = useState<number>(0);
   useEffect(() => {
     if (params) {
-      
+
       const wid = params.get('wid');
       getWorkbench(Number(wid));
       setWid(Number(wid));
@@ -27,24 +29,25 @@ const Design = () => {
     {
       key: '1',
       label: '实体设计',
-      children: <BeanDesign wid={wid}/>,
+      children: <BeanDesign wid={wid} />,
     },
     {
       key: '2',
       label: '流程设计',
-      children: <div>流程设计</div>,
+      children: <WorkflowDesign wid={wid} />,
     },
     {
       key: '3',
       label: '页面设计',
-      children: <div>页面设计</div>,
+      children: <PageDesign wid={wid} />,
     }
   ]
   return (
-    <div >
-      {/* <h1 className="text-3xl font-bold underline">Design</h1> */}
-      <Tabs defaultActiveKey="1" items={tabData} />
-    </div>
+
+
+    <Tabs defaultActiveKey="2" items={tabData} />
+
+
   );
 };
 export default Design;

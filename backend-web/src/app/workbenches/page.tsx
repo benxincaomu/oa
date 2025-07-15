@@ -17,7 +17,6 @@ const Workbench = () => {
     const loadWorkbench = (values: any) => {
         service.get(`/workbench/list`).then((res) => {
             setWorkbenches(res.data.content);
-            messageApi.success("查询成功")
         })
     };
     useEffect(() => {
