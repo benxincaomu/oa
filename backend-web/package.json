@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@craftjs/core": "^0.2.12",
     "@grapesjs/react": "^2.0.0",
     "antd": "^5.26.5",
     "axios": "^1.10.0",
@@ -22,6 +23,7 @@
     "grapesjs-preset-webpage": "^1.0.3",
     "next": "15.4.1",
     "react": "19.1.0",
+    "react-contenteditable": "^3.3.7",
     "react-dom": "19.1.0"
   },
   "devDependencies": {

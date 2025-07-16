@@ -1,22 +1,35 @@
 "use client"
 import grapesjs, { Editor } from 'grapesjs';
 import GjsEditor from '@grapesjs/react';
-import webpage  from 'grapesjs-preset-webpage' ;
+import webpage from 'grapesjs-preset-webpage';
 import gjsForms from 'grapesjs-plugin-forms';
 import zh from "grapesjs/locale/zh";
 import basic from 'grapesjs-blocks-basic';
 import "grapesjs/dist/css/grapes.min.css";
+import { useEffect, useState, useRef } from 'react';
+import { Button, Space } from 'antd';
 type Props = {
     wid: number;
 };
 const PageDesign = ({ wid }: Props) => {
-
+    const [htmlContent, setHtmlContent] = useState('');
+    const editorRef = useRef<Editor>(null);
+    useEffect(() => {
+        console.log(htmlContent);
+    }, [htmlContent]);
     const onEditor = (editor: Editor) => {
-        console.log('Editor loaded', { editor });
+        // console.log('Editor loaded', { editor });
+        editorRef.current = editor;
     };
 
     return (
-        <div className='he'>
+        <div className='height-100'>
+            <Space>
+                <Button onClick={() => {
+                    console.log(editorRef.current?.getHtml());
+                }}>保存</Button>
+
+            </Space>
             <GjsEditor
                 // Pass the core GrapesJS library to the wrapper (required).
                 // You can also pass the CDN url (eg. "https://unpkg.com/grapesjs")
@@ -29,13 +42,26 @@ const PageDesign = ({ wid }: Props) => {
                     height: '82vh',
                     storageManager: false,
                     i18n: {
-                        messages:{zh}
-                        
+                        messages: { zh }
+
                     },
                     plugins: [
-                        webpage,gjsForms,basic
+                        webpage, gjsForms, basic
                     ],
                     blockManager: {
+
+                    },
+                    // --- 核心配置: 禁用设备切换 ---
+                    deviceManager: {
+                        devices: [
+                            {   id: 'desktop', 
+                                name: 'Desktop',
+                                width: 'auto',
+                            },
+                        ],
+                        default: 'Desktop',
+                        
+
                         
                     },
 

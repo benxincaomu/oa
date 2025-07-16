@@ -14,19 +14,21 @@ import { BpmnPropertiesPanelModule, BpmnPropertiesProviderModule } from 'bpmn-js
 
 // 如果你需要 Camunda 特有属性，保留这两个导入：
 import CamundaModdleExtension from 'camunda-bpmn-moddle/resources/camunda.json';
+import { Button, Space } from 'antd';
 
 
 // 定义组件的 Props 接口 (现在可以更简单)
 interface BpmnModelerComponentProps {
-    onSaveXML?: (xml: string) => void; // 仅保留保存 XML 的回调
+    wid:number
 }
 
 const WorkflowDesign: React.FC<BpmnModelerComponentProps> = ({
-
+    wid
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const propertiesPanelRef = useRef<HTMLDivElement>(null);
     const bpmnModelerRef = useRef<BpmnModeler | null>(null);
+
 
     useEffect(() => {
         if (!containerRef.current || !propertiesPanelRef.current) {
@@ -55,6 +57,7 @@ const WorkflowDesign: React.FC<BpmnModelerComponentProps> = ({
                     bindTo: document,
                 },  */
             });
+            modeler.createDiagram();
             bpmnModelerRef.current = modeler;
             const bpmnXML = `
                 <?xml version="1.0" encoding="UTF-8"?>
@@ -72,12 +75,12 @@ const WorkflowDesign: React.FC<BpmnModelerComponentProps> = ({
                 </bpmn2:definitions>
             `;
 
-            modeler.importXML(bpmnXML).then(() => {
+            /* modeler.importXML(bpmnXML).then(() => {
                 console.log("BPMN diagram loaded successfully");
                 // modeler.get('canvas').zoom('fit');
             }).catch((err) => {
                 console.error("Failed to import BPMN XML", err);
-            });
+            }); */
 
         }
 
@@ -90,23 +93,38 @@ const WorkflowDesign: React.FC<BpmnModelerComponentProps> = ({
         };
     }, []); // 确保此 useEffect 只在组件挂载时运行一次
 
+    const onSaveXML =  () => { 
+        bpmnModelerRef.current?.saveXML().then(({ xml }) => {
+            console.log(xml);
+        });
+    };
+
     return (
-        <div style={{ display: 'flex', height: '100%' }}>
 
-            <div ref={containerRef}  style={{
-                flexGrow: 1, // 占据剩余空间
-                border: '1px solid #ccc',
-                minHeight: '300px',
-            }} />
+        <div className='height-100'>
+            <Space align='end'>
+                <Button type='primary' onClick={()=>{
+                    onSaveXML();
+                }}>保存</Button>
+                <Button type='primary' danger>清空</Button>
+                </Space>
+            <div style={{ display: 'flex', height: '100%' }}>
 
-            <div
-                ref={propertiesPanelRef}
-                style={{
-                    width: '280px', // 固定宽度
-                    borderLeft: '1px solid #ccc',
-                    overflowY: 'auto',
-                    padding: '10px',
+                <div ref={containerRef} style={{
+                    flexGrow: 1, // 占据剩余空间
+                    border: '1px solid #ccc',
+                    minHeight: '300px',
                 }} />
+
+                <div
+                    ref={propertiesPanelRef}
+                    style={{
+                        width: '280px', // 固定宽度
+                        borderLeft: '1px solid #ccc',
+                        overflowY: 'auto',
+                        padding: '10px',
+                    }} />
+            </div>
         </div>
     );
 };

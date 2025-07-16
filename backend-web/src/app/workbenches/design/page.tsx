@@ -7,6 +7,7 @@ import { Tabs } from 'antd';
 import BeanDesign from './BeanDesign';
 import PageDesign from './PageDesign';
 import WorkflowDesign from './WorkflowDesign';
+import { PageEditor } from '@/page_editor/editor';
 
 const Design = () => {
   const params = useSearchParams();
@@ -40,12 +41,17 @@ const Design = () => {
       key: '3',
       label: '页面设计',
       children: <PageDesign wid={wid} />,
+    },
+    {
+      key: '4',
+      label: '编辑器',
+      children: <PageEditor/>,
     }
   ]
   return (
 
 
-    <Tabs defaultActiveKey="2" items={tabData} />
+    <Tabs defaultActiveKey="4" items={tabData} />
 
 
   );
