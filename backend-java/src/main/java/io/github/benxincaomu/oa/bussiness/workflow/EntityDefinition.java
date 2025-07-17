@@ -9,10 +9,11 @@ import org.hibernate.type.SqlTypes;
 import io.github.benxincaomu.oa.base.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "entity_definition")
+@Table(name = "entity_definition",indexes = {@Index(name = "entity_definition_workbench_id_index",columnList = "workbenchId")})
 @Comment("实体定义")
 public class EntityDefinition extends BaseEntity{
     @Comment("实体名称")

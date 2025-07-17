@@ -60,14 +60,8 @@ const Permissions = () => {
             )
         }
     ];
-    const permissionData = [{
-        id: 1,
-        name: "用户管理",
-        value: "/usermanage",
-    }];
     const [permissions, setPermissions] = useState<Permission[]>([]);
-    const [test, setTest] = useState<string>("");
-    const loadPermissions = async () => {
+    const loadPermissions = async (currPage: number, pageSize: number) => {
         // console.log("提交的权限信息:", localStorage.getItem("token"));
         await axios.get("/permission/list", {
             headers: {
@@ -81,9 +75,9 @@ const Permissions = () => {
 
     useEffect(() => {
         setTimeout(() => {
-            loadPermissions();
+            loadPermissions(0,0);
         }, 300);
-    }, [test]);
+    }, []);
 
     // 添加权限相关
     const [addOpen, setAddOpen] = useState(false);
@@ -98,7 +92,7 @@ const Permissions = () => {
             },
         }).then((res) => { 
             messageApi.info(res.data);
-            loadPermissions();
+            loadPermissions(0,0);
             setAddOpen(false);
             addForm.resetFields();
         });
@@ -136,7 +130,7 @@ const Permissions = () => {
             <head>
                 <title>权限管理</title>
             </head>
-            <Form form={searchForm} layout="inline" onFinish={(values) => loadPermissions()}>
+            <Form form={searchForm} layout="inline" onFinish={(values) => loadPermissions(0,0)}>
                 <Form.Item label="权限名称" name="name">
                     <Input placeholder="请输入权限名称" />
                 </Form.Item>
@@ -160,7 +154,9 @@ const Permissions = () => {
                     }}>添加权限</Button>
                 </Form.Item>
             </Form>
-            <Table columns={columns} dataSource={permissions} rowKey={(record) => record.id} bordered = {true} />
+            <Table columns={columns} dataSource={permissions} rowKey={(record) => record.id} bordered = {true} pagination={{defaultCurrent: 1, pageSize: 20,onChange(page, pageSize) {
+                loadPermissions(page, pageSize);
+            },}}/>
             <Modal title="添加权限" open={addOpen} onCancel={() => {
                 setAddOpen(false);
                 addForm.resetFields();

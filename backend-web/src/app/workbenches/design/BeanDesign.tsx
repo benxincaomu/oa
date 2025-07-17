@@ -1,5 +1,5 @@
 "use client"
-import { Button, Form, Input, Select, Space, message } from "antd";
+import { Button, Col, Form, Input, Row, Select, Space, message } from "antd";
 import { useEffect, useState } from "react";
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import service from "@/app/base/service";
@@ -52,7 +52,7 @@ const BeanDesign = ({ wid }: Props) => {
     return (
         <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
             {contextHolder}
-            <Form form={form} layout="horizontal" labelCol={{ span: 3 }} style={{ maxWidth: "50%", minWidth: '670px' }} onFinish={(values) => { onSave(values) }}>
+            <Form form={form} layout="horizontal" labelCol={{ span: 3 }} style={{ maxWidth: "90%", minWidth: '1000px' }} onFinish={(values) => { onSave(values) }}>
                 <Form.Item name={"workbenchId"} initialValue={wid} hidden>
                     <Input />
                 </Form.Item>
@@ -66,39 +66,61 @@ const BeanDesign = ({ wid }: Props) => {
                     <Input.TextArea placeholder="请输入描述" />
                 </Form.Item>
 
-                <Form.List name="columns" children={(fields, { add, remove }) => (
-                    <>
-                        {fields.map((field, index) => (
+                <Form.List name="columns" >
+                    {(fields, { add, remove }) => (
+                        <>
+                            {fields.map((field, index) => (
 
-                            <Space style={{ display: 'flex', marginBottom: 8 }} key={field.key}>
-                                {/* <span className="background-grey">字段{index + 1}</span> */}
-                                <Form.Item name={[field.name, "sort"]} initialValue={index} hidden>
-                                    <Input />
-                                </Form.Item>
+                                <>
+                                    <Row>
+                                        <Col span={5}>
+                                            <Form.Item name={[field.name, "sort"]} initialValue={index} hidden>
+                                                <Input />
+                                            </Form.Item>
+                                            <Form.Item {...formListSpan} name={[field.name, "columnName"]} label="字段名">
+                                                <Input />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col span={6}>
+                                            <Form.Item {...formListSpan} name={[field.name, "columnType"]} label="类型" style={{ minWidth: "240px" }}>
+                                                <Select options={columnTypes} fieldNames={{ label: 'value', value: 'key' }} placeholder="请选择字段类型" style={{ minWidth: "180px" }} />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col span={6}>
+                                            <Form.Item {...formListSpan} name={[field.name, "enumId"]} label="引用枚举">
+                                                <Select>
+                                                    <Select.Option value="">无</Select.Option>
+                                                </Select>
+                                            </Form.Item>
+                                        </Col>
+                                        <Col span={6}>
+                                            <Form.Item {...formListSpan} name={[field.name, "validateTypes"]} label="校验规则">
+                                                <Select mode="multiple">
+                                                    <Select.Option value="">无</Select.Option>
+                                                </Select>
+                                            </Form.Item>
+                                        </Col>
+                                        <Col span={1}>
+                                            <Form.Item {...formListSpan} style={{ width: '20px' }} wrapperCol={{ offset: 24 }}>
+                                                <MinusCircleOutlined onClick={() => remove(index)} />
+                                            </Form.Item>
+                                        </Col>
+                                    </Row>
+                                    {/* <span className="background-grey">字段{index + 1}</span> */}
 
-                                <Form.Item {...formListSpan} name={[field.name, "columnName"]} label="字段名">
-                                    <Input />
-                                </Form.Item>
-                                <Form.Item  {...formListSpan} name={[field.name, "columnType"]} label="类型"  style={{minWidth:"240px"}}>
-                                    <Select options={columnTypes} fieldNames={{ label: 'value', value: 'key' }} placeholder="请选择字段类型" style={{minWidth:"180px"}}/>
-                                    {/* 
-                                    <Input />
-                                    
-                                    */}
-                                </Form.Item>
-                                <Form.Item style={{ width: '20px' }} wrapperCol={{ offset: 24 }}>
-                                    <MinusCircleOutlined onClick={() => remove(index)} />
-                                </Form.Item>
-                            </Space>
 
-                        ))}
-                        <Form.Item>
-                            <Button type="dashed" onClick={() => add()} block >
-                                增加字段
-                            </Button>
-                        </Form.Item>
-                    </>
-                )} />
+
+                                </>
+
+                            ))}
+                            <Form.Item>
+                                <Button type="dashed" onClick={() => add()} block >
+                                    增加字段
+                                </Button>
+                            </Form.Item>
+                        </>
+                    )}
+                </Form.List>
 
                 <Form.Item >
                     <Button type="primary" htmlType="submit">
