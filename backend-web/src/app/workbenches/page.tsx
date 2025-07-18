@@ -1,6 +1,6 @@
 "use client"
 import { Button, Form, Input, message, Modal, Space, Table } from "antd";
-import service from "../base/service";
+import service from "../../commons/base/service";
 import { useEffect, useState } from "react";
 interface Workbench {
     id: number;

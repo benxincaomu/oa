@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface WorkflowDefinitionRepository extends JpaRepository<WorkflowDefinition,Long> {
 
+    @Query("select w from WorkflowDefinition w where w.workbenchId = ?1")
     Optional<WorkflowDefinition> findOneByWorkbenchId(Long workbenchId);
 
     boolean existsByWorkbenchId(Long workbenchId);

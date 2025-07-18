@@ -18,7 +18,7 @@ public class WorkflowDefinitionService {
     @Transactional
     public Long save(WorkflowDefinition workflowDefinition) {
         if (workflowDefinition.getId() == null) {
-            Long id = workflowDefinitionRepository.save(workflowDefinition).getId();
+            Long id = workflowDefinitionRepository.findIdByWorkbenchId(workflowDefinition.getWorkbenchId());
             if (id != null) {
                 workflowDefinition.setId(id);
             }

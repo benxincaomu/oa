@@ -4,9 +4,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.annotation.Resource;
-import jakarta.websocket.server.PathParam;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
@@ -19,7 +19,7 @@ public class WorkflowDefinitionController {
     private WorkflowDefinitionService workflowDefinitionService;
 
     @GetMapping("getByWorkbenchId/{workbenchId}")
-    public WorkflowDefinition getByWorkbenchId(@PathParam("workbenchId") Long workbenchId) {
+    public WorkflowDefinition getByWorkbenchId(@PathVariable("workbenchId") Long workbenchId) {
 
         return workflowDefinitionService.getByWorkbenchId(workbenchId);
     }

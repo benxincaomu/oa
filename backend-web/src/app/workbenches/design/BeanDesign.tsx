@@ -1,17 +1,19 @@
 "use client"
 import { Button, Col, Form, Input, Row, Select, Space, message } from "antd";
 import { useEffect, useState } from "react";
-import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
-import service from "@/app/base/service";
+import { ArrowUpOutlined, MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import service from "@/commons/base/service";
 import { off } from "process";
 
 type Props = {
     wid: number;
+    setBeanForm: (beanForm: any) => void;
 };
 
-const BeanDesign = ({ wid }: Props) => {
+const BeanDesign = ({ wid,setBeanForm }: Props) => {
     const [messageApi, contextHolder] = message.useMessage();
     const [form] = Form.useForm();
+    setBeanForm(form);
     const [id, setId] = useState(0);
     const onSave = (values: any) => {
         console.log("Received values of form: ", values);
@@ -27,7 +29,7 @@ const BeanDesign = ({ wid }: Props) => {
         service.get(`/entityDefinition/getColumnTypes`).then(res => {
             setColumnTypes(res.data);
         });
-    }, []);
+    });
 
     useEffect(() => {
         if (id > 0) {
@@ -67,13 +69,13 @@ const BeanDesign = ({ wid }: Props) => {
                 </Form.Item>
 
                 <Form.List name="columns" >
-                    {(fields, { add, remove }) => (
+                    {(fields, { add, remove ,move}) => (
                         <>
                             {fields.map((field, index) => (
 
                                 <>
                                     <Row>
-                                        <Col span={5}>
+                                        <Col span={4}>
                                             <Form.Item name={[field.name, "sort"]} initialValue={index} hidden>
                                                 <Input />
                                             </Form.Item>
@@ -81,19 +83,24 @@ const BeanDesign = ({ wid }: Props) => {
                                                 <Input />
                                             </Form.Item>
                                         </Col>
-                                        <Col span={6}>
-                                            <Form.Item {...formListSpan} name={[field.name, "columnType"]} label="类型" style={{ minWidth: "240px" }}>
-                                                <Select options={columnTypes} fieldNames={{ label: 'value', value: 'key' }} placeholder="请选择字段类型" style={{ minWidth: "180px" }} />
+                                        <Col span={4}>
+                                            <Form.Item {...formListSpan} name={[field.name, "label"]} label="展示名">
+                                                <Input />
                                             </Form.Item>
                                         </Col>
-                                        <Col span={6}>
-                                            <Form.Item {...formListSpan} name={[field.name, "enumId"]} label="引用枚举">
+                                        <Col span={5}>
+                                            <Form.Item {...formListSpan} name={[field.name, "columnType"]} label="类型" style={{ minWidth: "220px" }}>
+                                                <Select options={columnTypes} fieldNames={{ label: 'value', value: 'key' }} placeholder="请选择字段类型" style={{ minWidth: "150px" }} />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col span={4}>
+                                            <Form.Item {...formListSpan} name={[field.name, "enumId"]} label="枚举">
                                                 <Select>
                                                     <Select.Option value="">无</Select.Option>
                                                 </Select>
                                             </Form.Item>
                                         </Col>
-                                        <Col span={6}>
+                                        <Col span={4}>
                                             <Form.Item {...formListSpan} name={[field.name, "validateTypes"]} label="校验规则">
                                                 <Select mode="multiple">
                                                     <Select.Option value="">无</Select.Option>
@@ -105,6 +112,9 @@ const BeanDesign = ({ wid }: Props) => {
                                                 <MinusCircleOutlined onClick={() => remove(index)} />
                                             </Form.Item>
                                         </Col>
+                                            <Form.Item {...formListSpan} style={{ width: '20px' }} wrapperCol={{ offset: 24 }}>
+                                                <ArrowUpOutlined onClick={() => move(index, index - 1)} />
+                                            </Form.Item>
                                     </Row>
                                     {/* <span className="background-grey">字段{index + 1}</span> */}
 

@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react";
-import service from "../base/service";
+import service from "../../commons/base/service";
 import { Menu } from 'antd';
 import { usePathname, useSearchParams } from 'next/navigation';
 

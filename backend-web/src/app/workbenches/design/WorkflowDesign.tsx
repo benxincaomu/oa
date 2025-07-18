@@ -16,8 +16,11 @@ import { BpmnPropertiesPanelModule, BpmnPropertiesProviderModule } from 'bpmn-js
 
 // 如果你需要 Camunda 特有属性，保留这两个导入：
 import CamundaModdleExtension from 'camunda-bpmn-moddle/resources/camunda.json';
-import { Button, Space } from 'antd';
-import zh from 'bpmn-js-i18n/translations/zn';
+import { Button, Col, Divider, Row, Space, message } from 'antd';
+// import zh from 'bpmn-js-i18n/translations/zn';
+import zh from '@/commons/bpmn-extentions/translations/zh';
+import oaProviderMoudle from '@/commons/bpmn-extentions/provider/index';
+import service from '@/commons/base/service';
 
 
 // 定义组件的 Props 接口 (现在可以更简单)
@@ -29,15 +32,15 @@ interface BpmnModelerComponentProps {
 
 }
 function customTranslate(template, replacements) {
-  replacements = replacements || {};
+    replacements = replacements || {};
 
-  // Translate
-  template = zh[template] || template;
+    // Translate
+    template = zh[template] || template;
 
-  // Replace
-  return template.replace(/{([^}]+)}/g, function(_, key) {
-    return replacements[key] || '{' + key + '}';
-  });
+    // Replace
+    return template.replace(/{([^}]+)}/g, function (_, key) {
+        return replacements[key] || '{' + key + '}';
+    });
 }
 
 const WorkflowDesign: React.FC<BpmnModelerComponentProps> = ({
@@ -50,6 +53,27 @@ const WorkflowDesign: React.FC<BpmnModelerComponentProps> = ({
     const customTranslateModule = {
         translate: ['value', customTranslate] // 'zh' is the imported translation dictionary
     };
+    const [messageApi, contextHolder] = message.useMessage();
+
+
+    const loadWorkflowDefinition = async (wid: number) => { 
+        service.get(`/workflowDefinition/getByWorkbenchId/${wid}`).then((res) => { 
+            if(res.data){
+                bpmnModelerRef.current?.importXML(res.data.workfowlDefinition);
+            }else{
+                bpmnModelerRef.current?.createDiagram();
+            }
+        })
+    }
+    useEffect(() => {
+        service.get(`/workflowDefinition/getByWorkbenchId/${wid}`).then((res) => { 
+            if(res.data){
+                bpmnModelerRef.current?.importXML(res.data.flowDefinition);
+            }else{
+                bpmnModelerRef.current?.createDiagram();
+            }
+        })
+    }, [bpmnModelerRef, wid]);
 
     useEffect(() => {
         if (!containerRef.current || !propertiesPanelRef.current) {
@@ -67,23 +91,13 @@ const WorkflowDesign: React.FC<BpmnModelerComponentProps> = ({
                     parent: propertiesPanelRef.current,
                 },
                 additionalModules: [
-                    // BpmnPropertiesPanelModule,
-                    // BpmnPropertiesProviderModule,
                     customTranslateModule,
-                    //   CamundaExtensionModule, // 如果不需要 Camunda 属性，可以移除此行
+                    oaProviderMoudle,
                 ],
-                moddleExtensions: {
-                    camunda: CamundaModdleExtension, // 如果不需要 Camunda 属性，可以移除此行
-                },
-                camunda: CamundaModdleExtension,
-                /* keyboard: {
-                    bindTo: document,
-                },  */
             });
-            modeler.createDiagram();
             bpmnModelerRef.current = modeler;
-
-
+            // loadWorkflowDefinition(wid);
+            // modeler.createDiagram();
         }
 
         // 清理函数：在组件卸载时销毁 Modeler 实例
@@ -100,32 +114,48 @@ const WorkflowDesign: React.FC<BpmnModelerComponentProps> = ({
             console.log(xml);
         });
     };
+    const saveBpmn = () => {
+        bpmnModelerRef.current?.saveXML().then(({ xml }) => {
+            service.post('/workflowDefinition', {
+                workbenchId: wid,
+                flowDefinition: xml
+            }).then(res => {
+                
+                    messageApi.success('保存成功');
+                
+            })
+        })
+    };
 
     return (
 
         <div className='height-100'>
-            <Space align='end'>
-                <Button type='primary' onClick={() => {
-                    onSaveXML();
-                }}>保存</Button>
+            {contextHolder}
+            <Space align='end' >
+                <Button type='primary' onClick={() => { saveBpmn(); }}>保存</Button>
                 <Button type='primary' danger>清空</Button>
             </Space>
-            <div style={{ display: 'flex', height: '100%' }}>
+            <div style={{ flexGrow: 1, display: 'flex', height: '100%' }}>
+                {/* BPMN 编辑器容器 */}
+                <div
+                    ref={containerRef}
+                    style={{
+                        flexGrow: 1,
+                        minHeight: 0,     // 允许 flex 布局正确压缩
+                        border: '1px solid #ccc',
+                    }}
+                />
 
-                <div ref={containerRef} style={{
-                    flexGrow: 1, // 占据剩余空间
-                    border: '1px solid #ccc',
-                    minHeight: '300px',
-                }} />
-
+                {/* 属性面板 */}
                 <div
                     ref={propertiesPanelRef}
                     style={{
-                        width: '280px', // 固定宽度
+                        width: '280px',
                         borderLeft: '1px solid #ccc',
                         overflowY: 'auto',
-                        padding: '10px',
-                    }} />
+                        padding: '10px'
+                    }}
+                />
             </div>
         </div>
     );

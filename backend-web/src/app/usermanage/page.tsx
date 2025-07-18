@@ -3,7 +3,7 @@
 import { Button, Form, Input, message, Modal, Space, Table, Popconfirm, Select, TreeSelect } from "antd";
 import { use, useEffect, useState } from "react";
 import axios from "axios";
-import service from "../base/service";
+import service from "../../commons/base/service";
 
 interface User {
 

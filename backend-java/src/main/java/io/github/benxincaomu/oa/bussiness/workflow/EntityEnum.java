@@ -6,6 +6,7 @@ import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import io.github.benxincaomu.oa.base.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
@@ -14,7 +15,7 @@ import jakarta.persistence.Table;
 @Entity
 @Comment("实体枚举")
 @Table(name = "entity_enum",indexes = {@Index(name = "entity_enum_workbench_id_index",columnList = "workbenchId")})
-public class EntityEnum {
+public class EntityEnum extends BaseEntity {
     
     @Comment("枚举ID")
     private Long workbenchId;

@@ -2,8 +2,8 @@
 
 import { useEffect, useState,useRef } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
-import service from '@/app/base/service';
-import { Tabs } from 'antd';
+import service from '@/commons/base/service';
+import { Button, FormInstance, Tabs } from 'antd';
 import BeanDesign from './BeanDesign';
 import PageDesign from './PageDesign';
 import WorkflowDesign from './WorkflowDesign';
@@ -12,7 +12,9 @@ import BpmnModeler from 'camunda-bpmn-js/lib/camunda-platform/Modeler';
 const Design = () => {
   const params = useSearchParams();
   const [wid, setWid] = useState<number>(0);
+  const [beanForm, setBeanForm] = useState<FormInstance>();
   useEffect(() => {
+    document.title = "设计";
     if (params) {
 
       const wid = params.get('wid');
@@ -36,7 +38,7 @@ const Design = () => {
     {
       key: '1',
       label: '实体设计',
-      children: <BeanDesign wid={wid} />,
+      children: <BeanDesign wid={wid} setBeanForm={setBeanForm}/>,
     },
     {
       key: '2',
@@ -57,7 +59,10 @@ const Design = () => {
   return (
 
 
-    <Tabs defaultActiveKey="2" items={tabData} />
+    <Tabs defaultActiveKey="2" items={tabData} 
+    tabBarExtraContent={
+      {right: <Button type="primary" onClick={()=>{ }}>发布</Button>}
+    }/>
 
 
   );

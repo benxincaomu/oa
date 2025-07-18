@@ -2,7 +2,7 @@
 import { Button, Form, Input, Modal, message, Space } from "antd";
 import { useEffect, useState } from "react";
 import axios from "axios";
-import service from "../base/service";
+import service from "../../commons/base/service";
 function Login() {
     const [open, setOpen] = useState(false);
     const [form] = Form.useForm();

@@ -1,6 +1,6 @@
 
 "use client"
-import service from "../base/service";
+import service from "../../commons/base/service";
 import { use, useEffect, useState } from "react";
 import { Table, Form, Input, Button, Modal, Select, message, Space } from "antd";
 const Organize = () => {
