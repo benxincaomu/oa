@@ -1,7 +1,7 @@
 "use client"
 import { Button, Form, Input, message, Modal, Space, Table } from "antd";
-import service from "../../commons/base/service";
-import { useEffect, useState } from "react";
+import service from "@/commons/base/service";
+import { useEffect, useState, useCallback } from "react";
 interface Workbench {
     id: number;
     name: string;
@@ -14,22 +14,26 @@ const Workbench = () => {
     const [messageApi, contextHolder] = message.useMessage();
     const [seachForm] = Form.useForm();
     const [addForm] = Form.useForm();
-    const loadWorkbench = (values: any) => {
-        service.get(`/workbench/list`).then((res) => {
+    const [currPage, setCurrPage] = useState(1);
+    const [pageSize, setPageSize] = useState(20);
+    const loadWorkbench = useCallback((values: any) => {
+        const name = values.name ?? '';
+        const url = name
+            ? `/workbench/list?currPage=${currPage}&pageSize=${pageSize}&name=${encodeURIComponent(name)}`
+            : `/workbench/list?currPage=${currPage}&pageSize=${pageSize}`;
+        service.get(url).then((res) => {
             setWorkbenches(res.data.content);
         })
-    };
-    useEffect(() => {
-        document.title = "设计工作台";
-        setTimeout(() => {
-            loadWorkbench({});
-        }, 300);
     }, []);
+    useEffect(() => {
+        document.title = '工作台管理';
+        loadWorkbench({});
+    }, [currPage, loadWorkbench]);
 
     const [addOpen, setAddOpen] = useState(false);
 
     const onAddWorkbench = (values: any) => {
-        service.post("/workbench", {...values}).then((res) => {
+        service.post("/workbench", { ...values }).then((res) => {
             messageApi.info("添加成功");
             setAddOpen(false);
         });
@@ -60,40 +64,48 @@ const Workbench = () => {
         <div>
             {contextHolder}
             <div className="text-2xl font-bold">设计工作台</div>
-            <Form form={seachForm} onFinish={(values) => {loadWorkbench(values)}} layout="inline"> 
+            <Form form={seachForm} onFinish={(values) => { loadWorkbench(values) }} layout="inline">
                 <Form.Item label="名称" name="name"><Input placeholder="请输入名称" /></Form.Item>
                 <Form.Item>
                     <Button type="primary" htmlType="submit">查询</Button>
                 </Form.Item>
                 <Form.Item>
-                    <Button type="primary" onClick={() => { 
+                    <Button type="primary" onClick={() => {
                         setAddOpen(true);
                     }}>新增</Button>
 
                 </Form.Item>
             </Form>
-            <Modal title="新增设计稿" open={addOpen} onCancel={() => { setAddOpen(false) }} footer={null} > 
-                <Form form={addForm} layout="horizontal" onFinish={(values) => {onAddWorkbench(values)}}>
+            <Modal title="新增设计稿" open={addOpen} onCancel={() => { setAddOpen(false) }} footer={null} >
+                <Form form={addForm} layout="horizontal" onFinish={(values) => { onAddWorkbench(values) }}>
                     <Form.Item label="名称" name={"name"}>
-                        <Input  />
+                        <Input />
                     </Form.Item>
                     <Form.Item label="描述" name={"description"}>
                         <Input />
                     </Form.Item>
-                    <Form.Item > 
+                    <Form.Item >
                         <Button type="primary" htmlType="submit">
                             提交
                         </Button>
                         &nbsp;&nbsp;
                         <Button onClick={() => {
-                            
+
                         }}>
                             取消
                         </Button>
                     </Form.Item>
                 </Form>
             </Modal>
-            <Table columns={columns} dataSource={workbenches} rowKey={"id"}/>
+            <Table columns={columns} dataSource={workbenches} rowKey={"id"} pagination={{
+                defaultCurrent: 1,
+                pageSize: pageSize,
+                onChange(page, pageSize) {
+                    setCurrPage(page);
+                    setPageSize(pageSize);
+
+                }
+            }} />
         </div>
     );
 };

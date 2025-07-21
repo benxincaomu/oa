@@ -2,7 +2,8 @@
 import { Button, Form, Input, Modal, message, Space } from "antd";
 import { useEffect, useState } from "react";
 import axios from "axios";
-import service from "../../commons/base/service";
+import service from "@/commons/base/service";
+import Cookies  from 'universal-cookie';
 function Login() {
     const [open, setOpen] = useState(false);
     const [form] = Form.useForm();
@@ -10,37 +11,29 @@ function Login() {
     const [name, setName] = useState("");
     const [messageApi, contextHolder] = message.useMessage();
     useEffect(() => {
-        console.log("login token:", localStorage.getItem('token'));
-        const tmpToken = localStorage.getItem("token");
+        const cookies = new Cookies();
+        const tmpToken = cookies.get("token");
         if (tmpToken) {
             setToken(tmpToken);
         }
-        const name = localStorage.getItem("name");
-        if (name) {
-            setName(name);
-        }
+        
+        
         service.get("/user/myInfo")
             .then((resp) => {
-                console.log("获取用户数据成功:", resp.data);
                 setName(resp.data.name);
             })
             .catch((error) => {
                 console.error("Error loading users:", error);
             });
     }, []);
-    useEffect(() => {
-        localStorage.setItem("token", token);
-    }, [token]);
+    
 
-    useEffect(() => {
-        localStorage.setItem("name", name);
-    }, [name]);
+    
     const saveToken = (token: string) => {
         setToken(token);
     };
 
     const handleLogin = (values: any) => {
-        console.log("提交的登录信息:", values);
         values["remember"] = true;
         axios
             .post("/user/login", values)
@@ -57,7 +50,6 @@ function Login() {
                 }
             })
             .catch((error) => {
-                console.error("登录失败:", error);
                 messageApi.error("登录失败");
             });
         // TODO: 调用登录接口
@@ -65,9 +57,7 @@ function Login() {
     const handleLogout = () => {
         service.post("/user/logout").then((response) => {
             message.success("登出成功");
-            localStorage.removeItem("token");
-            localStorage.removeItem("name");
-            window.location.href = "/";
+            window.location.href = "/app";
         });
     };
     return (

@@ -14,6 +14,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
+import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;
 import io.github.benxincaomu.oa.bussiness.user.vo.PermissionIdName;
 import jakarta.annotation.Resource;
 
@@ -24,6 +25,9 @@ public class PermissionService {
 
     @Resource
     private PermissionRepository permissionRepository;
+
+    @Resource
+    private RoleRepository roleRepository;
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -52,7 +56,16 @@ public class PermissionService {
     }
 
     public int insert(Permission permission) {
-        permissionRepository.save(permission);
+        
+        permission = permissionRepository.save(permission);
+        Long roleId = roleRepository.findMinRoleIdByTenantId(JpaAuditorAware.getCurrentTenantId()).orElse(null);
+        if(roleId != null){
+            RolePermission rolePermission = new RolePermission();
+            rolePermission.setRoleId(roleId);
+            rolePermission.setPermissionId(permission.getId());
+            rolePermissionRepository.save(rolePermission);
+        }
+
         return permissionRepository.save(permission).getId() == null ? 0 : 1;
     }
 

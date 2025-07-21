@@ -9,16 +9,18 @@ public class SaltedUser extends User {
     private Long userId;
     private String salt;
     private Long tenantId;
+    private Long roleId;
 
     
 
     public SaltedUser(String username, String password, boolean enabled, boolean accountNonExpired,
             boolean credentialsNonExpired, boolean accountNonLocked,
-            Collection<? extends GrantedAuthority> authorities,Long userId,String salt,Long tenantId) {
+            Collection<? extends GrantedAuthority> authorities,Long userId,String salt,Long tenantId,Long roleId) {
         super(username, password, enabled, accountNonExpired, credentialsNonExpired, accountNonLocked, authorities);
         this.salt = salt;
         this.userId = userId;
         this.tenantId = tenantId;
+        this.roleId = roleId;
         
     }
 

@@ -1,6 +1,7 @@
 package io.github.benxincaomu.oa.bussiness.user;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -14,4 +15,8 @@ public interface RoleRepository extends JpaRepository<Role,Long>{
     
 
     List<Role> findByTenantId(Long tenantId);
+
+
+    @Query("select min(r.id) from Role r where r.tenantId = :tenantId")
+    Optional<Long> findMinRoleIdByTenantId(Long tenantId);
 }

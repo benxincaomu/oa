@@ -3,7 +3,7 @@
 import { Button, Form, Input, message, Modal, Space, Table, Popconfirm, Select, TreeSelect } from "antd";
 import { use, useEffect, useState } from "react";
 import axios from "axios";
-import service from "../../commons/base/service";
+import service from "@/commons/base/service";
 
 interface User {
 
@@ -44,7 +44,6 @@ const UserManager = () => {
             },
         })
             .then((response) => {
-                console.log("获取用户数据成功:", response.data);
                 setUsers(response.data.data.content); // 假设后端返回 { users: [...] }
             })
             .catch((error) => {
@@ -196,7 +195,6 @@ const UserManager = () => {
     //选定用户当前的id
     const [roleId, setRoleId] = useState(0);
     const onAssignFinish = (values: any) => {
-        console.log("Received values of form: ", values);
         service.post("/user/assignRole", { ...values }).then(res => {
             messageApi.success("分配成功");
             onAssignClose();

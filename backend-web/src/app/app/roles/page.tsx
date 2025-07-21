@@ -123,10 +123,7 @@ const RoleManager = () => {
     const [ownedPermissionIds, setOwnedPermissionIds] = useState<number[]>([]);
     const [operatingRoleId, setOperatingRoleId] = useState<number>(0);
     useEffect(() => {
-        console.log("permissions", permissions);
-    }, [permissions]);
-    useEffect(() => {
-        console.log("ownedPermissionIds", ownedPermissionIds);
+        // console.log("ownedPermissionIds", ownedPermissionIds);
     }, [ownedPermissionIds]);
 
     const loadPermissions = async () => {
@@ -247,7 +244,6 @@ const RoleManager = () => {
                         onCheck={(checkedKeys, info) => {
                             setCheckedIds(checkedKeys as number[]);
                             setHalfCheckedIds(info.halfCheckedKeys as number[]);
-                            console.log('onCheck', checkedKeys, info);
                         }}
                         treeData={permissions}
                     />

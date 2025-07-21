@@ -34,6 +34,8 @@ import io.github.benxincaomu.oa.bussiness.organization.DepartmentUser;
 import io.github.benxincaomu.oa.bussiness.user.vo.PermissionIdName;
 import io.github.benxincaomu.oa.bussiness.user.vo.SimpleUserInfo;
 import jakarta.annotation.Resource;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
 @RequestMapping("user")
@@ -113,7 +115,7 @@ public class UserController {
      * @return token
      */
     @PostMapping("login")
-    public String login(@RequestBody User login) {
+    public String login(@RequestBody User login,HttpServletResponse response) {
         logger.info("loggin");
         User user = userService.findByUserName(login.getUserName());
         if (user == null) {
@@ -168,7 +170,7 @@ public class UserController {
         tokenValue.setTenantId(user.getTenantId());
         tokenValueRepository.save(tokenValue);
         redisTemplate.opsForValue().set(Const.UID_TOKEN_PREFIX + user.getId(), token);
-
+        response.addCookie(new Cookie("token", token));
         return token;
 
     }
@@ -225,6 +227,7 @@ public class UserController {
     @PostMapping("/logout")
     public void logout(){
         Long userId = JpaAuditorAware.getCurrentUserId();
+        logger.info("logout userId:{}",userId);
         if(userId != null){
             String token = redisTemplate.opsForValue().get(Const.UID_TOKEN_PREFIX + userId);
             if(token != null){

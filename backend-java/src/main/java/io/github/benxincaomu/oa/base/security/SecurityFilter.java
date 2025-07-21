@@ -58,6 +58,7 @@ public class SecurityFilter extends OncePerRequestFilter {
                 return;
             }
         }
+        // String token = request.getHeader("token");
         String token = request.getHeader("token");
         if (token == null) {
             ResponseMessage<String> responseMessage = new ResponseMessage<>(OaResponseCode.TOKEN_NOT_EXIST, null);
@@ -91,9 +92,9 @@ public class SecurityFilter extends OncePerRequestFilter {
         } 
             
         final List<SimpleGrantedAuthority> authorities = new ArrayList<>();
-
+        Role role = tv.getRole();
         SaltedUser user = new SaltedUser(tv.getUserName(), tv.getSalt(), true, true, true, true, authorities,
-                tv.getUserId(), tv.getSalt(), tv.getTenantId());
+                tv.getUserId(), tv.getSalt(), tv.getTenantId(),role.getId());
 
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 user, tv, authorities);

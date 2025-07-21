@@ -22,6 +22,11 @@ public class EntityColumn {
     private Long enumId;
 
     /**
+     * 字段是否显示在列表中
+     */
+    private boolean listAble;
+
+    /**
      * 校验类型
      */
     private String[] validateTypes;
@@ -65,6 +70,15 @@ public class EntityColumn {
     public void setValidateTypes(String[] validateTypes) {
         this.validateTypes = validateTypes;
     }
+
+    public boolean isListAble() {
+        return listAble;
+    }
+
+    public void setListAble(boolean listAble) {
+        this.listAble = listAble;
+    }
     
 
+    
 }

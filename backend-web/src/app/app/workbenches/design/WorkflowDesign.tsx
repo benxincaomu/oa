@@ -1,5 +1,5 @@
 "use client"
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 // import BpmnModeler from 'bpmn-js/lib/Modeler';
 import BpmnModeler from 'camunda-bpmn-js/lib/camunda-platform/Modeler';
 
@@ -17,9 +17,10 @@ import { BpmnPropertiesPanelModule, BpmnPropertiesProviderModule } from 'bpmn-js
 // 如果你需要 Camunda 特有属性，保留这两个导入：
 import CamundaModdleExtension from 'camunda-bpmn-moddle/resources/camunda.json';
 import { Button, Col, Divider, Row, Space, message } from 'antd';
+import PropertiesPanel from '@/commons/bpmn-extentions/provider/properties-panel';
 // import zh from 'bpmn-js-i18n/translations/zn';
 import zh from '@/commons/bpmn-extentions/translations/zh';
-import oaProviderMoudle from '@/commons/bpmn-extentions/provider/index';
+
 import service from '@/commons/base/service';
 
 
@@ -56,24 +57,18 @@ const WorkflowDesign: React.FC<BpmnModelerComponentProps> = ({
     const [messageApi, contextHolder] = message.useMessage();
 
 
-    const loadWorkflowDefinition = async (wid: number) => { 
-        service.get(`/workflowDefinition/getByWorkbenchId/${wid}`).then((res) => { 
-            if(res.data){
-                bpmnModelerRef.current?.importXML(res.data.workfowlDefinition);
-            }else{
-                bpmnModelerRef.current?.createDiagram();
-            }
-        })
-    }
     useEffect(() => {
-        service.get(`/workflowDefinition/getByWorkbenchId/${wid}`).then((res) => { 
-            if(res.data){
-                bpmnModelerRef.current?.importXML(res.data.flowDefinition);
-            }else{
-                bpmnModelerRef.current?.createDiagram();
-            }
-        })
+        if (wid > 0) {
+            service.get(`/workflowDefinition/getByWorkbenchId/${wid}`).then((res) => {
+                if (res.data) {
+                    bpmnModelerRef.current?.importXML(res.data.flowDefinition);
+                } else {
+                    bpmnModelerRef.current?.createDiagram();
+                }
+            })
+        }
     }, [bpmnModelerRef, wid]);
+    const [bpmnModeler, setBpmnModeler] =useState<BpmnModeler | null>();
 
     useEffect(() => {
         if (!containerRef.current || !propertiesPanelRef.current) {
@@ -87,17 +82,22 @@ const WorkflowDesign: React.FC<BpmnModelerComponentProps> = ({
                 container: containerRef.current,
                 height: '78vh',
                 /* width: '70%', */
-                propertiesPanel: {
+                /* propertiesPanel: {
                     parent: propertiesPanelRef.current,
-                },
+                }, */
                 additionalModules: [
                     customTranslateModule,
-                    oaProviderMoudle,
                 ],
+
             });
             bpmnModelerRef.current = modeler;
+            setBpmnModeler(modeler);
             // loadWorkflowDefinition(wid);
             // modeler.createDiagram();
+            new PropertiesPanel({
+                container: propertiesPanelRef.current,
+                bpmnModelerRef
+            });
         }
 
         // 清理函数：在组件卸载时销毁 Modeler 实例
@@ -116,14 +116,15 @@ const WorkflowDesign: React.FC<BpmnModelerComponentProps> = ({
     };
     const saveBpmn = () => {
         bpmnModelerRef.current?.saveXML().then(({ xml }) => {
-            service.post('/workflowDefinition', {
+            console.log(xml);
+            /* service.post('/workflowDefinition', {
                 workbenchId: wid,
                 flowDefinition: xml
             }).then(res => {
-                
-                    messageApi.success('保存成功');
-                
-            })
+
+                messageApi.success('保存成功');
+
+            }) */
         })
     };
 
@@ -155,7 +156,9 @@ const WorkflowDesign: React.FC<BpmnModelerComponentProps> = ({
                         overflowY: 'auto',
                         padding: '10px'
                     }}
-                />
+                >
+                    {/* <PropertiesPanel bpmnModelerRef={bpmnModelerRef} /> */}
+                </div>
             </div>
         </div>
     );

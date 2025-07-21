@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.github.benxincaomu.oa.bussiness.workflow.vo.PublishVo;
 import jakarta.annotation.Resource;
 
 @RestController
@@ -33,5 +34,10 @@ public class WorkbenchController {
     @PostMapping
     public Workbench createWorkbench(@RequestBody Workbench workbench) {
         return workbenchService.createWorkbench(workbench);
+    }
+
+    @PostMapping("publish")
+    public void publicWorkbench(@RequestBody PublishVo publishVo) {
+        workbenchService.publish(publishVo);
     }
 }

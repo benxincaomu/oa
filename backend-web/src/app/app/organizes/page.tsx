@@ -1,6 +1,6 @@
 
 "use client"
-import service from "../../commons/base/service";
+import service from "@/commons/base/service";
 import { use, useEffect, useState } from "react";
 import { Table, Form, Input, Button, Modal, Select, message, Space } from "antd";
 const Organize = () => {
@@ -17,7 +17,6 @@ const Organize = () => {
     
     const saveDept = (values: any) => {
         service.post("/organize", {...values}).then((res) => {
-            console.log(res);
             messageApi.info(res.data);
         });
     };
@@ -29,7 +28,6 @@ const Organize = () => {
     const loadAllOrganizes = () => {
         if(allDepts.length == 0){
             service.get("/organize/listAll").then((res) => {
-                console.log(res);
                 setAllDepts(res.data as any[]);
                 setAddModalVisible(true);
                 addForm.resetFields();
@@ -66,7 +64,6 @@ const Organize = () => {
     const [depts, setDepts] = useState<any[]>([]);
     const loadOrganizes = (values:any) => {
         service.get("/organize/list").then((res) => {
-            console.log(res);
             setDepts(res.data.content);
         });
     };

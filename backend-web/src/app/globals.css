@@ -41,3 +41,14 @@ main{
    width: auto !important;
 
 } */
+ /*
+  居中
+  */
+  .content-center{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .flex-container{ 
+    display: flex;
+  }

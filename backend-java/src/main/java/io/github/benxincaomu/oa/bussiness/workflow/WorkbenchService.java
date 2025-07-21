@@ -2,6 +2,10 @@ package io.github.benxincaomu.oa.bussiness.workflow;
 
 import java.util.Optional;
 
+import javax.swing.text.html.parser.Entity;
+
+import org.camunda.bpm.engine.RepositoryService;
+import org.camunda.bpm.engine.repository.Deployment;
 import org.slf4j.Logger;
 import org.springframework.data.domain.Example;
 import org.springframework.data.domain.ExampleMatcher;
@@ -10,6 +14,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;
+import io.github.benxincaomu.oa.bussiness.workflow.vo.PublishVo;
 import jakarta.annotation.Resource;
 import jakarta.transaction.Transactional;
 
@@ -18,6 +23,18 @@ public class WorkbenchService {
 
     @Resource
     private WorkbenchRepository workbenchRepository;
+
+    @Resource
+    private EntityDefinitionService entityDefinitionService;
+
+    @Resource
+    private WorkflowDefinitionService workflowDefinitionService;
+
+    @Resource
+    private WorkbenchPublishRepository workbenchPublishRepository;
+
+    @Resource
+    private RepositoryService repositoryService;
 
     private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
 
@@ -30,20 +47,33 @@ public class WorkbenchService {
         return workbenchRepository.save(workbench);
     }
 
-    /**
-     * TODO  确定版本 
-     */
     @Transactional
-    public void buildVersion(Workbench workbench) {
-        if (workbench.getId() == null) {
-            workbench.setVersion(1L);
-        } else {
-            Optional<Workbench> w = workbenchRepository.findById(workbench.getId());
-            w.ifPresent((wb) -> workbench.setVersion(wb.getVersion() == null ? 1 : wb.getVersion() + 1));
-        }
+    public void publish(PublishVo vo){
+        workbenchRepository.findById(vo.getWorkbenchId()).ifPresent(workbench -> {
 
-        workbenchRepository.save(workbench);
+            // 保存beand定义
+            EntityDefinition entityDefinition = entityDefinitionService.insert(vo.getEntityDefinition());
+            //保存流程定义
+            workflowDefinitionService.save(vo.getWorkflowDefinition());
+            // 发布流程
+            Deployment deploy = repositoryService.createDeployment().addString(workbench.getName(), vo.getWorkflowDefinition().getFlowDefinition()).deploy();
+
+            WorkbenchPublish publish = workbenchPublishRepository.findLatestByWorkbenchId(workbench.getId()).orElseGet(()->{
+                WorkbenchPublish publishNew = new WorkbenchPublish();
+                publishNew.setVersion(0L);
+                return publishNew;
+            });
+
+            publish.setWorkbenchId(workbench.getId());
+            publish.setWorkflowDeployId(deploy.getId());
+            publish.setVersion(publish.getVersion() + 1L);
+            publish.setEntityDefinition(entityDefinition);
+            
+            ;
+            
+        });;
     }
+
 
     public Page<Workbench> list(String name, Integer currPage, Integer pageSize) {
         PageRequest page = PageRequest.of(currPage == null ? 0 : currPage - 1, pageSize==null?20:pageSize);

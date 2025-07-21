@@ -1,6 +1,7 @@
 "use client"
 import axios from 'axios';
 import { message } from 'antd';
+import Cookies from 'universal-cookie';
 const service = axios.create({
     timeout: 5000, // 超时时间
     headers: {
@@ -30,8 +31,10 @@ service.interceptors.response.use(
     (response) => {
         const res = response.data;
         if (res.code === 10002) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('name');
+            // localStorage.removeItem('token');
+            // localStorage.removeItem('name');
+            const cookies = new Cookies();
+            cookies.remove('token');
             window.location.reload();
         }else if (res.code !== 200) {
             message.error(res.message || '操作失败');

@@ -15,7 +15,6 @@ const PageDesign = ({ wid }: Props) => {
     const [htmlContent, setHtmlContent] = useState('');
     const editorRef = useRef<Editor>(null);
     useEffect(() => {
-        console.log(htmlContent);
     }, [htmlContent]);
     const onEditor = (editor: Editor) => {
         // console.log('Editor loaded', { editor });
@@ -26,7 +25,6 @@ const PageDesign = ({ wid }: Props) => {
         <div className='height-100'>
             <Space>
                 <Button onClick={() => {
-                    console.log(editorRef.current?.getHtml());
                 }}>保存</Button>
 
             </Space>

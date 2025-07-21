@@ -4,7 +4,7 @@ import { Form, Input, Button, Select, Space, Table, Modal, message } from 'antd'
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import axios from 'axios';
-import service from '../../commons/base/service';
+import service from '@/commons/base/service';
 interface Permission {
     id: number;
     name: string;

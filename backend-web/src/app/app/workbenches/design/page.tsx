@@ -24,7 +24,6 @@ const Design = () => {
   }, []);
   const getWorkbench = (wid: number) => {
     service.get(`/workbench/${wid}`).then((res) => {
-      // console.log(res.data);
       document.title = `流程设计:${res.data.name}`;
     })
   };

@@ -42,4 +42,14 @@ public final class JpaAuditorAware  implements AuditorAware<Long> {
         return null;
     }
 
+    public static String getCurrentRoleId() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof SaltedUser) {
+            SaltedUser user = (SaltedUser) principal;
+            return user.getUsername();
+        }
+        
+        return null;
+    }
+
 }

@@ -38,8 +38,8 @@ public class EntityDefinitionService {
         return entityDefinitionRepository.findOneByWorkbenchId(id).orElse(null);
     }
 
-    public void insert(EntityDefinition entity) {
-        entityDefinitionRepository.save(entity);
+    public EntityDefinition insert(EntityDefinition entity) {
+        return entityDefinitionRepository.save(entity);
     }
 
 

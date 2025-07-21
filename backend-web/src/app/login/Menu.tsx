@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react";
-import service from "../../commons/base/service";
+import service from "@/commons/base/service";
 import { Menu } from 'antd';
 import { usePathname, useSearchParams } from 'next/navigation';
 
@@ -27,7 +27,7 @@ const findSelectedKeys = (data: MenuItem[], value?: string) => {
     if (value == null) {
         return [];
     }
-    for (var i = 0; i < data.length; i++) {
+    for (let i = 0; i < data.length; i++) {
         const item = data[i];
         if (item.value === value) {
             console.log("item.value:", item.value);
