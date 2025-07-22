@@ -24,14 +24,18 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.github.benxincaomu.notry.utils.Asserts;
+
 import io.github.benxincaomu.oa.base.consts.Const;
 import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;
 import io.github.benxincaomu.oa.base.security.SaltedUser;
 import io.github.benxincaomu.oa.base.security.TokenValue;
 import io.github.benxincaomu.oa.base.security.TokenValueRepository;
 import io.github.benxincaomu.oa.base.utils.StringGenerator;
+import io.github.benxincaomu.oa.base.web.OaResponseCode;
 import io.github.benxincaomu.oa.bussiness.organization.DepartmentUser;
 import io.github.benxincaomu.oa.bussiness.user.vo.PermissionIdName;
+import io.github.benxincaomu.oa.bussiness.user.vo.SetPasswordVo;
 import io.github.benxincaomu.oa.bussiness.user.vo.SimpleUserInfo;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.Cookie;
@@ -119,11 +123,11 @@ public class UserController {
         logger.info("loggin");
         User user = userService.findByUserName(login.getUserName());
         if (user == null) {
-            throw new RuntimeException("user not found.");
+            throw new RuntimeException("username or password error.");
         }
         String password = DigestUtils.md5Hex(login.getPassword() + user.getSalt());
         if (!password.equals(user.getPassword())) {
-            throw new RuntimeException("password error.");
+            throw new RuntimeException("username or password error.");
         }
         TokenValue tokenValue = new TokenValue();
         tokenValue.setUserId(user.getId());
@@ -170,7 +174,14 @@ public class UserController {
         tokenValue.setTenantId(user.getTenantId());
         tokenValueRepository.save(tokenValue);
         redisTemplate.opsForValue().set(Const.UID_TOKEN_PREFIX + user.getId(), token);
-        response.addCookie(new Cookie("token", token));
+        Cookie nameCookie = new Cookie("name", user.getName());
+        nameCookie.setMaxAge(60 * 60 * 24 * 30);
+        nameCookie.setPath("/");
+        response.addCookie(nameCookie);
+        Cookie cookie = new Cookie("token", token);
+        cookie.setMaxAge(60 * 60 * 24 * 30);
+        cookie.setPath("/");
+        response.addCookie(cookie);
         return token;
 
     }
@@ -247,6 +258,19 @@ public class UserController {
     @PostMapping("/assignDept")
     public void assignDept(@RequestBody DepartmentUser departmentUser){
         userService.assignDept(departmentUser);
+    }
+
+    @PostMapping("/setPassword")
+    public void setPassword(@Validated @RequestBody SetPasswordVo setPasswordVo){
+        String pwdId = redisTemplate.opsForValue().get(setPasswordVo.getId());
+        Asserts.isFalse(pwdId == null,OaResponseCode.UPDATE_PASSWORD_EXPIRED);
+        Long id = Long.valueOf(pwdId);
+        User user = new User();
+        user.setId(id);
+        user.setPassword(setPasswordVo.getPassword());
+        userService.updatePassword(user);
+        redisTemplate.delete(setPasswordVo.getId());
+        ;
     }
 
 }

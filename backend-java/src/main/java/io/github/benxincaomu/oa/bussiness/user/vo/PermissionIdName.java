@@ -7,12 +7,15 @@ import jakarta.persistence.Transient;
 public class PermissionIdName {
     
 
- /*    public PermissionIdName(Long id, String name, Long parentId, Integer type) {
+ 
+
+    public PermissionIdName(Long id, String name, Long parentId, Integer type, String value) {
         this.id = id;
         this.name = name;
         this.parentId = parentId;
         this.type = type;
-    } */
+        this.value = value;
+    }
 
     private Long id;
 

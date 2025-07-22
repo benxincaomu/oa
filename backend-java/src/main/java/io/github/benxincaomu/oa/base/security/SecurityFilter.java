@@ -28,6 +28,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -59,7 +60,16 @@ public class SecurityFilter extends OncePerRequestFilter {
             }
         }
         // String token = request.getHeader("token");
-        String token = request.getHeader("token");
+        String token = null;
+        Cookie[] cookies = request.getCookies();
+        if(cookies != null){
+            for (Cookie cookie : cookies) {
+                if (cookie.getName().equals("token")) {
+                    token = cookie.getValue();
+                    break;
+                }
+            }
+        }
         if (token == null) {
             ResponseMessage<String> responseMessage = new ResponseMessage<>(OaResponseCode.TOKEN_NOT_EXIST, null);
             response.setHeader("Content-Type", "application/json;charset=UTF-8");
@@ -81,15 +91,14 @@ public class SecurityFilter extends OncePerRequestFilter {
         TokenValue tv = tokenValue.get();
 
         Set<String> urls = tv.getUrls();
-        boolean match = urls.stream().anyMatch(url -> matcher.match(url, servletPath));
-        if (!match) {
+        if(urls == null || !urls.stream().anyMatch(url -> matcher.match(url, servletPath))){
             ResponseMessage<String> responseMessage = new ResponseMessage<>(OaResponseCode.NO_PERMISSION, null);
             response.setHeader("Content-Type", "application/json;charset=UTF-8");
             ObjectMapper objectMapper = new ObjectMapper();
             response.getWriter().write(objectMapper.writeValueAsString(responseMessage));
             response.getWriter().flush();
             return;
-        } 
+        }
             
         final List<SimpleGrantedAuthority> authorities = new ArrayList<>();
         Role role = tv.getRole();

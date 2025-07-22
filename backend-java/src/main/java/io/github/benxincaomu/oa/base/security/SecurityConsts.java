@@ -7,6 +7,7 @@ public final class SecurityConsts {
             "/user/login",
             "/user/logout",
             "/actuator/beans",
+            "/user/setPassword"
             
     };
     

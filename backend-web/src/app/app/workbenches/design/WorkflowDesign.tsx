@@ -117,14 +117,14 @@ const WorkflowDesign: React.FC<BpmnModelerComponentProps> = ({
     const saveBpmn = () => {
         bpmnModelerRef.current?.saveXML().then(({ xml }) => {
             console.log(xml);
-            /* service.post('/workflowDefinition', {
+            service.post('/workflowDefinition', {
                 workbenchId: wid,
                 flowDefinition: xml
             }).then(res => {
 
                 messageApi.success('保存成功');
 
-            }) */
+            }) 
         })
     };
 

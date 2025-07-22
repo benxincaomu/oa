@@ -38,9 +38,23 @@ spring:
           enableLazyInitialization: true
           enableAssociationManagement: true
           enableDirtyTracking: true
-      
   jackson: 
     default-property-inclusion: NON_NULL
+  mail:
+    host: mail.tt
+    port: 465
+    username: service@mail.tt
+    password: sftadmin
+    protocol: smtp
+    properties: 
+      mail: 
+        smtp: 
+          auth: true
+          ssl: 
+            enable: true
+            trust: "*"
+            checkserveridentity: false
+      
 logging:
   level:
     root: info
@@ -66,5 +80,7 @@ management:
       exposure:
         include: 
          - beans
+app: 
+  base-url: http://10.0.0.130:4000
 
 

@@ -12,10 +12,10 @@ const service = axios.create({
 // 请求拦截器
 service.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            config.headers['token'] = token;
-        }else{
+        const cookies = new Cookies();
+        const token = cookies.get('token');
+        console.log('token', token);
+        if (!token){
             message.error('请先登录');
             return new Promise(() => {});
         }
@@ -31,11 +31,9 @@ service.interceptors.response.use(
     (response) => {
         const res = response.data;
         if (res.code === 10002) {
-            // localStorage.removeItem('token');
-            // localStorage.removeItem('name');
             const cookies = new Cookies();
-            cookies.remove('token');
-            window.location.reload();
+            cookies.remove('token',{path:'/'});
+            // window.location.reload();
         }else if (res.code !== 200) {
             message.error(res.message || '操作失败');
             return new Promise(() => {});

@@ -15,9 +15,7 @@ function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-       
-      >
+      <body>
         <Layout style={{ minHeight: "100vh",maxHeight: "100vh" }}>
           <Header>
             <Login />

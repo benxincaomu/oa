@@ -6,7 +6,9 @@ public enum OaResponseCode implements ResponseCode {
 	TOKEN_NOT_EXIST(10002,"token不存在"),
 	NO_PERMISSION(403,"无权限"),
     USER_NAME_EXITS(10001,"用户名已存在"),
+    EMAIL_EXITS(10001,"邮箱已被使用"),
 	USER_NOT_EXIST(10003,"用户不存在"),
+	UPDATE_PASSWORD_EXPIRED(10004,"修改密码超时"),
 	DEPT_NAME_EXITS(20001,"部门名称已存在"),
     ;
     

@@ -32,19 +32,16 @@ const UserManager = () => {
         const userName = searchUserForm.getFieldValue("userNameS");
         const name = searchUserForm.getFieldValue("nameS");
 
-        axios.get("/user/list", {
+        service.get("/user/list", {
             params: {
                 name: name,
                 userName: userName,
                 currPage: currPage,
                 pageSize: pageSize,
             },
-            headers: {
-                token: localStorage.getItem("token") || "",
-            },
         })
             .then((response) => {
-                setUsers(response.data.data.content); // 假设后端返回 { users: [...] }
+                setUsers(response.data.content); // 假设后端返回 { users: [...] }
             })
             .catch((error) => {
                 console.error("Error loading users:", error);
@@ -63,19 +60,16 @@ const UserManager = () => {
      * @param values the form values
      */
     const handleAddUser = (values: any) => {
-        axios.post("/user", {
+        service.post("/user", {
             ...values
-        }, {
-            headers: {
-                token: localStorage.getItem("token")
-            }
         }).then((res) => {
-            if (res.data.code === 200) {
+            if (res.code === 200) {
                 messageApi.success("添加用户成功");
                 addUserFrom.resetFields();
                 setIsModalOpen(false);
+                loadUsers();
             } else {
-                messageApi.error("添加用户失败");
+                messageApi.error(res.data);
             }
         });
     };

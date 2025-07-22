@@ -3,7 +3,7 @@ import { Button, Form, Input, Modal, message, Space } from "antd";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import service from "@/commons/base/service";
-import Cookies  from 'universal-cookie';
+import Cookies from 'universal-cookie';
 function Login() {
     const [open, setOpen] = useState(false);
     const [form] = Form.useForm();
@@ -16,19 +16,16 @@ function Login() {
         if (tmpToken) {
             setToken(tmpToken);
         }
-        
-        
-        service.get("/user/myInfo")
-            .then((resp) => {
-                setName(resp.data.name);
-            })
-            .catch((error) => {
-                console.error("Error loading users:", error);
-            });
-    }, []);
-    
 
-    
+
+    }, []);
+    useEffect(() => {
+        console.log("token:", token);
+        const cookies = new Cookies();
+        setName(cookies.get("name"));
+    }, [token]);
+
+
     const saveToken = (token: string) => {
         setToken(token);
     };
@@ -41,9 +38,12 @@ function Login() {
                 // console.log("登录成功:", response.data);
                 if (response.data.code === 200) {
                     saveToken(response.data.data);
+
                     setOpen(false);
                     messageApi.info("登录成功");
-                    window.location.reload();
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
 
                 } else {
                     messageApi.error("登录失败");
@@ -55,8 +55,11 @@ function Login() {
         // TODO: 调用登录接口
     };
     const handleLogout = () => {
-        service.post("/user/logout").then((response) => {
+        axios.post("/user/logout").then((response) => {
             message.success("登出成功");
+            const cookies = new Cookies();
+            cookies.remove('token',{path: '/'});
+            cookies.remove('name',{path: '/'});
             window.location.href = "/app";
         });
     };

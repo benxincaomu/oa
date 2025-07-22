@@ -33,7 +33,7 @@ public interface RolePermissionRepository extends JpaRepository<RolePermission, 
      * 根据角色id查询权限树
      * jpa无法处理Integer和Long的转换，暂时弃用 
      * @see findPermissionIdNameByRoleId
-     * @deprecated
+     * @deprecated jpa无法处理Integer和Long的转换，暂时弃用 
      * @param roleId
      * @return
      */
