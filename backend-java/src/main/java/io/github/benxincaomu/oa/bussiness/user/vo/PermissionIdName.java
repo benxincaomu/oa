@@ -17,6 +17,8 @@ public class PermissionIdName {
         this.value = value;
     }
 
+    
+
     private Long id;
 
     private String name;

@@ -1,6 +1,8 @@
 package io.github.benxincaomu.oa.bussiness.user;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -174,7 +176,8 @@ public class UserController {
         tokenValue.setTenantId(user.getTenantId());
         tokenValueRepository.save(tokenValue);
         redisTemplate.opsForValue().set(Const.UID_TOKEN_PREFIX + user.getId(), token);
-        Cookie nameCookie = new Cookie("name", user.getName());
+        // Base64.getEncoder().encodeToString(user.getName().getBytes());
+        Cookie nameCookie = new Cookie("name", Base64.getEncoder().encodeToString(user.getName().getBytes(StandardCharsets.UTF_8)));
         nameCookie.setMaxAge(60 * 60 * 24 * 30);
         nameCookie.setPath("/");
         response.addCookie(nameCookie);
