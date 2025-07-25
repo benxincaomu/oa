@@ -1,8 +1,9 @@
 "use client"
-import { Form, Input, Button, Select, Space, Table, Modal, message, Tree,ConfigProvider } from 'antd';
+import { Form, Input, Button, TreeSelect, Space, Table, Modal, message, Tree,ConfigProvider } from 'antd';
 import React, { use, useEffect, useState } from 'react';
 import axios from 'axios';
 import type { AppProps } from 'next/app';
+import service from '@/commons/base/service';
 
 interface Role {
     id: number;
@@ -147,7 +148,9 @@ const RoleManager = () => {
             },
         }).then((res) => {
             // console.log("获取权限数据成功:", res.data);
+
             if (res.data.code === 200) {
+                authForm.resetFields();
                 const permissions: PermissionNode[] = res.data.data;
 
                 setOwnedPermissionIds(getPermissionIdsByPermissions(permissions));
@@ -158,15 +161,11 @@ const RoleManager = () => {
     const saveAuth = async () => {
         // messageApi.info("正在保存权限...");
         // console.log("saveAuth",checkedIds.concat(halfCheckedIds));
-        axios.post("/role/auth", {
+        service.post("/role/auth", {
             roleId: operatingRoleId,
             permissionIds: checkedIds.concat(halfCheckedIds)
-        }, {
-            headers: {
-                "token": localStorage.getItem("token"),
-            },
         }).then(res => {
-            if (res.data.code === 200) {
+            if (res.code === 200) {
                 messageApi.info("授权成功");
                 setAuthOpen(false);
             } else {
@@ -237,6 +236,7 @@ const RoleManager = () => {
                 authForm.resetFields();
             }} footer={null} >
                 <Form id='authForm' form={authForm} onFinish={() => { saveAuth() }} >
+
                     <Tree
                         checkable
                         defaultExpandAll
@@ -245,6 +245,7 @@ const RoleManager = () => {
                             setCheckedIds(checkedKeys as number[]);
                             setHalfCheckedIds(info.halfCheckedKeys as number[]);
                         }}
+                        
                         treeData={permissions}
                     />
                     <Form.Item labelCol={{ span: 4 }} wrapperCol={{ span: 8, offset: 16 }}>

@@ -1,4 +1,4 @@
-package io.github.benxincaomu.oa.bussiness.workflow;
+package io.github.benxincaomu.oa.bussiness.workflow_design;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.query.Param;

@@ -1,6 +1,7 @@
 package io.github.benxincaomu.oa.bussiness.user;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Example;
 import org.springframework.data.domain.ExampleMatcher;
@@ -11,8 +12,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
+import com.github.benxincaomu.notry.utils.Asserts;
+
 import io.github.benxincaomu.oa.base.entity.BaseService;
 import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;
+import io.github.benxincaomu.oa.base.web.OaResponseCode;
 import jakarta.annotation.Resource;
 
 @Service
@@ -51,6 +55,9 @@ public class RoleService extends BaseService{
      */
     @Transactional
     public void auth(Long roleId, List<RolePermission> rolePermissions) {
+        roleRepository.findMinRoleIdByTenantId(JpaAuditorAware.getCurrentTenantId()).ifPresent(id->{
+            Asserts.equals(roleId, id, OaResponseCode.DEFAULT_ROLE_CAN_NOT_AUTH);
+        });;
         rolePermissionRepository.deleteByRoleId(roleId);
         if(!CollectionUtils.isEmpty(rolePermissions)){
 

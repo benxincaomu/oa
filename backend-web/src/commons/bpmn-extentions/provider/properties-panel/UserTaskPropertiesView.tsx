@@ -1,39 +1,46 @@
 
 import BpmnModeler from 'camunda-bpmn-js/lib/base/Modeler';
 
-import React, { useEffect } from 'react';
-import { Tabs, Space } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Tabs, Space, Form, Select, Tree, TreeSelect } from 'antd';
 import { CollapseProps, Collapse, } from 'antd';
-import { Mode } from 'fs';
 import ModelerProps from './ModelerProps';
 import GeneralPropertiesView from './GeneralPropertiesView';
+import service from '@/commons/base/service';
+import Selection from 'diagram-js/lib/features/selection/Selection';
+import { Moddle, Shape } from 'bpmn-js/lib/model/Types';
+import Modeling from 'bpmn-js/lib/features/modeling/Modeling';
+
+
 
 export default function UserTaskPropertiesView({ bpmnModelerRef }: ModelerProps) {
 
     useEffect(() => {
         const modeler = bpmnModelerRef.current;
         if (modeler) {
-            const selection = modeler.get('selection');
-            selection.get();
+            const selection: Selection = modeler.get('selection');
+            const userTask = selection.get()[0] as Shape;
+
+
         }
     }, []);
     const items: CollapseProps['items'] = [
-            {
-                key: '1',
-                label: '通用属性',
-                children: <GeneralPropertiesView bpmnModelerRef={bpmnModelerRef} />,
-            },
-            {
-                key: '2',
-                label: 'This is panel header 2',
-                children: <p>fasd</p>,
-            },
-            {
-                key: '3',
-                label: 'This is panel header 3',
-                children: <p>fasdf</p>,
-            },
-        ];
+        {
+            key: '1',
+            label: '通用属性',
+            children: <GeneralPropertiesView bpmnModelerRef={bpmnModelerRef} />,
+        },
+        {
+            key: '2',
+            label: '任务分派',
+            children: <AssignTaskView bpmnModelerRef={bpmnModelerRef} />,
+        },
+        {
+            key: '3',
+            label: 'This is panel header 3',
+            children: <p>fasdf</p>,
+        },
+    ];
 
 
     return (
@@ -43,7 +50,142 @@ export default function UserTaskPropertiesView({ bpmnModelerRef }: ModelerProps)
                 <span>用户任务</span>
             </Space>
             <Collapse items={items} />
-            
+
+        </div>
+    )
+}
+/**
+ * 
+ * 任务分派面板
+ */
+export function AssignTaskView({ bpmnModelerRef }: ModelerProps) {
+    const [assignTypes, setAssignTypes] = useState<any>([]);
+
+    const [form] = Form.useForm();
+    useEffect(() => {
+        service.get(`/workflowDefinition/getAssignTypes`).then((res) => {
+            // console.log(res.data);
+            setAssignTypes(res.data);
+
+            const modeler = bpmnModelerRef.current;
+            if (modeler) {
+                const selection: Selection = modeler.get('selection');
+                const modeling: Modeling = modeler.get('modeling');
+                const userTask = selection.get()[0] as Shape;
+                // console.log(userTask.businessObject.get('camunda:assignee'));
+                // console.log(userTask.businessObject.get('camunda:candidateGroups'));
+                const assignee = userTask.businessObject.get('camunda:assignee');
+                const candidateGroups = userTask.businessObject.get('camunda:candidateGroups');
+                if (assignee) {
+                    // 判断assignee是否符合${xxx}
+                    if (assignee.startsWith("${") && assignee.endsWith("}")) {
+                        setAssignType("starterLeader");
+                        form.setFieldValue("assigneeValue", "starterLeader")
+                    } else {
+                        setAssignType("assignee");
+                        form.setFieldsValue({
+                            assigneeType: "assignee",
+                            assigneeValue: assignee
+                        });
+                    }
+                } else if (candidateGroups) {
+                    setAssignType("assigneeDept");
+                    form.setFieldsValue({
+                        assigneeType: "assigneeDept",
+                        assigneeValue: candidateGroups
+                    });
+                }
+
+            }
+        });
+    }, [bpmnModelerRef, form]);
+
+    const [assignType, setAssignType] = useState<string>("");
+    // 用于存储候选者列表
+    const [candidates, setCandidates] = useState<any>([]);
+    // 候选部门
+    const [depts, setDepts] = useState<any>([]);
+    useEffect(() => {
+
+        if (assignType) {
+            switch (assignType) {
+                case "assignee":
+
+                    break;
+                case "starterLeader":
+
+                    break;
+                case "assigneeDept":
+                    service.get(`/organize/listTree`).then((response) => {
+                        setDepts(response.data);
+                    })
+                    break;
+                default:
+                    break;
+
+            }
+        }
+    }, [assignType]);
+
+    const onFormChange = (value: string) => {
+        const modeler = bpmnModelerRef.current;
+        if (modeler) {
+            const selection: Selection = modeler.get('selection');
+            const modeling: Modeling = modeler.get('modeling');
+            const userTask = selection.get()[0] as Shape;
+            const propertiesToUpdate: any = {};
+            const assigneeValue = form.getFieldValue("assigneeValue");
+            switch (assignType) {
+                case "assignee":
+                    propertiesToUpdate['camunda:assignee'] = assigneeValue;
+                    break;
+                case "starterLeader":
+                    const moddle: Moddle = modeler.get('moddle');
+                    const executionListener = moddle.create('camunda:ExecutionListener', {
+                        event: 'start',
+                        delegateExpression: '${userTaskCreateListener}'
+                    });
+                    propertiesToUpdate['camunda:assignee'] = "${starterLeader}";
+                    propertiesToUpdate['camunda:executionListener'] = [executionListener];
+                    break;
+                case "assigneeDept":
+                    propertiesToUpdate['camunda:candidateGroups'] = assigneeValue;
+                    break;
+                default:
+                    break;
+
+            }
+            modeling.updateProperties(userTask, propertiesToUpdate);
+
+        }
+
+    }
+    return (
+        <div>
+            <Form form={form}>
+                <Form.Item label="分配类型" name = "assigneeType">
+                    <Select options={assignTypes} fieldNames={{ label: 'value', value: 'key' }} onChange={(value) => setAssignType(value)} />
+                </Form.Item>
+                <Form.Item label="分配类型" name="assigneeValue" >
+                    {(() => {
+                        switch (assignType) {
+                            case "assignee":
+                                return <Select showSearch options={candidates} fieldNames={{ label: 'name', value: 'id' }} onSearch={(value) => {
+                                    if (value) {
+
+                                        service.get(`/user/findUsersByNameLike/${value}`).then((res) => {
+                                            setCandidates(res.data);
+                                        });
+                                    }
+                                }} onChange={(value) => { onFormChange(value) }} />
+                            case "assigneeDept":
+                                return <TreeSelect treeData={depts} fieldNames={{ label: 'name', value: 'id' }} onChange={(value) => { onFormChange(value) }} />
+                            default:
+                                return <div></div>
+                        }
+                    })()}
+                </Form.Item>
+            </Form>
         </div>
     )
 }

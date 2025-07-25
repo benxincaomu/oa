@@ -3,13 +3,17 @@ package io.github.benxincaomu.oa.bussiness.organization;
 import java.util.List;
 
 import org.springframework.data.web.PagedModel;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.github.benxincaomu.oa.bussiness.organization.vo.DeptLeaderVo;
 import io.github.benxincaomu.oa.bussiness.organization.vo.DeptVo;
+import io.github.benxincaomu.oa.bussiness.user.vo.UserIdNameVo;
 import jakarta.websocket.server.PathParam;
 
 @RestController
@@ -55,6 +59,20 @@ public class DepartmentController {
     @GetMapping("/listAll")
     public List<DeptVo> listAll() {
         return departmentService.listAll();
+    }
+
+    @PostMapping("/assignLeader")
+    public void assignLeader(@RequestBody @Validated DeptLeaderVo vo) {
+        Department department = new Department();
+        department.setId(vo.getDeptId());
+        department.setLeaderUserId(vo.getLeaderUserId());
+        departmentService.updateLeader(department);
+    }
+
+    @GetMapping("/getUsersByDeptId/{id}")
+    public List<UserIdNameVo> getUsersByDeptId(@PathVariable("id") Long deptId){
+        return departmentService.getUsersByDeptId(deptId);
+
     }
 
 }

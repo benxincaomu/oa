@@ -1,4 +1,4 @@
-package io.github.benxincaomu.oa.bussiness.workflow;
+package io.github.benxincaomu.oa.bussiness.workflow_design;
 
 import org.hibernate.annotations.Comment;
 
@@ -21,6 +21,10 @@ public class Workbench extends BaseEntity {
     @Column(columnDefinition = "varchar(255) ")
     private String description;
 
+    @Comment("工作台key,部署流程使用，与页面无关")
+    @Column(columnDefinition = "varchar(20)",updatable = false)
+    private String workbenchKey;
+
     @Comment("工作台版本")
     private Long version;
     public String getName() {
@@ -40,6 +44,12 @@ public class Workbench extends BaseEntity {
     }
     public void setVersion(Long version) {
         this.version = version;
+    }
+    public String getWorkbenchKey() {
+        return workbenchKey;
+    }
+    public void setWorkbenchKey(String workbenchKey) {
+        this.workbenchKey = workbenchKey;
     }
 
     

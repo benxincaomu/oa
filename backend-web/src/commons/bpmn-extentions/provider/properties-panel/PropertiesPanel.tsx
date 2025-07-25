@@ -8,6 +8,7 @@ import { Element } from 'bpmn-js/lib/model/Types';
 import UserTaskPropertiesView from './UserTaskPropertiesView';
 import StartEventPropertiesView from './StartEventPropertiesView';
 import EndEventPropertiesView from './EndEventPropertiesView';
+import SequenceFlowPropertiesView from './SequenceFlowView';
 interface PropertiesPanelProps {
     bpmnModelerRef: React.RefObject<BpmnModeler | null>;
 }
@@ -50,6 +51,11 @@ const PropertiesPanel = ({ bpmnModelerRef }: PropertiesPanelProps) => {
             };
         }
     }, [bpmnModelerRef]);
+    /**
+     * type: bpmn:ParallelGateway
+     * type: bpmn:ExclusiveGateway
+         type: bpmn:EventBasedGateway
+     */
 
     return (
         <div className="properties-panel">
@@ -65,6 +71,15 @@ const PropertiesPanel = ({ bpmnModelerRef }: PropertiesPanelProps) => {
                             return <StartEventPropertiesView bpmnModelerRef={bpmnModelerRef} />
                         case "bpmn:EndEvent":
                             return <EndEventPropertiesView bpmnModelerRef={bpmnModelerRef} />
+                        case "bpmn:SequenceFlow":
+                            return <SequenceFlowPropertiesView bpmnModelerRef={bpmnModelerRef} bpmnId={selectedElements[0].id}/>
+                        case "bpmn:ExclusiveGateway":
+                            return <></>
+                        case "bpmn:ExclusiveGateway":
+                            return <></>
+                        case "bpmn:EventBasedGateway":
+                            return <></>
+                        //
                         default:
                             return <ProcessPropertiesView bpmnModelerRef={bpmnModelerRef} />
                     }

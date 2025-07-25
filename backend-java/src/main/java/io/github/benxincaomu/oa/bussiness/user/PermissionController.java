@@ -23,7 +23,7 @@ public class PermissionController {
 
     @PostMapping
     public int insert(@RequestBody Permission permission){
-        return permissionService.insert(permission);
+        return permissionService.insert(permission).getId() == null ? 0 : 1;
     }
 
     @GetMapping("list")

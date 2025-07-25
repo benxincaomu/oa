@@ -1,14 +1,17 @@
 import type { NextConfig } from "next";
+const API_BASE_URL = process.env.API_BASE_URL ;
+
 
 const nextConfig: NextConfig = {
-   output: "export",
   /* config options here */
   async rewrites() {
     return [
       {
-        source: "/:path*", // 
-        destination: "http://127.0.0.1:8080/:path*", // 转发到你的后端服务
+        source: "/:path((?!app(?:$|/)).*)", // 
+        destination: `${API_BASE_URL}/:path*`, 
       },
+      
+
       
     ];
   },

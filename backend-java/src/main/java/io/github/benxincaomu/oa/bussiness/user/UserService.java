@@ -17,15 +17,18 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
 
 import com.github.benxincaomu.notry.utils.Asserts;
 
+import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;
 import io.github.benxincaomu.oa.base.utils.StringGenerator;
 import io.github.benxincaomu.oa.base.web.OaResponseCode;
 import io.github.benxincaomu.oa.bussiness.mail.MailService;
 import io.github.benxincaomu.oa.bussiness.organization.DepartmentUser;
 import io.github.benxincaomu.oa.bussiness.organization.DepartmentUserRepository;
 import io.github.benxincaomu.oa.bussiness.tenant.TenantRepository;
+import io.github.benxincaomu.oa.bussiness.user.vo.UserIdNameVo;
 import jakarta.annotation.Resource;
 import jakarta.transaction.Transactional;
 // import static java.lang.StringTemplate.STR;
@@ -204,5 +207,13 @@ public class UserService {
             user1.setPassword(DigestUtils.md5Hex(user.getPassword() + user1.getSalt()));
         });
         
+    }
+
+    public List<UserIdNameVo> findUsersByNameLike(String name) {
+        return userRepository.findUsersByNameLike(name,JpaAuditorAware.getCurrentTenantId());
+    }
+
+    public Long findLeaderId(Long userId) {
+        return userRepository.findLeaderId(userId);
     }
 }

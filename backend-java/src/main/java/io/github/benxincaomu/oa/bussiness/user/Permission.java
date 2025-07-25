@@ -13,9 +13,21 @@ import jakarta.persistence.Transient;
 @Entity
 @Table(name = "permission")
 public class Permission extends BaseEntity {
+    /**
+     * 目录菜单
+     */
     public final static Integer TYPE_1 = 1;
+    /**
+     * 页面菜单
+     */
     public final static Integer TYPE_2 = 2;
+    /**
+     * 请求url
+     */
     public final static Integer TYPE_3 = 3;
+    /**
+     * 页面控制
+     */
     public final static Integer TYPE_4 = 4;
     @Comment("权限类型:1--目录菜单，2--页面菜单,3--请求url，4--页面控制")
     private Integer type;

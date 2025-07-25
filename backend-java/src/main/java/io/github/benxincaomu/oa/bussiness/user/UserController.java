@@ -6,6 +6,7 @@ import java.util.Base64;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.Stack;
 
@@ -17,6 +18,7 @@ import org.springframework.data.web.PagedModel;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,6 +41,7 @@ import io.github.benxincaomu.oa.bussiness.organization.DepartmentUser;
 import io.github.benxincaomu.oa.bussiness.user.vo.PermissionIdName;
 import io.github.benxincaomu.oa.bussiness.user.vo.SetPasswordVo;
 import io.github.benxincaomu.oa.bussiness.user.vo.SimpleUserInfo;
+import io.github.benxincaomu.oa.bussiness.user.vo.UserIdNameVo;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
@@ -239,8 +242,15 @@ public class UserController {
     }
 
     @PostMapping("/logout")
-    public void logout(){
-        Long userId = JpaAuditorAware.getCurrentUserId();
+    public void logout(@CookieValue(name = "token",required = false) String token){
+        if(token != null){
+            tokenValueRepository.findById(token).ifPresent(tokenVlue ->{
+                redisTemplate.delete(Const.UID_TOKEN_PREFIX + tokenVlue.getUserId());
+                logger.info("logout userId:{}",tokenVlue.getUserId());
+            });
+            tokenValueRepository.deleteById(token);
+        }
+        /* Long userId = JpaAuditorAware.getCurrentUserId();
         logger.info("logout userId:{}",userId);
         if(userId != null){
             String token = redisTemplate.opsForValue().get(Const.UID_TOKEN_PREFIX + userId);
@@ -249,7 +259,7 @@ public class UserController {
                 tokenValueRepository.deleteById(token);
                 redisTemplate.delete(Const.UID_TOKEN_PREFIX + userId);
             }
-        }
+        } */
 
     }
 
@@ -274,6 +284,11 @@ public class UserController {
         userService.updatePassword(user);
         redisTemplate.delete(setPasswordVo.getId());
         ;
+    }
+    @GetMapping("/findUsersByNameLike/{name}")
+    public List<UserIdNameVo> findUsersByNameLike(@PathVariable("name")String name){
+
+        return userService.findUsersByNameLike(name);
     }
 
 }

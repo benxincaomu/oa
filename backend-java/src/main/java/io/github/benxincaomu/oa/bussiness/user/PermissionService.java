@@ -55,7 +55,7 @@ public class PermissionService {
         return byParentId;
     }
 
-    public int insert(Permission permission) {
+    public Permission insert(Permission permission) {
         
         permission = permissionRepository.save(permission);
         Long roleId = roleRepository.findMinRoleIdByTenantId(JpaAuditorAware.getCurrentTenantId()).orElse(null);
@@ -66,7 +66,7 @@ public class PermissionService {
             rolePermissionRepository.save(rolePermission);
         }
 
-        return permissionRepository.save(permission).getId() == null ? 0 : 1;
+        return permissionRepository.save(permission);
     }
 
     public Page<Permission>  permissions(String name, Integer type, Integer currPage, Integer pageSize) {

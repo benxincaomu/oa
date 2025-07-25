@@ -13,8 +13,10 @@ import org.springframework.util.CollectionUtils;
 
 import com.github.benxincaomu.notry.utils.Asserts;
 
+import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;
 import io.github.benxincaomu.oa.base.web.OaResponseCode;
 import io.github.benxincaomu.oa.bussiness.organization.vo.DeptVo;
+import io.github.benxincaomu.oa.bussiness.user.vo.UserIdNameVo;
 import jakarta.annotation.Resource;
 
 @Service
@@ -22,6 +24,9 @@ public class DepartmentService {
 
     @Resource
     private DepartmentRepository departmentRepository;
+
+    @Resource
+    private DepartmentUserRepository departmentUserRepository;
 
     /**
      * 新增部门
@@ -58,20 +63,31 @@ public class DepartmentService {
 
     }
 
-    public List<DeptVo> findDeptTree() { 
-        List<DeptVo> deptVos = departmentRepository.findAllByParentId(null);
+ /*    public List<DeptVo> findDeptTree() { 
+        List<DeptVo> deptVos = departmentRepository.findAllByParentId(null,JpaAuditorAware.getCurrentTenantId());
         return deptVos;
     }
     List<DeptVo> findDeptByParentId(Long parentId){
-        List<DeptVo> depts = departmentRepository.findAllByParentId(parentId);
+        List<DeptVo> depts = departmentRepository.findAllByParentId(parentId,JpaAuditorAware.getCurrentTenantId());
         if (!CollectionUtils.isEmpty(depts)) {
             for (DeptVo dept : depts) {
                 dept.setChildren(findDeptByParentId(dept.getId()));
             }
         }
         return depts;
-
+    }   public List<DeptVo> findDeptTree() { 
+        List<DeptVo> deptVos = departmentRepository.findAllByParentId(null,JpaAuditorAware.getCurrentTenantId());
+        return deptVos;
     }
+    List<DeptVo> findDeptByParentId(Long parentId){
+        List<DeptVo> depts = departmentRepository.findAllByParentId(parentId,JpaAuditorAware.getCurrentTenantId());
+        if (!CollectionUtils.isEmpty(depts)) {
+            for (DeptVo dept : depts) {
+                dept.setChildren(findDeptByParentId(dept.getId()));
+            }
+        }
+        return depts;
+    } */
     @Transactional
     public List<DeptVo> findAllDeptAsTree() {
         List<DeptVo> depts = findAllDeptAsTree(null);
@@ -79,7 +95,7 @@ public class DepartmentService {
     }
 
     List<DeptVo> findAllDeptAsTree(Long parentId) {
-        List<DeptVo> depts = departmentRepository.findAllByParentId(parentId);
+        List<DeptVo> depts = departmentRepository.findAllByParentId(parentId,JpaAuditorAware.getCurrentTenantId());
         if (!CollectionUtils.isEmpty(depts)) {
             for (DeptVo dept : depts) {
                 dept.setChildren(findAllDeptAsTree(dept.getId()));
@@ -93,5 +109,12 @@ public class DepartmentService {
     }
     public List<DeptVo> listAll() {
         return departmentRepository.listAll();
+    }
+    @Transactional
+    public void updateLeader(Department department) {
+        departmentRepository.updateLeader(department);
+    }
+    public List<UserIdNameVo> getUsersByDeptId(Long deptId) {
+        return departmentUserRepository.getUsersByDeptId(deptId);
     }
 }

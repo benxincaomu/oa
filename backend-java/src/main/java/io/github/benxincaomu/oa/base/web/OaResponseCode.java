@@ -9,6 +9,7 @@ public enum OaResponseCode implements ResponseCode {
     EMAIL_EXITS(10001,"邮箱已被使用"),
 	USER_NOT_EXIST(10003,"用户不存在"),
 	UPDATE_PASSWORD_EXPIRED(10004,"修改密码超时"),
+	DEFAULT_ROLE_CAN_NOT_AUTH(10005,"默认角色不能更改授权"),
 	DEPT_NAME_EXITS(20001,"部门名称已存在"),
     ;
     

@@ -3,4 +3,5 @@ import React from 'react';
 
 export default interface ModelerProps {
     bpmnModelerRef: React.RefObject<BpmnModeler | null>;
+    bpmnId?: string;
 }

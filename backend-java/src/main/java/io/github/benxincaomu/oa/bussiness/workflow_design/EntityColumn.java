@@ -1,4 +1,4 @@
-package io.github.benxincaomu.oa.bussiness.workflow;
+package io.github.benxincaomu.oa.bussiness.workflow_design;
 
 public class EntityColumn {
 
@@ -10,6 +10,11 @@ public class EntityColumn {
      * 字段名
      */
     private String columnName;
+
+    /**
+     * 展示名称
+     */
+    private String label;
 
     /**
      * 字段类型
@@ -77,6 +82,14 @@ public class EntityColumn {
 
     public void setListAble(boolean listAble) {
         this.listAble = listAble;
+    }
+
+    public String getLabel() {
+        return label;
+    }
+
+    public void setLabel(String label) {
+        this.label = label;
     }
     
 

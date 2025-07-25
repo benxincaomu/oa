@@ -5,9 +5,11 @@ import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import io.github.benxincaomu.oa.bussiness.user.User;
+import io.github.benxincaomu.oa.bussiness.user.vo.UserIdNameVo;
 
 @Repository
 public interface DepartmentUserRepository extends JpaRepository<DepartmentUser, Long> {
@@ -19,4 +21,7 @@ public interface DepartmentUserRepository extends JpaRepository<DepartmentUser, 
     Optional<Long> findDeptIdByUserId(Long userId);
 
     void deleteByUserId(Long userId);
+
+    @Query("select u.id,u.name from DepartmentUser du, io.github.benxincaomu.oa.bussiness.user.User u where  u.id = du.userId and du.departmentId = :deptId")
+    List<UserIdNameVo> getUsersByDeptId(@Param("deptId") Long deptId);
 }

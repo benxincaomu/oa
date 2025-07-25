@@ -25,6 +25,9 @@ public class Department extends BaseEntity{
     @Comment("部门编码")
     private String code;
 
+    @Comment("部门负责人id")
+    private Long leaderUserId;
+
     
 
     public String getName() {
@@ -49,6 +52,14 @@ public class Department extends BaseEntity{
 
     public void setCode(String code) {
         this.code = code;
+    }
+
+    public Long getLeaderUserId() {
+        return leaderUserId;
+    }
+
+    public void setLeaderUserId(Long leaderUserId) {
+        this.leaderUserId = leaderUserId;
     }
 
 

@@ -1,5 +1,5 @@
 import BpmnModeler from 'camunda-bpmn-js/lib/base/Modeler';
-import PropertiesView from "./PropertiesView";
+import PropertiesView from "./PropertiesPanel";
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
 import { createRoot ,hydrateRoot} from 'react-dom/client';

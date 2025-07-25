@@ -15,6 +15,14 @@ public class DeptVo {
     private String code;
     
     
+    
+    public DeptVo(Long id, String name, Long parentId, String code) {
+        this.id = id;
+        this.name = name;
+        this.parentId = parentId;
+        this.code = code;
+    }
+
     private List<DeptVo> children;
 
     public String getName() {

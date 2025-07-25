@@ -54,7 +54,7 @@ const Workbench = () => {
                 <Space size="middle">
                     <a>编辑</a>
                     <a>删除</a>
-                    <a target="_blank" href={`/workbenches/design?wid=${record.id}`}>设计</a>
+                    <a target="_blank" href={`/app/workbenches/design?wid=${record.id}`}>设计</a>
                 </Space>
             )
         }

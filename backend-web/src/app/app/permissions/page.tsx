@@ -114,14 +114,12 @@ const Permissions = () => {
                 typeTmp = 0;
                 break;
         }
-        axios
+        service
             .get(`/permission/permissionsByType?type=${typeTmp}`, {
-                headers: {
-                    "token": localStorage.getItem("token"),
-                },
+                
             })
             .then((response) => {
-                setParentPermissions(response.data.data);
+                setParentPermissions(response.data);
             });
     };
 

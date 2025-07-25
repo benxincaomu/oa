@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState,useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import service from '@/commons/base/service';
 import { Button, FormInstance, Tabs } from 'antd';
@@ -29,39 +29,60 @@ const Design = () => {
   };
   const bpmnModelerRef = useRef<BpmnModeler | null>(null);
   const tabData = [
-    {
+    /* {
       key: '0',
       label: '枚举设计',
       children: <div>枚举设计</div>,
-    },
+    }, */
     {
       key: '1',
       label: '实体设计',
-      children: <BeanDesign wid={wid} setBeanForm={setBeanForm}/>,
+      children: <BeanDesign wid={wid} setBeanForm={setBeanForm} />,
     },
     {
       key: '2',
       label: '流程设计',
       children: <WorkflowDesign wid={wid} bpmnModelerRef={bpmnModelerRef} />,
     },
-   /*  {
-      key: '3',
-      label: '页面设计',
-      children: <PageDesign wid={wid} />,
-    },
-    {
-      key: '4',
-      label: '编辑器',
-      children: <PageEditor/>,
-    } */
-  ]
+    /*  {
+       key: '3',
+       label: '页面设计',
+       children: <PageDesign wid={wid} />,
+     },
+     {
+       key: '4',
+       label: '编辑器',
+       children: <PageEditor/>,
+     } */
+  ];
+  const publish = async (event: any) => {
+    event.target.disable = true
+    const modeler = bpmnModelerRef.current;
+    if (modeler) {
+      const canvas = modeler.get('canvas');
+      const xml = await modeler.saveXML({ format: true });
+      console.log(xml);
+      const beanDefinition = beanForm?.getFieldsValue();
+      service.post(`/workbench/publish`, {
+        workbenchId: wid,
+        workflowDefinition: {
+          workbenchId: wid,
+          flowDefinition: xml.xml
+        },
+        entityDefinition: beanDefinition
+      })
+
+    }
+  }
+
+
   return (
 
 
-    <Tabs defaultActiveKey="2" items={tabData} 
-    tabBarExtraContent={
-      {right: <Button type="primary" onClick={()=>{ }}>发布</Button>}
-    }/>
+    <Tabs defaultActiveKey="2" items={tabData}
+      tabBarExtraContent={
+        { right: <Button type="primary" onClick={(e) => { publish(e) }}>发布</Button> }
+      } />
 
 
   );

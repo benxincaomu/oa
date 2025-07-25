@@ -1,4 +1,4 @@
-package io.github.benxincaomu.oa.bussiness.workflow;
+package io.github.benxincaomu.oa.bussiness.workflow_design;
 
 import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -11,14 +11,15 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "workbench_publish",indexes = {@Index(name = "workbench_publish_workbench_id_index",columnList = "workbenchId")})
-public class WorkbenchPublish extends BaseEntity{
-    
+@Table(name = "workbench_publish", indexes = {
+        @Index(name = "workbench_publish_workbench_id_index", columnList = "workbenchId") })
+public class WorkbenchPublish extends BaseEntity {
+
     @Comment("工作台id")
     private Long workbenchId;
 
     @Comment("实体定义")
-    @Column(name = "columns",columnDefinition = "jsonb")
+    @Column(name = "columns", columnDefinition = "jsonb")
     @JdbcTypeCode(SqlTypes.JSON)
     private EntityDefinition entityDefinition;
 
@@ -28,8 +29,13 @@ public class WorkbenchPublish extends BaseEntity{
     @Comment("版本号")
     private Long version;
 
-    @Comment("对应数据存储的表名称")
-    private String dataTableName;
+    @Comment("对应表单存储的表名称")
+    @Column(columnDefinition = "varchar(30)", length = 30)
+    private String flowFormTable;
+
+    @Comment("对应流程历史的表名称")
+    @Column(columnDefinition = "varchar(30)", length = 30)
+    private String flowHistoryTable;
 
     public Long getWorkbenchId() {
         return workbenchId;
@@ -38,8 +44,6 @@ public class WorkbenchPublish extends BaseEntity{
     public void setWorkbenchId(Long workbenchId) {
         this.workbenchId = workbenchId;
     }
-
-
 
     public Long getVersion() {
         return version;
@@ -63,6 +67,22 @@ public class WorkbenchPublish extends BaseEntity{
 
     public void setWorkflowDeployId(String workflowDeployId) {
         this.workflowDeployId = workflowDeployId;
+    }
+
+    public String getFlowFormTable() {
+        return flowFormTable;
+    }
+
+    public void setFlowFormTable(String flowFormTable) {
+        this.flowFormTable = flowFormTable;
+    }
+
+    public String getFlowHistoryTable() {
+        return flowHistoryTable;
+    }
+
+    public void setFlowHistoryTable(String flowHistoryTable) {
+        this.flowHistoryTable = flowHistoryTable;
     }
 
     

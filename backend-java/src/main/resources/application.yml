@@ -82,5 +82,6 @@ management:
          - beans
 app: 
   base-url: http://10.0.0.130:4000
+  data-table-nums: 5
 
 
