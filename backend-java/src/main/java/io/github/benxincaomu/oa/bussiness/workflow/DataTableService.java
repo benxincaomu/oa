@@ -47,11 +47,14 @@ public class DataTableService {
                     	update_by int8 NULL,
                     	"data" jsonb NULL,
                     	publish_id int8 NULL,
+                        deploy_name varchar(36) NULL,
+                     process_id varchar(36) NULL,
                     	CONSTRAINT {1}_pkey PRIMARY KEY (id)
                     );
 
                                     """,
-            "CREATE INDEX {0}_create_by_index ON public.{1} USING btree (create_by)"
+            "CREATE INDEX {0}_create_by_index ON public.{1} USING btree (create_by)",
+            "CREATE INDEX {0}_publish_id_index ON public.{1} USING btree (publish_id);"
     };
 
     private final String[] flowHistoryDdls = {
@@ -67,6 +70,8 @@ public class DataTableService {
                     	approval_opinion varchar(200) NULL,
                     	flow_form_id int8 NULL,
                     	flow_name varchar(255) NULL,
+                        operator_name varchar(20) NULL,
+                        flow_id varchar(50) NULL,
                     	CONSTRAINT {1}_pkey PRIMARY KEY (id)
                     )
 
@@ -89,15 +94,17 @@ public class DataTableService {
                 .param(flowFormTableNamePrefix)
                 .query(String.class);
         int tableNums = query.list().size();
-        
+
         String lockKey = "initDataTableLock";
-        if (tableNums < dataTableNums && Objects.equals(redisTemplate.opsForValue().setIfAbsent(lockKey, "1",30L, TimeUnit.SECONDS),Boolean.TRUE)) {
-            
+        if (tableNums < dataTableNums && Objects
+                .equals(redisTemplate.opsForValue().setIfAbsent(lockKey, "1", 30L, TimeUnit.SECONDS), Boolean.TRUE)) {
+
             int tablesToCreate = dataTableNums - tableNums;
             logger.info("当前表数量:{}", tableNums);
             logger.info("需创建表数量:{}", tablesToCreate);
             for (int i = dataTableNums - 1; i >= tableNums; i--) {
                 String flowTableName = flowFormTableNamePrefix + i;
+                logger.info("创建表:{}", flowTableName);
                 for (String ddl : flowFormDdls) {
 
                     jdbcClient.sql(MessageFormat.format(ddl, flowTableName, flowTableName)).update();
@@ -107,7 +114,7 @@ public class DataTableService {
                 for (String ddl : flowHistoryDdls) {
                     jdbcClient.sql(MessageFormat.format(ddl, flowHistoryTableName, flowHistoryTableName)).update();
                 }
-
+                logger.info("已完成创建表:{}", flowTableName);
             }
         }
     }
@@ -115,10 +122,11 @@ public class DataTableService {
     /**
      * 选择数据表
      * 一定要先选数据表，后选历史表
+     * 
      * @return
      */
     public String selectFormTable() {
-         MappedQuerySpec<String> query = jdbcClient
+        MappedQuerySpec<String> query = jdbcClient
                 .sql("SELECT tablename FROM pg_tables WHERE schemaname = 'public' and tablename like concat(?::text,'%')")
                 .param(flowFormTableNamePrefix)
                 .query(String.class);
@@ -127,8 +135,9 @@ public class DataTableService {
             String selectedTableName = tableNames.get(0);
             int minDataCount = 0;
             int selectedTableIndex = 0;
-            for(int i = 0; i < tableNames.size(); i++){
-                Integer count = jdbcClient.sql("select count(id) from "+tableNames.get(i)).query(Integer.class).single();
+            for (int i = 0; i < tableNames.size(); i++) {
+                Integer count = jdbcClient.sql("select count(id) from " + tableNames.get(i)).query(Integer.class)
+                        .single();
 
                 if (count < minDataCount) {
                     minDataCount = count;
@@ -144,15 +153,16 @@ public class DataTableService {
 
     /**
      * 选择历史表
+     * 
      * @return
      */
     public String selectHistoryTable() {
         Integer index = dataTableIndexLocal.get();
-        if(index == null){
+        if (index == null) {
             throw new IllegalStateException("请先选择数据表");
         }
         dataTableIndexLocal.remove();
-        return flowHistoryTableNamePrefix+index;
+        return flowHistoryTableNamePrefix + index;
     }
 
 }

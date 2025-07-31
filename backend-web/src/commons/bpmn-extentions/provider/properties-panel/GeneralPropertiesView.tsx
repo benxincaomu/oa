@@ -13,10 +13,11 @@ import Canvas from 'diagram-js/lib/core/Canvas';
  * 通用属性面板
  * @returns 
  */
-export default function GeneralPropertiesView({ bpmnModelerRef }: ModelerProps) {
+export default function GeneralPropertiesView({ bpmnModelerRef,bpmnId }: ModelerProps) {
     const [form] = Form.useForm();
 
     useEffect(() => {
+        console.log(bpmnId);
         const modeler = bpmnModelerRef.current;
         if (modeler) {
             const modeling: Modeling = modeler.get("modeling");
@@ -33,7 +34,7 @@ export default function GeneralPropertiesView({ bpmnModelerRef }: ModelerProps) 
                 form.setFieldValue("name", canvas.getRootElement().businessObject.name);
             }
         }
-    }, [bpmnModelerRef]);
+    }, [bpmnModelerRef, bpmnId, form]);
 
     const onIdChange = (e: any) => {
         const modeler = bpmnModelerRef.current;

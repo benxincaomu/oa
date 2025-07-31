@@ -31,10 +31,17 @@ public class EntityColumn {
      */
     private boolean listAble;
 
+
+
     /**
      * 校验类型
      */
     private String[] validateTypes;
+
+    /**
+     * 数值类型的单位
+     */
+    private String unit;
 
     public int getSort() {
         return sort;
@@ -90,6 +97,14 @@ public class EntityColumn {
 
     public void setLabel(String label) {
         this.label = label;
+    }
+
+    public String getUnit() {
+        return unit;
+    }
+
+    public void setUnit(String unit) {
+        this.unit = unit;
     }
     
 

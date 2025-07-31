@@ -10,7 +10,11 @@ public enum OaResponseCode implements ResponseCode {
 	USER_NOT_EXIST(10003,"用户不存在"),
 	UPDATE_PASSWORD_EXPIRED(10004,"修改密码超时"),
 	DEFAULT_ROLE_CAN_NOT_AUTH(10005,"默认角色不能更改授权"),
-	DEPT_NAME_EXITS(20001,"部门名称已存在"),
+	DEPT_NAME_EXITS(10006,"部门名称已存在"),
+
+	WORKBENCH_PUBLISH_NOT_EXIST(20001,"流程未发布"),
+	WORKBENCH_NOT_EXIST(20002,"工作台不存在"),
+	FLOW_TASK_NOT_EXIST(20003,"流程任务已处理或无权限"),
     ;
     
 

@@ -44,12 +44,16 @@ public class Permission extends BaseEntity {
     @Comment("父权限id,目录菜单可以无parentId或者以其他目录菜单为parentId，页面菜单必须以目录菜单为上级权限，页面控制必须以页面菜单为上级，请求链接的parentId是无效字段")
     private Long parentId; 
 
+    @Comment("父级权限名称")
+    private String parentName;
 
     @Comment("权限值,通常为菜单相关或请求url")
     private String value;
 
     @Transient
     private List<Permission> children;
+
+    
 
 
   
@@ -114,5 +118,18 @@ public class Permission extends BaseEntity {
         this.type = type;
     }
 
+
+    public String getParentName() {
+        return parentName;
+    }
+
+
+    public void setParentName(String parentName) {
+        this.parentName = parentName;
+    }
+
+
+
+    
     
 }

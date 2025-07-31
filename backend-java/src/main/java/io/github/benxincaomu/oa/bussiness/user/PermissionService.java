@@ -55,15 +55,23 @@ public class PermissionService {
         return byParentId;
     }
 
-    public Permission insert(Permission permission) {
+    public Permission insert( Permission permission) {
+        if(permission.getParentId() != null){
+            permissionRepository.findById(permission.getParentId()).ifPresent(p -> permission.setParentName(p.getName()));
+        }
+        boolean exists = permission.getId()!= null;
         
-        permission = permissionRepository.save(permission);
-        Long roleId = roleRepository.findMinRoleIdByTenantId(JpaAuditorAware.getCurrentTenantId()).orElse(null);
-        if(roleId != null){
-            RolePermission rolePermission = new RolePermission();
-            rolePermission.setRoleId(roleId);
-            rolePermission.setPermissionId(permission.getId());
-            rolePermissionRepository.save(rolePermission);
+        permissionRepository.save(permission);
+        if(!exists){
+            // 为当前租户的初始角色授权
+            Long roleId = roleRepository.findMinRoleIdByTenantId(JpaAuditorAware.getCurrentTenantId()).orElse(null);
+            if(roleId != null){
+                RolePermission rolePermission = new RolePermission();
+                rolePermission.setRoleId(roleId);
+                rolePermission.setPermissionId(permission.getId());
+    
+                rolePermissionRepository.save(rolePermission);
+            }
         }
 
         return permissionRepository.save(permission);

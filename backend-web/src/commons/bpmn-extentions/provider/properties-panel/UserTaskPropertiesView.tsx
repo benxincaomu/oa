@@ -13,7 +13,7 @@ import Modeling from 'bpmn-js/lib/features/modeling/Modeling';
 
 
 
-export default function UserTaskPropertiesView({ bpmnModelerRef }: ModelerProps) {
+export default function UserTaskPropertiesView({ bpmnModelerRef,bpmnId }: ModelerProps) {
 
     useEffect(() => {
         const modeler = bpmnModelerRef.current;
@@ -28,7 +28,7 @@ export default function UserTaskPropertiesView({ bpmnModelerRef }: ModelerProps)
         {
             key: '1',
             label: '通用属性',
-            children: <GeneralPropertiesView bpmnModelerRef={bpmnModelerRef} />,
+            children: <GeneralPropertiesView bpmnModelerRef={bpmnModelerRef} bpmnId={bpmnId}/>,
         },
         {
             key: '2',

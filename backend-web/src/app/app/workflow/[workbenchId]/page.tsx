@@ -3,13 +3,13 @@
 export default async function WorkflowList({
   params,
 }: {
-  params: { id: string };
+  params: { workbenchId: string };
 }) { 
-    const {id} = await params;
+    const {workbenchId} = await params;
 
     return (
         <div>
-            {id}
+            {workbenchId}
         </div>
     )
 }

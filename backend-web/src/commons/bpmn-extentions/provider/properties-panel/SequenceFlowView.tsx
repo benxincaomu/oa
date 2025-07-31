@@ -20,30 +20,33 @@ export default function SequenceFlowPropertiesView({ bpmnModelerRef, bpmnId }: M
         if (modeler) {
             const selection: Selection = modeler.get('selection');
             const modeling: Modeling = modeler.get('modeling');
-            const sourceElement = selection.get()[0].source;
-            console.log(sourceElement);
-            let items: CollapseProps['items'] = [
-                {
-                    key: '1',
-                    label: '通用属性',
-                    children: <GeneralPropertiesView bpmnModelerRef={bpmnModelerRef} />,
-                }
-            ];
-            if (sourceElement.type === 'bpmn:ParallelGateway' || sourceElement.type === 'bpmn:ExclusiveGateway' || sourceElement.type === 'bpmn:EventBasedGateway') {
-                items = [
+            const selectedElements = selection.get();
+            // console.log(sourceElement);
+            if (selectedElements.length>0 && selectedElements[0].type === 'bpmn:SequenceFlow') {
+                const sourceElement = selectedElements[0].source;
+                let items: CollapseProps['items'] = [
                     {
                         key: '1',
                         label: '通用属性',
-                        children: <GeneralPropertiesView bpmnModelerRef={bpmnModelerRef} />,
-                    }, {
-                        key: '2',
-                        label: '条件',
-                        children: <FlowConditionView bpmnModelerRef={bpmnModelerRef} />,
+                        children: <GeneralPropertiesView bpmnModelerRef={bpmnModelerRef} bpmnId={bpmnId}/>,
                     }
                 ];
-
+                if (sourceElement.type === 'bpmn:ParallelGateway' || sourceElement.type === 'bpmn:ExclusiveGateway' || sourceElement.type === 'bpmn:EventBasedGateway') {
+                    items = [
+                        {
+                            key: '1',
+                            label: '通用属性',
+                            children: <GeneralPropertiesView bpmnModelerRef={bpmnModelerRef} bpmnId={bpmnId}/>,
+                        }, {
+                            key: '2',
+                            label: '条件',
+                            children: <FlowConditionView bpmnModelerRef={bpmnModelerRef} bpmnId={bpmnId}/>,
+                        }
+                    ];
+    
+                }
+                setItems(items);
             }
-            setItems(items);
         }
     }, [bpmnId, bpmnModelerRef]);
 

@@ -61,14 +61,14 @@ const WorkflowDesign: React.FC<BpmnModelerComponentProps> = ({
         if (wid > 0) {
             service.get(`/workflowDefinition/getByWorkbenchId/${wid}`).then((res) => {
                 if (res.data) {
-                    bpmnModelerRef.current?.importXML(res.data.flowDefinition);
+                    bpmnModelerRef.current?.importXML(res.data.flowDefinition).catch(err => console.log(err));
                 } else {
                     bpmnModelerRef.current?.createDiagram();
                 }
             })
         }
     }, [bpmnModelerRef, wid]);
-    const [bpmnModeler, setBpmnModeler] =useState<BpmnModeler | null>();
+    const [bpmnModeler, setBpmnModeler] = useState<BpmnModeler | null>();
 
     useEffect(() => {
         if (!containerRef.current || !propertiesPanelRef.current) {
@@ -81,10 +81,7 @@ const WorkflowDesign: React.FC<BpmnModelerComponentProps> = ({
             const modeler = new BpmnModeler({
                 container: containerRef.current,
                 height: '78vh',
-                /* width: '70%', */
-                /* propertiesPanel: {
-                    parent: propertiesPanelRef.current,
-                }, */
+                // 
                 additionalModules: [
                     customTranslateModule,
                 ],
@@ -116,6 +113,7 @@ const WorkflowDesign: React.FC<BpmnModelerComponentProps> = ({
     };
     const saveBpmn = () => {
         bpmnModelerRef.current?.saveXML().then(({ xml }) => {
+            
             console.log(xml);
             service.post('/workflowDefinition', {
                 workbenchId: wid,
@@ -124,7 +122,7 @@ const WorkflowDesign: React.FC<BpmnModelerComponentProps> = ({
 
                 messageApi.success('保存成功');
 
-            }) 
+            })
         })
     };
 

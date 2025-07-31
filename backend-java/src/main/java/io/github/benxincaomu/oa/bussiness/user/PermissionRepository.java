@@ -25,4 +25,6 @@ public interface PermissionRepository extends JpaRepository<Permission,Long>{
     @Query("select p.id as id,p.name as name,p.parentId as parentId,p.type type,p.value as value  from Permission p where p.type = :type")
     List<PermissionIdName> findIdAndNameByType(@Param("type")Integer type);
 
+
+
 } 

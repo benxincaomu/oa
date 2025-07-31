@@ -2,6 +2,8 @@ package io.github.benxincaomu.oa.bussiness.workflow_design;
 
 import org.hibernate.annotations.Comment;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import io.github.benxincaomu.oa.base.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -22,7 +24,8 @@ public class Workbench extends BaseEntity {
     private String description;
 
     @Comment("工作台key,部署流程使用，与页面无关")
-    @Column(columnDefinition = "varchar(20)",updatable = false)
+    @Column(columnDefinition = "varchar(36)",updatable = false)
+    @JsonIgnore
     private String workbenchKey;
 
     @Comment("工作台版本")

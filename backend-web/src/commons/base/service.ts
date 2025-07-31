@@ -14,7 +14,7 @@ service.interceptors.request.use(
     (config) => {
         const cookies = new Cookies();
         const token = cookies.get('token');
-        console.log('token', token);
+        // console.log('token', token);
         if (!token){
             message.error('请先登录');
             return new Promise(() => {});

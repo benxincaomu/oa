@@ -7,21 +7,21 @@ import { CollapseProps, Collapse, } from 'antd';
 import { Mode } from 'fs';
 import ModelerProps from './ModelerProps';
 import GeneralPropertiesView from './GeneralPropertiesView';
-
+import Selection from 'diagram-js/lib/features/selection/Selection';
 export default function ProcessPropertiesView({ bpmnModelerRef }: ModelerProps) {
-
+    const [bpmnId, setBpmnId] = React.useState('');
     useEffect(() => {
         const modeler = bpmnModelerRef.current;
         if (modeler) {
-            const canvas= modeler.get("canvas");
-            // console.log(canvas);
+            const selection = modeler.get("selection") as Selection;
+            
         }
     }, []);
     const items: CollapseProps['items'] = [
             {
                 key: '1',
                 label: '通用属性',
-                children: <GeneralPropertiesView bpmnModelerRef={bpmnModelerRef} />,
+                children: <GeneralPropertiesView bpmnModelerRef={bpmnModelerRef} bpmnId={bpmnId} />,
             },
             {
                 key: '2',

@@ -1,9 +1,10 @@
 "use client"
-import { Button, Checkbox, Col, Form, Input, Row, Select, Space, Table, message } from "antd";
+import { Button, Checkbox, Col, Form, Input, Modal, Row, Select, Space, Table, message } from "antd";
 import { useEffect, useState } from "react";
 import { ArrowUpOutlined, MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import service from "@/commons/base/service";
 import { off, title } from "process";
+import FormNew from "../../workflow/FormNew";
 
 type Props = {
     wid: number;
@@ -23,18 +24,18 @@ const BeanDesign = ({ wid, setBeanForm }: Props) => {
         });
     };
     const [columnTypes, setColumnTypes] = useState<any[]>([]);
-
+    const [columnTypeWatches, setColumnTypeWatches] = useState([]);
     useEffect(() => {
         service.get(`/entityDefinition/getColumnTypes`).then(res => {
             setColumnTypes(res.data);
         });
-    }, []);
+    }, [form]);
 
     useEffect(() => {
         if (id > 0) {
             form.setFieldValue("id", id);
         }
-    }, [id]);
+    }, [form, id]);
     useEffect(() => {
         if (wid > 0) {
             service.get("/entityDefinition/getByWorkbenchId/" + wid).then(res => {
@@ -46,40 +47,18 @@ const BeanDesign = ({ wid, setBeanForm }: Props) => {
         }
     }, [wid]);
     const formListSpan = {
-        labelCol: { span: 8 }, wrapperCol: { span: 18 }
+        labelCol: { span: 10 }, wrapperCol: { span: 14 }
     };
-    const columns = [
-        {
-            title: '字段名称',
-            dataIndex: 'columnName',
-            key: 'columnName',
-            render: (record: any, index: number) => {
-                return <>
-                </>
-            },
-        },
-        {
-            title: '字段类型',
-            dataIndex: 'type',
-            key: 'type',
-        },
-        {
-            title: '字段长度',
-            dataIndex: 'length',
-            key: 'length',
-        },
-        {
-            title: '字段描述',
-            dataIndex: 'description',
-            key: 'description',
-        }
 
-    ];
+    const [previewFormVisitable, setPreviewFormVisitable] = useState(false);
+    const previewForm = () => {
+        setPreviewFormVisitable(true);
+    }
 
     return (
         <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
             {contextHolder}
-            <Form form={form} layout="horizontal" labelCol={{ span: 3 }} style={{ maxWidth: "90%", minWidth: '1000px' }} onFinish={(values) => { onSave(values) }}>
+            <Form form={form} layout="horizontal" labelCol={{ span: 3 }} style={{ maxWidth: "90%", minWidth: '90%' }} onFinish={(values) => { onSave(values) }}>
                 <Form.Item name={"workbenchId"} initialValue={wid} hidden>
                     <Input />
                 </Form.Item>
@@ -93,85 +72,74 @@ const BeanDesign = ({ wid, setBeanForm }: Props) => {
                     <Input.TextArea placeholder="请输入描述" />
                 </Form.Item>
 
-                <Row>
-                    <Col className = "content-center" span={3}>
-                        字段名
-                    </Col>
-                    <Col className = "content-center" span={3}>
-                        展示名
-                    </Col>
-                    <Col className = "content-center" span={4}>
-                        字段类型
-                    </Col>
-                    <Col className = "content-center" span={4}>
-                        引用枚举
-                    </Col>
-                    <Col className = "content-center" span={4}>
-                        校验规则
-                    </Col>
-                    <Col className = "content-center" span={2}>
-                        列表展示
-                    </Col>
-                    <Col className = "content-center" span={3}>
-                        操作
-                    </Col>
-                </Row>
                 <Form.List name="columns" >
                     {(fields, { add, remove, move }) => (
                         <>
-                            {fields.map((field, index) => (
+                            {fields.map((field, index) => {
+                                return (
 
                                     <Row key={index}>
-                                        <Col className = "content-center" span={3}>
+                                        <Col className="content-center" span={3}>
                                             <Form.Item name={[field.name, "sort"]} initialValue={index} hidden>
                                                 <Input />
                                             </Form.Item>
-                                            <Form.Item {...formListSpan} name={[field.name, "columnName"]} >
+                                            <Form.Item {...formListSpan} name={[field.name, "columnName"]} label="字段名">
                                                 <Input />
                                             </Form.Item>
                                         </Col>
-                                        <Col className = "content-center" span={3}>
-                                            <Form.Item {...formListSpan} name={[field.name, "label"]} >
+                                        <Col className="content-center" span={3}>
+                                            <Form.Item {...formListSpan} name={[field.name, "label"]} label="展示名">
                                                 <Input />
                                             </Form.Item>
                                         </Col>
-                                        <Col className = "content-center" span={4}>
-                                            <Form.Item name={[field.name, "columnType"]}  >
+                                        <Col className="content-center" span={4}>
+                                            <Form.Item {...formListSpan} name={[field.name, "columnType"]} label="类型">
                                                 <Select options={columnTypes} fieldNames={{ label: 'value', value: 'key' }} placeholder="请选择字段类型" style={{ minWidth: "120px" }} />
                                             </Form.Item>
                                         </Col>
-                                        <Col className = "content-center" span={4}>
-                                            <Form.Item {...formListSpan} name={[field.name, "enumId"]} >
-                                                <Select style={{ minWidth: "120px" }}>
-                                                    <Select.Option value="" >无</Select.Option>
-                                                </Select>
-                                            </Form.Item>
-                                        </Col>
-                                        <Col className = "content-center" span={4}>
-                                            <Form.Item {...formListSpan} name={[field.name, "validateTypes"]} >
-                                                <Select mode="multiple" style={{ minWidth: "120px" }}>
-                                                    <Select.Option value="">无</Select.Option>
-                                                </Select>
-                                            </Form.Item>
-                                        </Col>
-                                        <Col className = "content-center" span={2}>
-                                            <Form.Item {...formListSpan} name={[field.name, "listAble"]} valuePropName="checked">
+                                        <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => {
+                                            const prevType = prevValues.columns[index].columnType;
+                                            const currentType = currentValues.columns[index].columnType;
+                                            return prevType !== currentType;
+                                        }}>
+                                            {({ getFieldValue }) => {
+                                                const columnType = getFieldValue(['columns', index, 'columnType']);
+                                                if (columnType == 'number') {
+                                                    return <Col className="content-center" span={4}>
+                                                        <Form.Item {...formListSpan} name={[field.name, "unit"]} label="单位" rules={[
+                                                            { required: true, message: '请输入数值单位' },
+                                                            { max: 5, message: '数值单位长度不能超过5个字符' }
+                                                        ]}>
+                                                            <Input />
+                                                        </Form.Item>
+                                                    </Col>
+                                                } else {
+
+                                                    return (
+                                                        <></>
+                                                    );
+                                                }
+                                            }}
+
+                                        </Form.Item>
+                                        <Col className="content-center" span={2}>
+                                            <Form.Item labelCol={{ span: 20 }} wrapperCol={{ span: 4 }} name={[field.name, "listAble"]} valuePropName="checked" label="列表字段">
                                                 <Checkbox />
                                             </Form.Item>
-                                            
+
                                         </Col>
-                                        <Col className = "content-center" span={3} >
+                                        <Col className="content-center" span={3} >
+                                            <Form.Item>
+
                                                 <MinusCircleOutlined onClick={() => remove(index)} />
-                                                    &nbsp;&nbsp;
+                                                &nbsp;&nbsp;
                                                 <ArrowUpOutlined onClick={() => move(index, index - 1)} />
+                                            </Form.Item>
                                         </Col>
                                     </Row>
-                                   
+                                );
 
-
-
-
-                            ))}
+                            })}
                             <Form.Item>
                                 <Button type="dashed" onClick={() => add()} block >
                                     增加字段
@@ -182,11 +150,23 @@ const BeanDesign = ({ wid, setBeanForm }: Props) => {
                 </Form.List>
 
                 <Form.Item >
-                    <Button type="primary" htmlType="submit">
-                        提交
-                    </Button>
+                    <Space>
+
+                        <Button type="primary" htmlType="submit">
+                            提交
+                        </Button>
+                        <Button type="primary" onClick={()=>{
+                            setPreviewFormVisitable(true)
+                        }}>
+                            预览表单
+                        </Button>
+                    </Space>
                 </Form.Item>
             </Form>
+
+            <Modal title='表单预览' open={previewFormVisitable} footer={null} onCancel={() => setPreviewFormVisitable(false)} width={800}>
+                <FormNew workbenchId="" columnDefinitions={form.getFieldsValue().columns}></FormNew>
+            </Modal>
         </div>
     );
 };

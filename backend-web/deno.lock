@@ -9,12 +9,12 @@
     "npm:@types/node@20": "20.19.9",
     "npm:@types/react-dom@19": "19.1.6_@types+react@19.1.8",
     "npm:@types/react@19": "19.1.8",
-    "npm:antd@^5.26.5": "5.26.6_react@19.1.0_react-dom@19.1.0__react@19.1.0_dayjs@1.11.13",
+    "npm:antd@^5.26.6": "5.26.6_react@19.1.0_react-dom@19.1.0__react@19.1.0_dayjs@1.11.13",
     "npm:axios@^1.10.0": "1.10.0",
-    "npm:bpmn-js-i18n@^2.3.0": "2.3.0_bpmn-js@18.6.2__diagram-js@15.3.0",
-    "npm:bpmn-js-properties-panel@^5.38.1": "5.38.1_@bpmn-io+properties-panel@3.30.2_bpmn-js@18.6.2__diagram-js@15.3.0_camunda-bpmn-js-behaviors@1.10.1__bpmn-js@18.6.2___diagram-js@15.3.0__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_diagram-js@15.3.0_camunda-bpmn-moddle@7.0.1",
-    "npm:bpmn-js@^18.6.2": "18.6.2_diagram-js@15.3.0",
-    "npm:camunda-bpmn-js@^5.10.0": "5.10.0_bpmn-js-properties-panel@5.38.1__@bpmn-io+properties-panel@3.30.2__bpmn-js@18.6.2___diagram-js@15.3.0__camunda-bpmn-js-behaviors@1.10.1___bpmn-js@18.6.2____diagram-js@15.3.0___camunda-bpmn-moddle@7.0.1___zeebe-bpmn-moddle@1.9.0__diagram-js@15.3.0__camunda-bpmn-moddle@7.0.1_bpmn-js@18.6.2__diagram-js@15.3.0_diagram-js@15.3.0_@bpmn-io+variable-resolver@1.3.3__bpmn-js@18.6.2___diagram-js@15.3.0_@bpmn-io+properties-panel@3.30.2_camunda-bpmn-js-behaviors@1.10.1__bpmn-js@18.6.2___diagram-js@15.3.0__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0",
+    "npm:bpmn-js-i18n@^2.3.0": "2.3.0_bpmn-js@17.11.1__diagram-js@14.11.3",
+    "npm:bpmn-js-properties-panel@^5.38.1": "5.38.1_@bpmn-io+properties-panel@3.30.2_bpmn-js@17.11.1__diagram-js@14.11.3_camunda-bpmn-js-behaviors@1.10.1__bpmn-js@17.11.1___diagram-js@14.11.3__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_diagram-js@14.11.3_camunda-bpmn-moddle@7.0.1",
+    "npm:bpmn-js@17.11.1": "17.11.1_diagram-js@14.11.3",
+    "npm:camunda-bpmn-js@^5.10.0": "5.10.0_bpmn-js-properties-panel@5.38.1__@bpmn-io+properties-panel@3.30.2__bpmn-js@17.11.1___diagram-js@14.11.3__camunda-bpmn-js-behaviors@1.10.1___bpmn-js@17.11.1____diagram-js@14.11.3___camunda-bpmn-moddle@7.0.1___zeebe-bpmn-moddle@1.9.0__diagram-js@14.11.3__camunda-bpmn-moddle@7.0.1_bpmn-js@18.6.2__diagram-js@15.3.0_diagram-js@15.3.0_@bpmn-io+variable-resolver@1.3.3__bpmn-js@18.6.2___diagram-js@15.3.0_@bpmn-io+properties-panel@3.30.2_camunda-bpmn-js-behaviors@1.10.1__bpmn-js@18.6.2___diagram-js@15.3.0__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_bpmn-js@17.11.1__diagram-js@14.11.3_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0",
     "npm:camunda-bpmn-moddle@^7.0.1": "7.0.1",
     "npm:eslint-config-next@15.4.1": "15.4.1_eslint@9.31.0_typescript@5.8.3_@typescript-eslint+parser@8.37.0__eslint@9.31.0__typescript@5.8.3_eslint-plugin-import@2.32.0__eslint@9.31.0",
     "npm:eslint@9": "9.31.0",
@@ -23,7 +23,8 @@
     "npm:react-dom@19.1.0": "19.1.0_react@19.1.0",
     "npm:react@19.1.0": "19.1.0",
     "npm:tailwindcss@4": "4.1.11",
-    "npm:typescript@5": "5.8.3"
+    "npm:typescript@5": "5.8.3",
+    "npm:universal-cookie@^8.0.1": "8.0.1"
   },
   "npm": {
     "@alloc/quick-lru@5.2.0": {
@@ -156,15 +157,15 @@
     "@bpmn-io/element-template-chooser@2.0.0_bpmn-js@18.6.2__diagram-js@15.3.0_diagram-js@15.3.0": {
       "integrity": "sha512-SUQgAzkCA3lBsV6MYVTFlZSOZJv5m4iZ3f4IN13azppYh6rU0eNXGUy8K0jUkiNx3K2Umwq2Hd7R9IKZ9Ms/jQ==",
       "dependencies": [
-        "bpmn-js",
-        "diagram-js"
+        "bpmn-js@18.6.2_diagram-js@15.3.0",
+        "diagram-js@15.3.0"
       ]
     },
     "@bpmn-io/element-template-icon-renderer@1.0.0_bpmn-js@18.6.2__diagram-js@15.3.0_diagram-js@15.3.0": {
       "integrity": "sha512-m0m3kKS1PvYqouogzxnHxf+iX+/HOUxJG/RBSy4uN5HqqNdK5fHtTUtFzuXVWIEkcDCFfwF0cqQg/qE7HLSCYA==",
       "dependencies": [
-        "bpmn-js",
-        "diagram-js",
+        "bpmn-js@18.6.2_diagram-js@15.3.0",
+        "diagram-js@15.3.0",
         "inherits-browser",
         "tiny-svg"
       ]
@@ -276,7 +277,7 @@
       "dependencies": [
         "@bpmn-io/form-js",
         "@bpmn-io/variable-resolver",
-        "bpmn-js"
+        "bpmn-js@18.6.2_diagram-js@15.3.0"
       ]
     },
     "@bpmn-io/moddle-utils@0.2.1": {
@@ -302,7 +303,7 @@
       "dependencies": [
         "@bpmn-io/extract-process-variables",
         "@lezer/common",
-        "bpmn-js",
+        "bpmn-js@18.6.2_diagram-js@15.3.0",
         "lezer-feel",
         "min-dash"
       ]
@@ -310,13 +311,13 @@
     "@camunda/element-templates-json-schema@0.19.0": {
       "integrity": "sha512-KzINxW6J79ZN1N6aLMmeVv/RmY9yq28sQloWTzkz6x9oiZY2PnfM8SUHUKWctXbVM/SZY3jdPSngFZeg1++v6A=="
     },
-    "@camunda/example-data-properties-provider@1.2.1_@bpmn-io+properties-panel@3.30.2_@bpmn-io+variable-resolver@1.3.3__bpmn-js@18.6.2___diagram-js@15.3.0_bpmn-js@18.6.2__diagram-js@15.3.0_bpmn-js-properties-panel@5.38.1__@bpmn-io+properties-panel@3.30.2__bpmn-js@18.6.2___diagram-js@15.3.0__camunda-bpmn-js-behaviors@1.10.1___bpmn-js@18.6.2____diagram-js@15.3.0___camunda-bpmn-moddle@7.0.1___zeebe-bpmn-moddle@1.9.0__diagram-js@15.3.0__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_camunda-bpmn-js-behaviors@1.10.1__bpmn-js@18.6.2___diagram-js@15.3.0__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_diagram-js@15.3.0_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0": {
+    "@camunda/example-data-properties-provider@1.2.1_@bpmn-io+properties-panel@3.30.2_@bpmn-io+variable-resolver@1.3.3__bpmn-js@18.6.2___diagram-js@15.3.0_bpmn-js@18.6.2__diagram-js@15.3.0_bpmn-js-properties-panel@5.38.1__@bpmn-io+properties-panel@3.30.2__bpmn-js@17.11.1___diagram-js@14.11.3__camunda-bpmn-js-behaviors@1.10.1___bpmn-js@17.11.1____diagram-js@14.11.3___camunda-bpmn-moddle@7.0.1___zeebe-bpmn-moddle@1.9.0__diagram-js@14.11.3__diagram-js@15.3.0__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_bpmn-js@17.11.1__diagram-js@14.11.3_camunda-bpmn-js-behaviors@1.10.1__bpmn-js@18.6.2___diagram-js@15.3.0__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_diagram-js@15.3.0_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0": {
       "integrity": "sha512-50WQl++cy9bnShEW1TlaUssar4XsMdmijIH32v1a0s2LaXkK+jo0PtBrt7mGwfTOx3T+54yMaC5kxcyqdRKS8g==",
       "dependencies": [
         "@bpmn-io/properties-panel",
         "@bpmn-io/variable-resolver",
-        "bpmn-js",
-        "bpmn-js-properties-panel@5.38.1_@bpmn-io+properties-panel@3.30.2_bpmn-js@18.6.2__diagram-js@15.3.0_camunda-bpmn-js-behaviors@1.10.1__bpmn-js@18.6.2___diagram-js@15.3.0__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_diagram-js@15.3.0_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0",
+        "bpmn-js@18.6.2_diagram-js@15.3.0",
+        "bpmn-js-properties-panel@5.38.1_@bpmn-io+properties-panel@3.30.2_bpmn-js@17.11.1__diagram-js@14.11.3_camunda-bpmn-js-behaviors@1.10.1__bpmn-js@17.11.1___diagram-js@14.11.3__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_diagram-js@14.11.3_diagram-js@15.3.0_bpmn-js@18.6.2__diagram-js@15.3.0_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0",
         "htm",
         "min-dash"
       ]
@@ -1457,27 +1458,27 @@
     "bpmn-js-color-picker@0.7.2_bpmn-js@18.6.2__diagram-js@15.3.0": {
       "integrity": "sha512-V3Gusxgx+Y6uEh3gg2Jpqd92au0kjfad6ETSNa7U0p2/hqlpYj8RWGwqjUui9tghkTg0mlKaqs6KZ8Lvxzn0pg==",
       "dependencies": [
-        "bpmn-js"
+        "bpmn-js@18.6.2_diagram-js@15.3.0"
       ]
     },
     "bpmn-js-create-append-anything@1.0.0_diagram-js@15.3.0": {
       "integrity": "sha512-8PBRG3/DkWoClIvFPb02wKe7SQAgt1CkOLVFrajYPzHGQPnj7HTTyi9xyVcI07R3k2aeNBjK9WfKLkhSQY0+uA==",
       "dependencies": [
-        "diagram-js"
+        "diagram-js@15.3.0"
       ]
     },
-    "bpmn-js-element-templates@2.7.0_@bpmn-io+properties-panel@3.30.2_bpmn-js@18.6.2__diagram-js@15.3.0_bpmn-js-properties-panel@5.38.1__@bpmn-io+properties-panel@3.30.2__bpmn-js@18.6.2___diagram-js@15.3.0__camunda-bpmn-js-behaviors@1.10.1___bpmn-js@18.6.2____diagram-js@15.3.0___camunda-bpmn-moddle@7.0.1___zeebe-bpmn-moddle@1.9.0__diagram-js@15.3.0__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_camunda-bpmn-js-behaviors@1.10.1__bpmn-js@18.6.2___diagram-js@15.3.0__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_diagram-js@15.3.0_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0": {
+    "bpmn-js-element-templates@2.7.0_@bpmn-io+properties-panel@3.30.2_bpmn-js@18.6.2__diagram-js@15.3.0_bpmn-js-properties-panel@5.38.1__@bpmn-io+properties-panel@3.30.2__bpmn-js@17.11.1___diagram-js@14.11.3__camunda-bpmn-js-behaviors@1.10.1___bpmn-js@17.11.1____diagram-js@14.11.3___camunda-bpmn-moddle@7.0.1___zeebe-bpmn-moddle@1.9.0__diagram-js@14.11.3__diagram-js@15.3.0__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_camunda-bpmn-js-behaviors@1.10.1__bpmn-js@18.6.2___diagram-js@15.3.0__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_diagram-js@15.3.0_bpmn-js@17.11.1__diagram-js@14.11.3_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0": {
       "integrity": "sha512-YncHhncl3K7BW9zDQ0WLfZztCJwky/uzcWN/A3DOB5A9OgOLLg/y0t4aS9VrZ1mZ6Reff65DF1OvkuS1r59GKQ==",
       "dependencies": [
         "@bpmn-io/element-templates-validator",
         "@bpmn-io/extract-process-variables",
         "@bpmn-io/properties-panel",
-        "bpmn-js",
-        "bpmn-js-properties-panel@5.38.1_@bpmn-io+properties-panel@3.30.2_bpmn-js@18.6.2__diagram-js@15.3.0_camunda-bpmn-js-behaviors@1.10.1__bpmn-js@18.6.2___diagram-js@15.3.0__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_diagram-js@15.3.0_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0",
+        "bpmn-js@18.6.2_diagram-js@15.3.0",
+        "bpmn-js-properties-panel@5.38.1_@bpmn-io+properties-panel@3.30.2_bpmn-js@17.11.1__diagram-js@14.11.3_camunda-bpmn-js-behaviors@1.10.1__bpmn-js@17.11.1___diagram-js@14.11.3__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_diagram-js@14.11.3_diagram-js@15.3.0_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0",
         "bpmnlint",
-        "camunda-bpmn-js-behaviors",
+        "camunda-bpmn-js-behaviors@1.10.1_bpmn-js@18.6.2__diagram-js@15.3.0_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0",
         "classnames",
-        "diagram-js",
+        "diagram-js@15.3.0",
         "ids",
         "min-dash",
         "min-dom@4.2.1",
@@ -1490,49 +1491,63 @@
     "bpmn-js-executable-fix@0.2.1_bpmn-js@18.6.2__diagram-js@15.3.0": {
       "integrity": "sha512-7CIrgWzsC9b4ugzOtjOUPng3FGUTX9AxsDq6ns+OfinCAM/yRGIdaHd/foyXOI9o5JkWevQDvTmxD8pjWdL7mw==",
       "dependencies": [
-        "bpmn-js"
+        "bpmn-js@18.6.2_diagram-js@15.3.0"
       ]
     },
-    "bpmn-js-i18n@2.3.0_bpmn-js@18.6.2__diagram-js@15.3.0": {
+    "bpmn-js-i18n@2.3.0_bpmn-js@17.11.1__diagram-js@14.11.3": {
       "integrity": "sha512-VY1DvtX2koafIU9teOawtvFU7kJQpBr7vjAdZg1uvHTzcHvpwRX+h6k/lkcdh/v+/79+3vYrXofRouFIrbwfxw==",
       "dependencies": [
-        "bpmn-js"
+        "bpmn-js@17.11.1_diagram-js@14.11.3"
       ]
     },
-    "bpmn-js-properties-panel@5.38.1_@bpmn-io+properties-panel@3.30.2_bpmn-js@18.6.2__diagram-js@15.3.0_camunda-bpmn-js-behaviors@1.10.1__bpmn-js@18.6.2___diagram-js@15.3.0__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_diagram-js@15.3.0_camunda-bpmn-moddle@7.0.1": {
+    "bpmn-js-properties-panel@5.38.1_@bpmn-io+properties-panel@3.30.2_bpmn-js@17.11.1__diagram-js@14.11.3_camunda-bpmn-js-behaviors@1.10.1__bpmn-js@17.11.1___diagram-js@14.11.3__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_diagram-js@14.11.3_camunda-bpmn-moddle@7.0.1": {
       "integrity": "sha512-ic1VFAVJWOYd0yPj6NQ9V2piA5rrNVCKpfN1vclYNl1rmHeCJoQyTxh4InK3CR9yCGHweVbpM901qLNdQZ+WVg==",
       "dependencies": [
         "@bpmn-io/extract-process-variables",
         "@bpmn-io/properties-panel",
         "array-move",
-        "bpmn-js",
-        "camunda-bpmn-js-behaviors",
-        "diagram-js",
+        "bpmn-js@17.11.1_diagram-js@14.11.3",
+        "camunda-bpmn-js-behaviors@1.10.1_bpmn-js@17.11.1__diagram-js@14.11.3_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0",
+        "diagram-js@14.11.3",
         "ids",
         "min-dash",
         "min-dom@4.2.1"
       ]
     },
-    "bpmn-js-properties-panel@5.38.1_@bpmn-io+properties-panel@3.30.2_bpmn-js@18.6.2__diagram-js@15.3.0_camunda-bpmn-js-behaviors@1.10.1__bpmn-js@18.6.2___diagram-js@15.3.0__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_diagram-js@15.3.0_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0": {
+    "bpmn-js-properties-panel@5.38.1_@bpmn-io+properties-panel@3.30.2_bpmn-js@17.11.1__diagram-js@14.11.3_camunda-bpmn-js-behaviors@1.10.1__bpmn-js@17.11.1___diagram-js@14.11.3__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_diagram-js@14.11.3_diagram-js@15.3.0_bpmn-js@18.6.2__diagram-js@15.3.0_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0": {
       "integrity": "sha512-ic1VFAVJWOYd0yPj6NQ9V2piA5rrNVCKpfN1vclYNl1rmHeCJoQyTxh4InK3CR9yCGHweVbpM901qLNdQZ+WVg==",
       "dependencies": [
         "@bpmn-io/extract-process-variables",
         "@bpmn-io/properties-panel",
         "array-move",
-        "bpmn-js",
-        "camunda-bpmn-js-behaviors",
-        "diagram-js",
+        "bpmn-js@17.11.1_diagram-js@14.11.3",
+        "camunda-bpmn-js-behaviors@1.10.1_bpmn-js@18.6.2__diagram-js@15.3.0_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0",
+        "diagram-js@15.3.0",
         "ids",
         "min-dash",
         "min-dom@4.2.1"
       ]
     },
-    "bpmn-js@18.6.2_diagram-js@15.3.0": {
-      "integrity": "sha512-3C+ktypiJKTco5U6GmZ3FTqcy2o7KwWY0W1KlNon39tW3RInPqJ3W48impd8cFkZ/9QmvITN99NoZjSBu4JFgw==",
+    "bpmn-js-properties-panel@5.38.1_@bpmn-io+properties-panel@3.30.2_bpmn-js@17.11.1__diagram-js@14.11.3_camunda-bpmn-js-behaviors@1.10.1__bpmn-js@17.11.1___diagram-js@14.11.3__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_diagram-js@14.11.3_diagram-js@15.3.0_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0": {
+      "integrity": "sha512-ic1VFAVJWOYd0yPj6NQ9V2piA5rrNVCKpfN1vclYNl1rmHeCJoQyTxh4InK3CR9yCGHweVbpM901qLNdQZ+WVg==",
       "dependencies": [
-        "bpmn-moddle",
-        "diagram-js",
-        "diagram-js-direct-editing",
+        "@bpmn-io/extract-process-variables",
+        "@bpmn-io/properties-panel",
+        "array-move",
+        "bpmn-js@17.11.1_diagram-js@14.11.3",
+        "camunda-bpmn-js-behaviors@1.10.1_bpmn-js@17.11.1__diagram-js@14.11.3_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0",
+        "diagram-js@15.3.0",
+        "ids",
+        "min-dash",
+        "min-dom@4.2.1"
+      ]
+    },
+    "bpmn-js@17.11.1_diagram-js@14.11.3": {
+      "integrity": "sha512-ywCeTg5kvN8lYkU+fHE+YXTGlfKc55lRBn7zW3k1//toeMNPy/PS/uQiujRWdFhMrH5dbtDvlwWukNw2pjWw8Q==",
+      "dependencies": [
+        "bpmn-moddle@8.1.0",
+        "diagram-js@14.11.3",
+        "diagram-js-direct-editing@3.2.0_diagram-js@14.11.3",
         "ids",
         "inherits-browser",
         "min-dash",
@@ -1540,12 +1555,33 @@
         "tiny-svg"
       ]
     },
+    "bpmn-js@18.6.2_diagram-js@15.3.0": {
+      "integrity": "sha512-3C+ktypiJKTco5U6GmZ3FTqcy2o7KwWY0W1KlNon39tW3RInPqJ3W48impd8cFkZ/9QmvITN99NoZjSBu4JFgw==",
+      "dependencies": [
+        "bpmn-moddle@9.0.2_moddle@7.2.0",
+        "diagram-js@15.3.0",
+        "diagram-js-direct-editing@3.2.0_diagram-js@15.3.0",
+        "ids",
+        "inherits-browser",
+        "min-dash",
+        "min-dom@4.2.1",
+        "tiny-svg"
+      ]
+    },
+    "bpmn-moddle@8.1.0": {
+      "integrity": "sha512-yI5OAFfYVJwViKTsTsonVfCBPtB3MlefADUORwNIxxBOMp21vnoxuxsdgUWlPH/dvAEZh/+mr8UtqOBNu8NC5Q==",
+      "dependencies": [
+        "min-dash",
+        "moddle@6.2.3",
+        "moddle-xml@10.1.0"
+      ]
+    },
     "bpmn-moddle@9.0.2_moddle@7.2.0": {
       "integrity": "sha512-HXWMJ+UZSm2PeBS9FuY713AB6Pjwbzp6l2ncWdUpuPrQVGdtcsS/FIK5P3CVQKR8LYrf0BUaM+ID+0Xu7PdsIw==",
       "dependencies": [
         "min-dash",
-        "moddle",
-        "moddle-xml"
+        "moddle@7.2.0",
+        "moddle-xml@11.0.0_moddle@7.2.0"
       ]
     },
     "bpmnlint-utils@1.1.1": {
@@ -1556,7 +1592,7 @@
       "dependencies": [
         "@bpmn-io/moddle-utils",
         "ansi-colors",
-        "bpmn-moddle",
+        "bpmn-moddle@9.0.2_moddle@7.2.0",
         "bpmnlint-utils",
         "cli-table",
         "color-support",
@@ -1612,17 +1648,27 @@
     "callsites@3.1.0": {
       "integrity": "sha512-P8BjAsXvZS+VIDUI11hHCQEv74YT67YUi5JJFNWIqL235sBmjX4+qx9Muvls5ivyNENctx46xQLQ3aTuE7ssaQ=="
     },
-    "camunda-bpmn-js-behaviors@1.10.1_bpmn-js@18.6.2__diagram-js@15.3.0_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0": {
+    "camunda-bpmn-js-behaviors@1.10.1_bpmn-js@17.11.1__diagram-js@14.11.3_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0": {
       "integrity": "sha512-rmhMlgLqltZ+KIYJAuemc1PEyQMAjo08zxuX5XCL85YCoCEhjNDQ4qrVq5dbV1E5ZcaTF7PiDTiyuhkV3kPv3g==",
       "dependencies": [
-        "bpmn-js",
+        "bpmn-js@17.11.1_diagram-js@14.11.3",
         "camunda-bpmn-moddle",
         "ids",
         "min-dash",
         "zeebe-bpmn-moddle"
       ]
     },
-    "camunda-bpmn-js@5.10.0_bpmn-js-properties-panel@5.38.1__@bpmn-io+properties-panel@3.30.2__bpmn-js@18.6.2___diagram-js@15.3.0__camunda-bpmn-js-behaviors@1.10.1___bpmn-js@18.6.2____diagram-js@15.3.0___camunda-bpmn-moddle@7.0.1___zeebe-bpmn-moddle@1.9.0__diagram-js@15.3.0__camunda-bpmn-moddle@7.0.1_bpmn-js@18.6.2__diagram-js@15.3.0_diagram-js@15.3.0_@bpmn-io+variable-resolver@1.3.3__bpmn-js@18.6.2___diagram-js@15.3.0_@bpmn-io+properties-panel@3.30.2_camunda-bpmn-js-behaviors@1.10.1__bpmn-js@18.6.2___diagram-js@15.3.0__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0": {
+    "camunda-bpmn-js-behaviors@1.10.1_bpmn-js@18.6.2__diagram-js@15.3.0_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0": {
+      "integrity": "sha512-rmhMlgLqltZ+KIYJAuemc1PEyQMAjo08zxuX5XCL85YCoCEhjNDQ4qrVq5dbV1E5ZcaTF7PiDTiyuhkV3kPv3g==",
+      "dependencies": [
+        "bpmn-js@18.6.2_diagram-js@15.3.0",
+        "camunda-bpmn-moddle",
+        "ids",
+        "min-dash",
+        "zeebe-bpmn-moddle"
+      ]
+    },
+    "camunda-bpmn-js@5.10.0_bpmn-js-properties-panel@5.38.1__@bpmn-io+properties-panel@3.30.2__bpmn-js@17.11.1___diagram-js@14.11.3__camunda-bpmn-js-behaviors@1.10.1___bpmn-js@17.11.1____diagram-js@14.11.3___camunda-bpmn-moddle@7.0.1___zeebe-bpmn-moddle@1.9.0__diagram-js@14.11.3__camunda-bpmn-moddle@7.0.1_bpmn-js@18.6.2__diagram-js@15.3.0_diagram-js@15.3.0_@bpmn-io+variable-resolver@1.3.3__bpmn-js@18.6.2___diagram-js@15.3.0_@bpmn-io+properties-panel@3.30.2_camunda-bpmn-js-behaviors@1.10.1__bpmn-js@18.6.2___diagram-js@15.3.0__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_bpmn-js@17.11.1__diagram-js@14.11.3_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0": {
       "integrity": "sha512-F0/GuM2Dbjk2f90hME/PBIJtQNZMgNv37nb7P8Htq8fVL+vo4InJ8Zg6GukWjfbfV14jKJfgK42mZwKO3+hSTg==",
       "dependencies": [
         "@bpmn-io/align-to-origin",
@@ -1632,15 +1678,15 @@
         "@bpmn-io/properties-panel",
         "@bpmn-io/variable-resolver",
         "@camunda/example-data-properties-provider",
-        "bpmn-js",
+        "bpmn-js@18.6.2_diagram-js@15.3.0",
         "bpmn-js-color-picker",
         "bpmn-js-create-append-anything",
         "bpmn-js-element-templates",
         "bpmn-js-executable-fix",
-        "bpmn-js-properties-panel@5.38.1_@bpmn-io+properties-panel@3.30.2_bpmn-js@18.6.2__diagram-js@15.3.0_camunda-bpmn-js-behaviors@1.10.1__bpmn-js@18.6.2___diagram-js@15.3.0__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_diagram-js@15.3.0_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0",
-        "camunda-bpmn-js-behaviors",
+        "bpmn-js-properties-panel@5.38.1_@bpmn-io+properties-panel@3.30.2_bpmn-js@17.11.1__diagram-js@14.11.3_camunda-bpmn-js-behaviors@1.10.1__bpmn-js@17.11.1___diagram-js@14.11.3__camunda-bpmn-moddle@7.0.1__zeebe-bpmn-moddle@1.9.0_diagram-js@14.11.3_diagram-js@15.3.0_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0",
+        "camunda-bpmn-js-behaviors@1.10.1_bpmn-js@18.6.2__diagram-js@15.3.0_camunda-bpmn-moddle@7.0.1_zeebe-bpmn-moddle@1.9.0",
         "camunda-bpmn-moddle",
-        "diagram-js",
+        "diagram-js@15.3.0",
         "diagram-js-grid",
         "diagram-js-minimap",
         "diagram-js-origin",
@@ -1744,6 +1790,9 @@
         "ticky"
       ]
     },
+    "cookie@1.0.2": {
+      "integrity": "sha512-9Kr/j4O16ISv8zBBhJoi4bXOYNTkFLOqSL3UDB0njXxCXNezjeyVrJyGOWtgfs/q2km1gwBcfH8q1yEGoMYunA=="
+    },
     "copy-to-clipboard@3.3.3": {
       "integrity": "sha512-2KV8NhB5JqC3ky0r9PMCAZKbUHSwtEo4CwCs0KXgruG43gX5PMqDEBbVU4OUzw2MuAWUfsuFmWvEKG5QRfSnJA==",
       "dependencies": [
@@ -1831,10 +1880,18 @@
     "detect-libc@2.0.4": {
       "integrity": "sha512-3UDv+G9CsCKO1WKMGw9fwq/SWJYbI0c5Y7LU1AXYoDdbhE2AHQ6N6Nb34sG8Fj7T5APy8qXDCKuuIHd1BR0tVA=="
     },
+    "diagram-js-direct-editing@3.2.0_diagram-js@14.11.3": {
+      "integrity": "sha512-+pyxeQGBSdLiZX0/tmmsm2qZSvm9YtVzod5W3RMHSTR7VrkUMD6E7EX/W9JQv3ebxO7oIdqFmytmNDDpSHnYEw==",
+      "dependencies": [
+        "diagram-js@14.11.3",
+        "min-dash",
+        "min-dom@4.2.1"
+      ]
+    },
     "diagram-js-direct-editing@3.2.0_diagram-js@15.3.0": {
       "integrity": "sha512-+pyxeQGBSdLiZX0/tmmsm2qZSvm9YtVzod5W3RMHSTR7VrkUMD6E7EX/W9JQv3ebxO7oIdqFmytmNDDpSHnYEw==",
       "dependencies": [
-        "diagram-js",
+        "diagram-js@15.3.0",
         "min-dash",
         "min-dom@4.2.1"
       ]
@@ -1857,7 +1914,21 @@
     "diagram-js-origin@1.4.0_diagram-js@15.3.0": {
       "integrity": "sha512-qMX6jWsn26DJ4JMTXb+mIcuryosSZEsDaX2BrOk3roZ9peHLITOt4kg467/I6zVQZRWnQDq1PEuf1lIXCMDLkg==",
       "dependencies": [
-        "diagram-js",
+        "diagram-js@15.3.0",
+        "tiny-svg"
+      ]
+    },
+    "diagram-js@14.11.3": {
+      "integrity": "sha512-Seq9BHAXfzKS60L4v4Gvgvv72wOtvrfJQAyyPm9pntSZDMzjoodPSXnEUPud1G2zVCMGEUUW++s0reEdaWgkXA==",
+      "dependencies": [
+        "@bpmn-io/diagram-js-ui",
+        "clsx",
+        "didi",
+        "inherits-browser",
+        "min-dash",
+        "min-dom@4.2.1",
+        "object-refs",
+        "path-intersection",
         "tiny-svg"
       ]
     },
@@ -2975,12 +3046,26 @@
       "integrity": "sha512-+NsyUUAZDmo6YVHzL/stxSu3t9YS1iljliy3BSDrXJ/dkn1KYdmtZODGGjLcc9XLgVVpH4KshHB8XmZgMhaBXg==",
       "bin": true
     },
+    "moddle-xml@10.1.0": {
+      "integrity": "sha512-erWckwLt+dYskewKXJso9u+aAZ5172lOiYxSOqKCPTy7L/xmqH1PoeoA7eVC7oJTt3PqF5TkZzUmbjGH6soQBg==",
+      "dependencies": [
+        "min-dash",
+        "moddle@6.2.3",
+        "saxen@8.1.2"
+      ]
+    },
     "moddle-xml@11.0.0_moddle@7.2.0": {
       "integrity": "sha512-L3Sseepfcq9Uy0iIfqEDTXSoYLva1Y/JGbN/4AMOeQ6cqbu8Ma/SDJIdOFm7smsAa64j2z3SwCGG3FIilQVnUg==",
       "dependencies": [
         "min-dash",
-        "moddle",
-        "saxen"
+        "moddle@7.2.0",
+        "saxen@10.0.0"
+      ]
+    },
+    "moddle@6.2.3": {
+      "integrity": "sha512-bLVN+ZHL3aKnhxc19XtjUfvdJsS3EsiEJC7bT6YPD11qYmTzvsxrGgyYz1Ouof7TZuGw0lDJ1OLmEnxcpQWk3Q==",
+      "dependencies": [
+        "min-dash"
       ]
     },
     "moddle@7.2.0": {
@@ -3690,6 +3775,9 @@
     "saxen@10.0.0": {
       "integrity": "sha512-RXsmWok/SAWqOG/f5ADEz51DN9WtZEzqih3e08ranldcaXekxjx8NBKjGh/y5hlowjo0JH/LekBu6gtPFD1G6g=="
     },
+    "saxen@8.1.2": {
+      "integrity": "sha512-xUOiiFbc3Ow7p8KMxwsGICPx46ZQvy3+qfNVhrkwfz3Vvq45eGt98Ft5IQaA1R/7Tb5B5MKh9fUR9x3c3nDTxw=="
+    },
     "scheduler@0.26.0": {
       "integrity": "sha512-NlHwttCI/l5gCPR3D1nNXtWABUmBwvZpEQiD4IXSbIDq8BzLIK/7Ir5gTFSGZDUu37K5cMNp0hFtzO38sC7gWA=="
     },
@@ -4061,6 +4149,12 @@
     "undici-types@6.21.0": {
       "integrity": "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="
     },
+    "universal-cookie@8.0.1": {
+      "integrity": "sha512-B6ks9FLLnP1UbPPcveOidfvB9pHjP+wekP2uRYB9YDfKVpvcjKgy1W5Zj+cEXJ9KTPnqOKGfVDQBmn8/YCQfRg==",
+      "dependencies": [
+        "cookie"
+      ]
+    },
     "unrs-resolver@1.11.1": {
       "integrity": "sha512-bSjt9pjaEBnNiGgc9rUiHGKv5l4/TGzDmYw3RhnkJGtLhbnnA/5qJj7x3dNDCRx/PJxu774LlH8lCOlB4hEfKg==",
       "dependencies": [
@@ -4182,11 +4276,11 @@
         "npm:@types/node@20",
         "npm:@types/react-dom@19",
         "npm:@types/react@19",
-        "npm:antd@^5.26.5",
+        "npm:antd@^5.26.6",
         "npm:axios@^1.10.0",
         "npm:bpmn-js-i18n@^2.3.0",
         "npm:bpmn-js-properties-panel@^5.38.1",
-        "npm:bpmn-js@^18.6.2",
+        "npm:bpmn-js@17.11.1",
         "npm:camunda-bpmn-js@^5.10.0",
         "npm:camunda-bpmn-moddle@^7.0.1",
         "npm:eslint-config-next@15.4.1",
@@ -4196,7 +4290,8 @@
         "npm:react-dom@19.1.0",
         "npm:react@19.1.0",
         "npm:tailwindcss@4",
-        "npm:typescript@5"
+        "npm:typescript@5",
+        "npm:universal-cookie@^8.0.1"
       ]
     }
   }

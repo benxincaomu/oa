@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import service from '@/commons/base/service';
-import { Button, FormInstance, Tabs } from 'antd';
+import { Button, FormInstance, Tabs, message } from 'antd';
 import BeanDesign from './BeanDesign';
 import PageDesign from './PageDesign';
 import WorkflowDesign from './WorkflowDesign';
@@ -13,6 +13,7 @@ const Design = () => {
   const params = useSearchParams();
   const [wid, setWid] = useState<number>(0);
   const [beanForm, setBeanForm] = useState<FormInstance>();
+  const [messageApi, contextHolder] = message.useMessage();
   useEffect(() => {
     document.title = "设计";
     if (params) {
@@ -37,11 +38,13 @@ const Design = () => {
     {
       key: '1',
       label: '实体设计',
+      forceRender: true,
       children: <BeanDesign wid={wid} setBeanForm={setBeanForm} />,
     },
     {
       key: '2',
       label: '流程设计',
+      forceRender: true,
       children: <WorkflowDesign wid={wid} bpmnModelerRef={bpmnModelerRef} />,
     },
     /*  {
@@ -60,16 +63,35 @@ const Design = () => {
     const modeler = bpmnModelerRef.current;
     if (modeler) {
       const canvas = modeler.get('canvas');
-      const xml = await modeler.saveXML({ format: true });
-      console.log(xml);
+      let xml = (await modeler.saveXML({ format: true })).xml;
+      // 判断xml中是否有isExcution属性
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xml ? xml : "", 'text/xml');
+      const processElements = xmlDoc.querySelectorAll('process');
+      // 检查每个 process 元素是否包含 isExecutable 属性
+      processElements.forEach(element => {
+        if (!element.hasAttribute('isExecutable') || element.getAttribute('isExecutable') === 'false') {
+          // 加上isExecutable = "true"
+          element.setAttribute('isExecutable', 'true');
+        }
+        // 添加 camunda:historyTimeToLive 属性
+        if (!element.hasAttribute('camunda:historyTimeToLive') || element.getAttribute('camunda:historyTimeToLive') !== '') {
+          element.setAttribute('camunda:historyTimeToLive', '');
+        }
+      });
+      const serializer = new XMLSerializer();
+      xml = serializer.serializeToString(xmlDoc);
+
       const beanDefinition = beanForm?.getFieldsValue();
       service.post(`/workbench/publish`, {
         workbenchId: wid,
         workflowDefinition: {
           workbenchId: wid,
-          flowDefinition: xml.xml
+          flowDefinition: xml
         },
         entityDefinition: beanDefinition
+      }).then(res => {
+        messageApi.success('发布成功');
       })
 
     }
@@ -77,12 +99,14 @@ const Design = () => {
 
 
   return (
+    <>
+      {contextHolder}
+      <Tabs defaultActiveKey="2" items={tabData}
+        tabBarExtraContent={
+          { right: <Button type="primary" onClick={(e) => { publish(e) }}>发布</Button> }
+        } />
+    </>
 
-
-    <Tabs defaultActiveKey="2" items={tabData}
-      tabBarExtraContent={
-        { right: <Button type="primary" onClick={(e) => { publish(e) }}>发布</Button> }
-      } />
 
 
   );

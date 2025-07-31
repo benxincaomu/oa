@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import io.lettuce.core.dynamic.annotation.Param;
+
 @Repository
 public interface WorkbenchPublishRepository extends JpaRepository<WorkbenchPublish, Long> {
 
@@ -16,7 +18,10 @@ public interface WorkbenchPublishRepository extends JpaRepository<WorkbenchPubli
     @Query("select max(w.version) from WorkbenchPublish w where w.workbenchId = ?1")
     Long findMaxVersionByWorkbenchId(Long workbenchId);
 
-    @Query("SELECT w FROM WorkbenchPublish w WHERE w.workbenchId = ?1 AND w.version = (SELECT MAX(w2.version) FROM WorkbenchPublish w2 WHERE w2.workbenchId = ?1)")
-    Optional<WorkbenchPublish> findLatestByWorkbenchId(Long workbenchId);
+    @Query("SELECT w FROM WorkbenchPublish w WHERE w.workbenchId = ?1 AND w.version = (SELECT MAX(w2.version) FROM WorkbenchPublish w2 WHERE w2.workbenchId = ?1) ")
+    Optional<WorkbenchPublish> findLatestByWorkbenchId(@Param("workbenchId")Long workbenchId);
 
+    
+
+    
 }

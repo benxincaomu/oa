@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import service from "@/commons/base/service";
 import { Menu } from 'antd';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { ItemType } from "antd/es/menu/interface";
 
 interface MenuItem {
     id: number;
@@ -27,15 +28,16 @@ const findSelectedKeys = (data: MenuItem[], value?: string) => {
     if (value == null) {
         return [];
     }
+    let selectedKeys: string[] = [];
     for (let i = 0; i < data.length; i++) {
         const item = data[i];
         if (item.value === value) {
-            console.log("item.value:", item.value);
             return [item.key + ""];
         } else if (item.children && item.children.length > 0) {
-            return findSelectedKeys(item.children, value);
+            selectedKeys = selectedKeys.concat(findSelectedKeys(item.children, value));
         }
     }
+    return selectedKeys;
 
 }
 // 获取祖先 key 路径
@@ -69,13 +71,12 @@ const SideMenu = () => {
     const pathName = usePathname();
     const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
     const [openKeys, setOpenKeys] = useState<string[]>([]);
-    // console.log("pathName", pathName);
     useEffect(() => {
         setTimeout(() => {
             service.get("/user/getMyMenus").then((res) => {
-                // console.log(res.data);
                 fillMenuItems(res.data as MenuItem[])
                 setMenuItems(res.data as MenuItem[]);
+                // console.log("res.data", res.data);
                 const keys = findSelectedKeys(res.data as MenuItem[], pathName as string);
                 if(typeof keys !== "undefined"){
                     setSelectedKeys(keys);
@@ -87,9 +88,6 @@ const SideMenu = () => {
             });
         }, 300);
     }, []);
-    /* useEffect(() => {
-        console.log("menuItems:", menuItems);
-    }, [menuItems]); */
 
     const onClickMenu = ({ item, key, keyPath, domEvent }) => {
         console.log("item:", item);
@@ -102,7 +100,7 @@ const SideMenu = () => {
         <Menu
             mode="inline"
             theme="dark"
-            items={menuItems}
+            items={menuItems as ItemType[]}
             selectable
             onClick={({ item, key, keyPath, domEvent }) => {
                 onClickMenu({ item, key, keyPath, domEvent });

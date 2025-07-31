@@ -16,10 +16,12 @@ const PropertiesPanel = ({ bpmnModelerRef }: PropertiesPanelProps) => {
     const [selectedElements, setSelectedElements] = useState<Element[]>([]);
 
     const [bpmnType, setBpmnType] = useState<string>("");
+    const [bpmnId, setBpmnId] = useState<string>("");
     useEffect(() => {
         const modeler = bpmnModelerRef.current;
         if (modeler && selectedElements.length > 0) {
             setBpmnType(selectedElements[0].type);
+            setBpmnId(selectedElements[0].id);
             console.log(`type: ${selectedElements[0].type}`);
         } else {
             setBpmnType("");
@@ -64,15 +66,15 @@ const PropertiesPanel = ({ bpmnModelerRef }: PropertiesPanelProps) => {
                 (() => {
                     switch (bpmnType) {
                         case "bpmn:Process":
-                            return <ProcessPropertiesView bpmnModelerRef={bpmnModelerRef} />
+                            return <ProcessPropertiesView bpmnModelerRef={bpmnModelerRef} bpmnId={bpmnId}/>
                         case "bpmn:UserTask":
-                            return <UserTaskPropertiesView bpmnModelerRef={bpmnModelerRef} />
+                            return <UserTaskPropertiesView bpmnModelerRef={bpmnModelerRef} bpmnId={bpmnId}/>
                         case "bpmn:StartEvent":
-                            return <StartEventPropertiesView bpmnModelerRef={bpmnModelerRef} />
+                            return <StartEventPropertiesView bpmnModelerRef={bpmnModelerRef} bpmnId={bpmnId}/>
                         case "bpmn:EndEvent":
-                            return <EndEventPropertiesView bpmnModelerRef={bpmnModelerRef} />
+                            return <EndEventPropertiesView bpmnModelerRef={bpmnModelerRef} bpmnId={bpmnId}/>
                         case "bpmn:SequenceFlow":
-                            return <SequenceFlowPropertiesView bpmnModelerRef={bpmnModelerRef} bpmnId={selectedElements[0].id}/>
+                            return <SequenceFlowPropertiesView bpmnModelerRef={bpmnModelerRef} bpmnId={bpmnId}/>
                         case "bpmn:ExclusiveGateway":
                             return <></>
                         case "bpmn:ExclusiveGateway":
