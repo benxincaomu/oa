@@ -21,6 +21,8 @@ public interface WorkbenchPublishRepository extends JpaRepository<WorkbenchPubli
     @Query("SELECT w FROM WorkbenchPublish w WHERE w.workbenchId = ?1 AND w.version = (SELECT MAX(w2.version) FROM WorkbenchPublish w2 WHERE w2.workbenchId = ?1) ")
     Optional<WorkbenchPublish> findLatestByWorkbenchId(@Param("workbenchId")Long workbenchId);
 
+    Optional<WorkbenchPublish> findByWorkflowDeployId(String workflowDeployId);
+
     
 
     

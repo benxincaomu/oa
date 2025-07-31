@@ -12,7 +12,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -23,9 +22,6 @@ import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;
 import jakarta.annotation.Resource;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import jakarta.transaction.Transactional;
-
-import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,9 +47,9 @@ public class FlowFormRepository {
         if (flowForm.getId() == null) {
             // 新增
             String sql = """
-                    insert into {0} (id,publish_id,data,process_id,deploy_name,create_by,create_at,update_by,update_at,tenant_id)
+                    insert into {0} (id,publish_id,data,process_id,create_by,create_at,update_by,update_at,tenant_id,workbench_id)
                             values
-                                                (:id,:publishId,:data,:processId,:deployName,:createBy,:createAt,:updateBy,:updateAt,:tenantId)
+                                                (:id,:publishId,:data,:processId,:createBy,:createAt,:updateBy,:updateAt,:tenantId,:workbenchId)
 
                             """;
 
@@ -83,7 +79,7 @@ public class FlowFormRepository {
                     .setParameter("publishId", flowForm.getPublishId())
                     .setParameter("data", data)
                     .setParameter("processId", flowForm.getProcessId())
-                    .setParameter("deployName", flowForm.getDeployName())
+                    .setParameter("workbenchId", flowForm.getWorkbenchId())
                     .setParameter("createBy", flowForm.getCreateBy())
                     .setParameter("updateBy", flowForm.getUpdateBy())
                     .setParameter("createAt", now)
@@ -134,7 +130,44 @@ public class FlowFormRepository {
      * @param pageSize 每页数量
      * @return
      */
-    public Page<FlowForm> myStart(String tableName, String deployName, Long userId, Integer currPage,
+    public Page<FlowForm> myStart(String tableName, Long workbenchId, Long userId, Integer currPage,
+            Integer pageSize) {
+        PageRequest page = PageRequest.of(currPage == null ? 0 : currPage - 1, pageSize == null ? 20 : pageSize,
+                Sort.by("create_at desc"));
+        // 查询总数
+        String whereSql = "where create_by = :userId and workbench_id = :workbenchId";
+        String countSql = "select count(*) from {0} " + whereSql;
+        Long total = (Long) entityManager.createNativeQuery(MessageFormat.format(countSql, tableName), Long.class)
+                .setParameter("userId", userId)
+                .setParameter("workbenchId", workbenchId)
+                .getSingleResult();
+        ;
+        List<FlowForm> formList = new ArrayList<>();
+        if (total > page.getOffset()) {
+
+            String sql = "select * from {0} " + whereSql;
+
+            formList = entityManager.createNativeQuery(MessageFormat.format(sql, tableName), FlowForm.class)
+                    .setParameter("userId", userId)
+                    .setParameter("workbenchId", workbenchId)
+                    .setFirstResult((int) page.getOffset())
+                    .setMaxResults(page.getPageSize())
+                    .getResultList();
+        }
+        return new PageImpl<>(formList, page, total);
+    }
+
+    /**
+     * 查询我的待办
+     * @param tableName 表单表名
+     * @param deployName 流程定义名称
+     * @param userId 用户id
+     * @param currPage 当前页
+     * @param pageSize 每页数量
+     * @param starterId 发起人id
+     * @return
+     */
+    public Page<FlowForm> myToDo(String tableName, String deployName, Long userId,Long starterId, Integer currPage,
             Integer pageSize) {
         PageRequest page = PageRequest.of(currPage == null ? 0 : currPage - 1, pageSize == null ? 20 : pageSize,
                 Sort.by("create_at desc"));

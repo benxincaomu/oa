@@ -46,7 +46,7 @@ const Organize = () => {
         });
     };
     const assignDeptLeader = (values: any) => {
-        console.log("values", values);
+        // console.log("values", values);
         service.post("/organize/assignLeader", values).then((res) => {
             if (res.code === 200) {
                 messageApi.success("保存成功");

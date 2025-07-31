@@ -108,13 +108,13 @@ const WorkflowDesign: React.FC<BpmnModelerComponentProps> = ({
 
     const onSaveXML = () => {
         bpmnModelerRef.current?.saveXML().then(({ xml }) => {
-            console.log(xml);
+            // console.log(xml);
         });
     };
     const saveBpmn = () => {
         bpmnModelerRef.current?.saveXML().then(({ xml }) => {
             
-            console.log(xml);
+            // console.log(xml);
             service.post('/workflowDefinition', {
                 workbenchId: wid,
                 flowDefinition: xml

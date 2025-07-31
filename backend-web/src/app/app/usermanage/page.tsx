@@ -226,7 +226,7 @@ const UserManager = () => {
     const onAssignDeptFinish = (values: any) => {
         values.userId=operatingUser.id;
         service.post("/user/assignDept", values).then((res) => {
-            console.log(res);
+            // console.log(res);
             onAssignDeptClose();
             messageApi.success("操作成功");
         });

@@ -54,39 +54,57 @@ public class FlowFormController {
     }
 
     @GetMapping("listMyStart")
-    public PagedModel<FlowForm> listMyStart(Integer currPage, Integer pageSize,@PathVariable("workbenchId") Long workbenchId) {
-        return new PagedModel<>(flowFormService.listMyStart(currPage, pageSize,workbenchId));
+    public PagedModel<FlowForm> listMyStart(Integer currPage, Integer pageSize,
+            @PathVariable("workbenchId") Long workbenchId) {
+        return new PagedModel<>(flowFormService.listMyStart(currPage, pageSize, workbenchId));
+    }
+
+    /**
+     * 获取我的待办
+     * 
+     * @param currPage    当前页
+     * @param pageSize    分页大小
+     * @param workbenchId 工作台id
+     * @param starterId   工单发起人
+     * @return
+     */
+    @GetMapping("listMyTodo")
+    public PagedModel<FlowForm> listTodo(Integer currPage, Integer pageSize,
+            @PathVariable("workbenchId") Long workbenchId, Long starterId) {
+        return new PagedModel<>(flowFormService.listTodo(currPage, pageSize, workbenchId));
     }
 
     @GetMapping("{id}")
-    public FlowForm getFlowForm(@PathVariable("workbenchId") Long workbenchId ,@PathVariable("id") Long id) {
+    public FlowForm getFlowForm(@PathVariable("workbenchId") Long workbenchId, @PathVariable("id") Long id) {
         return flowFormService.findById(id, workbenchId);
-        
+
     }
 
     /**
      * 获取表单字段定义
+     * 
      * @param param
      * @return
      */
     @GetMapping("getColumns/{formId}")
-    public List<EntityColumn> getMethodName(@PathVariable("workbenchId") Long workbenchId ,@PathVariable("formId") String formId) {
+    public List<EntityColumn> getMethodName(@PathVariable("workbenchId") Long workbenchId,
+            @PathVariable("formId") String formId) {
 
         return flowFormService.getColumns(workbenchId, formId);
     }
 
     /**
      * 表单详情
+     * 
      * @param workbenchId 工作台id
-     * @param formId 表单id
+     * @param formId      表单id
      * @return
      */
     @GetMapping("getFlowFormDetail/{formId}")
-    public FlowFormDetailVo getFlowFormDetail(@PathVariable("workbenchId") Long workbenchId ,@PathVariable("formId") Long formId) {
+    public FlowFormDetailVo getFlowFormDetail(@PathVariable("workbenchId") Long workbenchId,
+            @PathVariable("formId") Long formId) {
 
         return flowFormService.getFlowFormDetail(workbenchId, formId);
     }
-    
-    
 
 }

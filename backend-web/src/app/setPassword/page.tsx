@@ -18,7 +18,6 @@ export default function ResetPassword() {
   }, []);
   const router = useRouter();
   const onfFinished = (values: any) => {
-    console.log(query);
     if (values.password !== values.confirmPassword) {
       messageApi.error("密码不一致");
       return;

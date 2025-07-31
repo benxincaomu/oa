@@ -1,5 +1,5 @@
 "use client"
-import { Button, Form, Input, message, Modal, Space, Table } from "antd";
+import { Button, Divider, Form, Input, message, Modal, Space, Table } from "antd";
 import service from "@/commons/base/service";
 import { useEffect, useState, useCallback } from "react";
 interface Workbench {
@@ -97,6 +97,7 @@ const Workbench = () => {
                     </Form.Item>
                 </Form>
             </Modal>
+            <Divider dashed/>
             <Table columns={columns} dataSource={workbenches} rowKey={"id"} pagination={{
                 defaultCurrent: 1,
                 pageSize: pageSize,
@@ -104,8 +105,9 @@ const Workbench = () => {
                     setCurrPage(page);
                     setPageSize(pageSize);
 
-                }
-            }} />
+                },
+                
+            }} bordered/>
         </div>
     );
 };

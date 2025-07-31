@@ -20,6 +20,7 @@ import jakarta.persistence.Transient;
 @Table(name = "flow_form_data_sample", indexes = {
         @Index(name = "flow_form_data_sample_create_by_index", columnList = "createBy"),
         @Index(name = "flow_form_data_sample_publish_id_index", columnList = "publishId"),
+        @Index(name = "flow_form_data_sample_workbench_id_index", columnList = "workbenchId")
 })
 public class FlowForm extends BaseEntity {
     @Comment("流程发布ID")
@@ -35,10 +36,9 @@ public class FlowForm extends BaseEntity {
     @JsonIgnore
     private String processId;
 
-    @Comment("流程部署name")
-    @Column(name = "deploy_name", columnDefinition = "varchar(36)")
-    @JsonIgnore
-    private String deployName;
+    @Comment("工作台ID")
+    @Column(name = "workbench_id", updatable = false)
+    private Long workbenchId;
 
     @Transient
     private List<FlowHistory> flowHistories;
@@ -71,14 +71,6 @@ public class FlowForm extends BaseEntity {
         this.processId = processId;
     }
 
-    public String getDeployName() {
-        return deployName;
-    }
-
-    public void setDeployName(String deployName) {
-        this.deployName = deployName;
-    }
-
     public List<FlowHistory> getFlowHistories() {
         return flowHistories;
     }
@@ -87,6 +79,12 @@ public class FlowForm extends BaseEntity {
         this.flowHistories = flowHistories;
     }
 
- 
+    public Long getWorkbenchId() {
+        return workbenchId;
+    }
+
+    public void setWorkbenchId(Long workbenchId) {
+        this.workbenchId = workbenchId;
+    }
 
 }

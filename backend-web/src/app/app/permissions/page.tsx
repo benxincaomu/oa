@@ -54,7 +54,7 @@ const Permissions = () => {
             render: (_: any, record: any) => (
                 <Space size="middle">
                     <a onClick={() => {
-                        console.log("编辑:", record.id)
+                        // console.log("编辑:", record.id)
                     }}>编辑</a>
                 </Space>
             )

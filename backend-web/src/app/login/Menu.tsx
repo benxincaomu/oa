@@ -90,7 +90,7 @@ const SideMenu = () => {
     }, []);
 
     const onClickMenu = ({ item, key, keyPath, domEvent }) => {
-        console.log("item:", item);
+        // console.log("item:", item);
         if (item.props.value) {
             window.location.href = item.props.value;
         }

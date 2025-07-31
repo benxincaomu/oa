@@ -14,7 +14,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "workbench_publish", indexes = {
-        @Index(name = "workbench_publish_workbench_id_index", columnList = "workbenchId") })
+        @Index(name = "workbench_publish_workbench_id_index", columnList = "workbenchId"),@Index(name = "workbench_publish_workflow_deploy_id_index", columnList = "workflowDeployId") })
 public class WorkbenchPublish extends BaseEntity {
 
     @Comment("工作台id")
@@ -25,7 +25,7 @@ public class WorkbenchPublish extends BaseEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     private EntityDefinition entityDefinition;
 
-    @Comment("工作流部署后的流程id")
+    @Comment("processDefinitionId")
     @JsonIgnore
     @Column(columnDefinition = "varchar(50)",length = 50)
     private String workflowDeployId;
@@ -42,6 +42,11 @@ public class WorkbenchPublish extends BaseEntity {
     @Comment("对应流程历史的表名称")
     @Column(columnDefinition = "varchar(30)", length = 30)
     private String flowHistoryTable;
+
+    @JsonIgnore
+    @Comment("对应流程任务分派的表名称")
+    @Column(columnDefinition = "varchar(30)", length = 30)
+    private String flowFormAssigneeTable;
 
     public Long getWorkbenchId() {
         return workbenchId;
@@ -91,5 +96,14 @@ public class WorkbenchPublish extends BaseEntity {
         this.flowHistoryTable = flowHistoryTable;
     }
 
+    public String getFlowFormAssigneeTable() {
+        return flowFormAssigneeTable;
+    }
+
+    public void setFlowFormAssigneeTable(String flowFormAssigneeTable) {
+        this.flowFormAssigneeTable = flowFormAssigneeTable;
+    }
+
+    
     
 }

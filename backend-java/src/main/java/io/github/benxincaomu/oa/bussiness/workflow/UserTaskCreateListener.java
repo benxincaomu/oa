@@ -1,44 +1,77 @@
 package io.github.benxincaomu.oa.bussiness.workflow;
 
-import java.util.Collection;
+import java.util.Arrays;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
+import org.camunda.bpm.engine.RepositoryService;
+import org.camunda.bpm.engine.RuntimeService;
 import org.camunda.bpm.engine.delegate.DelegateTask;
 import org.camunda.bpm.engine.delegate.TaskListener;
-import org.camunda.bpm.model.bpmn.BpmnModelInstance;
-import org.camunda.bpm.model.bpmn.instance.ExtensionElements;
+import org.camunda.bpm.engine.repository.ProcessDefinition;
 import org.camunda.bpm.model.bpmn.instance.UserTask;
-import org.camunda.bpm.model.bpmn.instance.camunda.CamundaProperties;
-import org.camunda.bpm.model.bpmn.instance.camunda.CamundaProperty;
-import org.camunda.bpm.model.xml.instance.ModelElementInstance;
-import org.camunda.bpm.model.xml.type.ModelElementType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import io.github.benxincaomu.oa.bussiness.user.UserService;
+import io.github.benxincaomu.oa.bussiness.workflow_design.WorkbenchPublish;
+import io.github.benxincaomu.oa.bussiness.workflow_design.WorkbenchPublishRepository;
+import io.github.benxincaomu.oa.bussiness.workflow_design.WorkbenchRepository;
 import jakarta.annotation.Resource;
+import jakarta.transaction.Transactional;
 
 @Service("userTaskCreateListener")
 public class UserTaskCreateListener implements TaskListener {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private RuntimeService runtimeService;
+    @Resource
+    private RepositoryService repositoryService;
+    @Resource
+    private WorkbenchRepository workbenchRepository;
+
+    @Resource
+    private WorkbenchPublishRepository workbenchPublishRepository;
+
+    @Resource
+    private FlowFormAssigneeRepository flowFormAssigneeRepository;
+
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
+    @Transactional
     @Override
     public void notify(DelegateTask delegateTask) {
         UserTask userTask = (UserTask) delegateTask.getBpmnModelElementInstance();
 
         if (userTask != null) {
+            String processDefinitionId = delegateTask.getProcessDefinitionId();
+    
+            WorkbenchPublish workbenchPublish = workbenchPublishRepository.findByWorkflowDeployId(processDefinitionId).get();
+            FlowFormAssignee flowFormAssignee = new FlowFormAssignee();
+            flowFormAssignee.setWorkbenchId(workbenchPublish.getWorkbenchId());
+
+            // flowFormAssignee.setFlowFormId(delegateTask.getExecution().getProcessInstanceId());
             String camundaAssignee = userTask.getCamundaAssignee();
             if (Objects.equals(camundaAssignee, "${starterId}")) {
                 // 获取发起人id
                 String starterId = (String) delegateTask.getVariable("starterId");
                 if (starterId != null) {
-                    userTask.setCamundaAssignee(userService.findLeaderId(Long.valueOf(starterId))+"");
+                    userTask.setCamundaAssignee(userService.findLeaderId(Long.valueOf(starterId)) + "");
+                    flowFormAssignee.setAssignee(Long.valueOf(starterId));
                 }
+            }else if(camundaAssignee != null){
+                 flowFormAssignee.setAssignee(Long.valueOf(camundaAssignee));
             }
+            String camundaCandidateGroups = userTask.getCamundaCandidateGroups();
+            if(camundaCandidateGroups != null){
+                flowFormAssignee.setCandidateGroups(Arrays.stream(camundaCandidateGroups.split(",")).map(Long::valueOf).collect(Collectors.toList()));
+            }
+            flowFormAssigneeRepository.save(flowFormAssignee, workbenchPublish.getFlowFormAssigneeTable());
+
         }
     }
 

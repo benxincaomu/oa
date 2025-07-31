@@ -17,7 +17,7 @@ export default function GeneralPropertiesView({ bpmnModelerRef,bpmnId }: Modeler
     const [form] = Form.useForm();
 
     useEffect(() => {
-        console.log(bpmnId);
+        
         const modeler = bpmnModelerRef.current;
         if (modeler) {
             const modeling: Modeling = modeler.get("modeling");
@@ -25,7 +25,7 @@ export default function GeneralPropertiesView({ bpmnModelerRef,bpmnId }: Modeler
             // console.log('selection', selection.get());
             if (selection.get().length > 0) {
                 const element = selection.get()[0];
-                console.log('element', element);
+                // console.log('element', element);
                 form.setFieldValue("id", element.id);
                 form.setFieldValue("name", element.businessObject.name);
             } else {

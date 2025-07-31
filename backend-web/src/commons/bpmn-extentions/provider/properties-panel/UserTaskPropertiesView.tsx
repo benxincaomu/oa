@@ -33,12 +33,7 @@ export default function UserTaskPropertiesView({ bpmnModelerRef,bpmnId }: Modele
         {
             key: '2',
             label: '任务分派',
-            children: <AssignTaskView bpmnModelerRef={bpmnModelerRef} />,
-        },
-        {
-            key: '3',
-            label: 'This is panel header 3',
-            children: <p>fasdf</p>,
+            children: <AssignTaskView bpmnModelerRef={bpmnModelerRef} bpmnId={bpmnId} />,
         },
     ];
 
@@ -58,11 +53,12 @@ export default function UserTaskPropertiesView({ bpmnModelerRef,bpmnId }: Modele
  * 
  * 任务分派面板
  */
-export function AssignTaskView({ bpmnModelerRef }: ModelerProps) {
+export function AssignTaskView({ bpmnModelerRef,bpmnId }: ModelerProps) {
     const [assignTypes, setAssignTypes] = useState<any>([]);
 
     const [form] = Form.useForm();
     useEffect(() => {
+        console.log(bpmnId);
         service.get(`/workflowDefinition/getAssignTypes`).then((res) => {
             // console.log(res.data);
             setAssignTypes(res.data);
@@ -72,20 +68,30 @@ export function AssignTaskView({ bpmnModelerRef }: ModelerProps) {
                 const selection: Selection = modeler.get('selection');
                 const modeling: Modeling = modeler.get('modeling');
                 const userTask = selection.get()[0] as Shape;
-                // console.log(userTask.businessObject.get('camunda:assignee'));
-                // console.log(userTask.businessObject.get('camunda:candidateGroups'));
                 const assignee = userTask.businessObject.get('camunda:assignee');
                 const candidateGroups = userTask.businessObject.get('camunda:candidateGroups');
                 if (assignee) {
                     // 判断assignee是否符合${xxx}
-                    if (assignee.startsWith("${") && assignee.endsWith("}")) {
+                    console.log(assignee,typeof assignee);
+                    if (typeof assignee === 'string' &&assignee.startsWith("${") && assignee.endsWith("}")) {
                         setAssignType("starterLeader");
                         form.setFieldValue("assigneeValue", "starterLeader")
                     } else {
                         setAssignType("assignee");
-                        form.setFieldsValue({
-                            assigneeType: "assignee",
-                            assigneeValue: assignee
+                        service.get(`/user/${assignee}`).then(res => { 
+                            const candidate = [{
+                                id: res.data.id,
+                                
+                                name: res.data.name
+                            }];
+                            setCandidates(candidate);
+                            setTimeout(()=>{
+
+                                form.setFieldsValue({
+                                    assigneeType: "assignee",
+                                    assigneeValue: assignee
+                                });
+                            },200)
                         });
                     }
                 } else if (candidateGroups) {
@@ -98,7 +104,7 @@ export function AssignTaskView({ bpmnModelerRef }: ModelerProps) {
 
             }
         });
-    }, [bpmnModelerRef, form]);
+    }, [bpmnModelerRef, form,bpmnId]);
 
     const [assignType, setAssignType] = useState<string>("");
     // 用于存储候选者列表
@@ -125,7 +131,7 @@ export function AssignTaskView({ bpmnModelerRef }: ModelerProps) {
 
             }
         }
-    }, [assignType]);
+    }, [assignType,bpmnId]);
 
     const onFormChange = (value: string) => {
         const modeler = bpmnModelerRef.current;
@@ -166,7 +172,7 @@ export function AssignTaskView({ bpmnModelerRef }: ModelerProps) {
                 <Form.Item label="分配类型" name = "assigneeType">
                     <Select options={assignTypes} fieldNames={{ label: 'value', value: 'key' }} onChange={(value) => setAssignType(value)} />
                 </Form.Item>
-                <Form.Item label="分配类型" name="assigneeValue" >
+                <Form.Item label="分配" name="assigneeValue" >
                     {(() => {
                         switch (assignType) {
                             case "assignee":

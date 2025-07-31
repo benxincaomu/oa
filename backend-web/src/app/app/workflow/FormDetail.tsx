@@ -38,7 +38,7 @@ export default function FormDetail({ workbenchId, formId }: Props) {
     const [form] = Form.useForm();
     const sunbmit = (flowId:number) => { 
         form.setFieldValue("flowId", flowId);
-        console.log(form.getFieldsValue());
+        // console.log(form.getFieldsValue());
         service.post(`/workflow/${workbenchId}/approval`, form.getFieldsValue()).then((res) => {
             
         })

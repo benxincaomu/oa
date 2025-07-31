@@ -68,35 +68,36 @@ public class FlowFormService {
                 .orElseThrow(() -> new CommonException(OaResponseCode.WORKBENCH_PUBLISH_NOT_EXIST));
         // flowForm.setPublishId(wp.getId());
         // 填充信息
-        workbenchRepository.findById(workbenchId).ifPresent(workbench -> {
-            flowForm.setDeployName(workbench.getWorkbenchKey());
+        flowForm.setWorkbenchId(workbenchId);
 
-            if (commit) {
-                Map<String, Object> variables = new HashMap<>();
-                variables.put("starterId", JpaAuditorAware.getCurrentUserId());
-                variables.put("data", flowForm.getData());
-                // 发起流程
-                ProcessInstance process = runtimeService.startProcessInstanceById(wp.getWorkflowDeployId(), variables);
+        if (commit) {
+            // 发起流程
+            ProcessInstance process = runtimeService.startProcessInstanceById(wp.getWorkflowDeployId());
+            
+            
+            flowForm.setProcessId(process.getId());
+            // flowForm.setDeployName(workbench.getWorkbenchKey());
+            flowFormRepository.save(flowForm, workbenchId, wp.getFlowFormTable());
+            // 保存日志
+            FlowHistory flowHistory = new FlowHistory();
+            flowHistory.setFlowFormId(flowForm.getId());
+            flowHistoryRepository.save(flowHistory, wp.getFlowHistoryTable());
+            Map<String, Object> variables = new HashMap<>();
+            variables.put(FlowConsts.STARTER_ID, JpaAuditorAware.getCurrentUserId());
+            variables.put(FlowConsts.DATA, flowForm.getData());
+            variables.put(FlowConsts.FLOW_FORM_ASSIGNEE_TABLE, wp.getFlowFormAssigneeTable());
+            variables.put(FlowConsts.FLOW_FORM_ID, wp.getFlowFormAssigneeTable());
+            runtimeService.setVariables(process.getId(), variables);
 
-                flowForm.setProcessId(process.getId());
-                // flowForm.setDeployName(workbench.getWorkbenchKey());
-                flowFormRepository.save(flowForm, workbenchId, wp.getFlowFormTable());
-                // 保存日志
-                FlowHistory flowHistory = new FlowHistory();
-                flowHistory.setFlowFormId(flowForm.getId());
-                flowHistoryRepository.save(flowHistory, wp.getFlowHistoryTable());
-
-            } else {
-                flowFormRepository.save(flowForm, workbenchId, wp.getFlowFormTable());
-            }
-        });
-        ;
+        } else {
+            flowFormRepository.save(flowForm, workbenchId, wp.getFlowFormTable());
+        }
     }
 
     public Page<FlowForm> listMyStart(Integer currPage, Integer pageSize, Long workbenchId) {
         return workbenchRepository.findById(workbenchId)
                 .flatMap(workbench -> workbenchPublishRepository.findLatestByWorkbenchId(workbenchId)
-                        .map(wp -> flowFormRepository.myStart(wp.getFlowFormTable(), workbench.getWorkbenchKey(),
+                        .map(wp -> flowFormRepository.myStart(wp.getFlowFormTable(), workbench.getId(),
                                 JpaAuditorAware.getCurrentUserId(), currPage, pageSize)))
                 .orElse(Page.empty());
     }
@@ -137,7 +138,6 @@ public class FlowFormService {
                                 if (currentTasks.size() > 0) {
                                     // TODO 先处理只有一个当前任务的情况
                                     task = currentTasks.get(0);
-                                    
 
                                 } else {
                                     // 查询当前登陆人的部门
@@ -148,11 +148,11 @@ public class FlowFormService {
                                             .active() // 确保只获取活跃的任务
                                             .taskCandidateGroup(deptId + "")
                                             .list();
-                                            if(currentTasks.size() > 0){
-                                                task = currentTasks.get(0);
-                                            }
+                                    if (currentTasks.size() > 0) {
+                                        task = currentTasks.get(0);
+                                    }
                                 }
-                                if(task != null){
+                                if (task != null) {
                                     String taskDefinitionKey = task.getTaskDefinitionKey();
                                     BpmnModelInstance modelInstance = repositoryService
                                             .getBpmnModelInstance(wp.getWorkflowDeployId());
@@ -183,5 +183,10 @@ public class FlowFormService {
                             return vo;
                         }))
                 .orElse(vo);
+    }
+
+    public Page<FlowForm> listTodo(Integer currPage, Integer pageSize, Long workbenchId) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'listTodo'");
     }
 }

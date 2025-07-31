@@ -92,8 +92,11 @@ public class WorkbenchService {
                     .orElseGet(() -> {
                         WorkbenchPublish publishNew = new WorkbenchPublish();
                         publishNew.setWorkbenchId(workbench.getId());
+                        dataTableService.startSelectTable();
                         publishNew.setFlowFormTable(dataTableService.selectFormTable());
                         publishNew.setFlowHistoryTable(dataTableService.selectHistoryTable());
+                        publishNew.setFlowFormAssigneeTable(dataTableService.selectFlowFormAssigineeTable());
+                        dataTableService.endSelectTable();
                         publishNew.setVersion(0L);
                         return publishNew;
                     });
@@ -120,11 +123,6 @@ public class WorkbenchService {
 
                 permissionService.insert(parentPermission);
 
-                // 新建表单
-                Permission start = new Permission();
-                start.setName("新建表单");
-                start.setType(Permission.TYPE_2);
-                start.setValue("/app/workflow/" + publish.getWorkbenchId() + "/start");
 
                 // 我启动的
                 Permission myStart = new Permission();

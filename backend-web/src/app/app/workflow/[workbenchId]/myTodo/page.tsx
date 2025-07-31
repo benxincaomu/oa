@@ -13,7 +13,7 @@ import { FlowForm } from "../../types";
  * 
  * 我发起的工作流
  */
-export default function MyStart({
+export default function MyTodo({
   params,
 }: { params: Promise<{ workbenchId: string }> }) {
   const [disableEdit, setDisableEdit] = useState(false);
@@ -63,7 +63,7 @@ export default function MyStart({
   const [columns, setColumns] = useState<any>([]);
   const [flowFormId, setFlowFormId] = useState<number>(0);
   useEffect(() => {
-    document.title = "我发起的";
+    document.title = "我的待办";
     if (workbenchId) {
       service.get(`/flowForm/${workbenchId}/getWorkbenchPublishById`).then(res => {
         if (res.data) {
@@ -98,18 +98,9 @@ export default function MyStart({
 
   const [addOpen, setAddOpen] = useState(false);
 
-  const onAddFormOpen = () => {
-    setAddOpen(true);
-    setFlowFormId(0);
-    setDisableEdit(false);
-    setModalTitle("新建表单")
-  };
 
   return (
     <div>
-      <div style={{ textAlign: 'right', marginBottom: 16 }}>
-        <Button onClick={onAddFormOpen}>新建</Button>
-      </div>
       <Modal title={modalTitle} open={addOpen} onCancel={() => setAddOpen(false)} footer={null} width={800} destroyOnHidden={true} >
         {disableEdit ? <FormDetail workbenchId={workbenchId} formId={flowFormId} /> : <FormNew formId={flowFormId} workbenchPublish={workbenchPublish} onCancel={() => setAddOpen(false)} onSubmit={() => {
           setAddOpen(false);

@@ -22,7 +22,6 @@ const PropertiesPanel = ({ bpmnModelerRef }: PropertiesPanelProps) => {
         if (modeler && selectedElements.length > 0) {
             setBpmnType(selectedElements[0].type);
             setBpmnId(selectedElements[0].id);
-            console.log(`type: ${selectedElements[0].type}`);
         } else {
             setBpmnType("");
         }
