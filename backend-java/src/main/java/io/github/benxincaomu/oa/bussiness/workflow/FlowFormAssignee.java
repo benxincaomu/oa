@@ -1,5 +1,6 @@
 package io.github.benxincaomu.oa.bussiness.workflow;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -42,7 +43,7 @@ public class FlowFormAssignee extends BaseEntity {
         this.assignee = assignee;
     }
     public List<Long> getCandidateGroups() {
-        return candidateGroups;
+        return candidateGroups == null? new ArrayList<>() : candidateGroups;
     }
     public void setCandidateGroups(List<Long> candidateGroups) {
         this.candidateGroups = candidateGroups;

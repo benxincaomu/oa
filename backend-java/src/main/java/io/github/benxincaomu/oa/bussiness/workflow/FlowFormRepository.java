@@ -37,6 +37,19 @@ public class FlowFormRepository {
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     /**
+     * 获取下一个自增ID
+     * 
+     * @param tableName 表名
+     * @return
+     */
+    public Long getNextId(String tableName) {
+        String sql = "select nextval(pg_get_serial_sequence(:tableName, 'id'));";
+        return (Long) entityManager.createNativeQuery(sql, Long.class)
+                .setParameter("tableName", tableName)
+                .getSingleResult();
+    }
+
+    /**
      * 保存表单数据
      * 
      * @param flowForm    表单数据
@@ -44,7 +57,11 @@ public class FlowFormRepository {
      * @param tableName   表名
      */
     public void save(FlowForm flowForm, Long workbenchId, String tableName) {
-        if (flowForm.getId() == null) {
+        String sql0 = "select count(id) from {0} where id=:id";
+        Long count = (Long) entityManager.createNativeQuery(MessageFormat.format(sql0, tableName), Long.class)
+                .setParameter("id", flowForm.getId())
+                .getSingleResult();
+        if (count == null || count == 0) {
             // 新增
             String sql = """
                     insert into {0} (id,publish_id,data,process_id,create_by,create_at,update_by,update_at,tenant_id,workbench_id)
@@ -61,11 +78,7 @@ public class FlowFormRepository {
                 Asserts.error();
                 ;
             }
-            Long id = (Long) entityManager
-                    .createNativeQuery("select nextval(pg_get_serial_sequence(:tableName, 'id'))", Long.class)
-                    .setParameter("tableName", tableName)
-                    .getSingleResult();
-            flowForm.setId(id);
+
             LocalDateTime now = LocalDateTime.now();
             Long currentUserId = JpaAuditorAware.getCurrentUserId();
             flowForm.setTenantId(JpaAuditorAware.getCurrentTenantId());
@@ -115,7 +128,8 @@ public class FlowFormRepository {
 
     public FlowForm findOneById(Long id, String tableName) {
         String sql = "select * from {0}  where id=:id";
-        FlowForm flowForm = (FlowForm) entityManager.createNativeQuery(MessageFormat.format(sql, tableName), FlowForm.class)
+        FlowForm flowForm = (FlowForm) entityManager
+                .createNativeQuery(MessageFormat.format(sql, tableName), FlowForm.class)
                 .setParameter("id", id).getSingleResult();
         return flowForm;
 
@@ -123,11 +137,12 @@ public class FlowFormRepository {
 
     /**
      * 查询我的发起
-     * @param tableName 表单表名
+     * 
+     * @param tableName  表单表名
      * @param deployName 流程定义名称
-     * @param userId 用户id
-     * @param currPage 当前页
-     * @param pageSize 每页数量
+     * @param userId     用户id
+     * @param currPage   当前页
+     * @param pageSize   每页数量
      * @return
      */
     public Page<FlowForm> myStart(String tableName, Long workbenchId, Long userId, Integer currPage,
@@ -159,15 +174,16 @@ public class FlowFormRepository {
 
     /**
      * 查询我的待办
-     * @param tableName 表单表名
+     * 
+     * @param tableName  表单表名
      * @param deployName 流程定义名称
-     * @param userId 用户id
-     * @param currPage 当前页
-     * @param pageSize 每页数量
-     * @param starterId 发起人id
+     * @param userId     用户id
+     * @param currPage   当前页
+     * @param pageSize   每页数量
+     * @param starterId  发起人id
      * @return
      */
-    public Page<FlowForm> myToDo(String tableName, String deployName, Long userId,Long starterId, Integer currPage,
+    public Page<FlowForm> myToDo(String tableName, String deployName, Long userId, Long starterId, Integer currPage,
             Integer pageSize) {
         PageRequest page = PageRequest.of(currPage == null ? 0 : currPage - 1, pageSize == null ? 20 : pageSize,
                 Sort.by("create_at desc"));

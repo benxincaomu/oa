@@ -109,6 +109,7 @@ public class WorkbenchService {
             publishNew.setVersion(publish.getVersion() + 1L);
             publishNew.setEntityDefinition(entityDefinition);
             publishNew.setFlowFormTable(publish.getFlowFormTable());
+            publishNew.setFlowFormAssigneeTable(publish.getFlowFormAssigneeTable());
             publishNew.setFlowHistoryTable(publish.getFlowHistoryTable());
 
             workbenchPublishRepository.save(publishNew);

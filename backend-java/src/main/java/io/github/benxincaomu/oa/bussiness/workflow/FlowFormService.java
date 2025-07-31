@@ -69,10 +69,18 @@ public class FlowFormService {
         // flowForm.setPublishId(wp.getId());
         // 填充信息
         flowForm.setWorkbenchId(workbenchId);
+        if(flowForm.getId() == null){
+            flowForm.setId(flowFormRepository.getNextId(wp.getFlowFormTable()));
+        }
 
         if (commit) {
             // 发起流程
-            ProcessInstance process = runtimeService.startProcessInstanceById(wp.getWorkflowDeployId());
+            Map<String, Object> variables = new HashMap<>();
+            variables.put(FlowConsts.STARTER_ID, JpaAuditorAware.getCurrentUserId());
+            variables.put(FlowConsts.DATA, flowForm.getData());
+            variables.put(FlowConsts.FLOW_FORM_ASSIGNEE_TABLE, wp.getFlowFormAssigneeTable());
+            variables.put(FlowConsts.FLOW_FORM_ID, flowForm.getId());
+            ProcessInstance process = runtimeService.startProcessInstanceById(wp.getWorkflowDeployId(),variables);
             
             
             flowForm.setProcessId(process.getId());
@@ -82,12 +90,6 @@ public class FlowFormService {
             FlowHistory flowHistory = new FlowHistory();
             flowHistory.setFlowFormId(flowForm.getId());
             flowHistoryRepository.save(flowHistory, wp.getFlowHistoryTable());
-            Map<String, Object> variables = new HashMap<>();
-            variables.put(FlowConsts.STARTER_ID, JpaAuditorAware.getCurrentUserId());
-            variables.put(FlowConsts.DATA, flowForm.getData());
-            variables.put(FlowConsts.FLOW_FORM_ASSIGNEE_TABLE, wp.getFlowFormAssigneeTable());
-            variables.put(FlowConsts.FLOW_FORM_ID, wp.getFlowFormAssigneeTable());
-            runtimeService.setVariables(process.getId(), variables);
 
         } else {
             flowFormRepository.save(flowForm, workbenchId, wp.getFlowFormTable());

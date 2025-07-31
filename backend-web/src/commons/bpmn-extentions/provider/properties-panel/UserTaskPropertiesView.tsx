@@ -13,7 +13,7 @@ import Modeling from 'bpmn-js/lib/features/modeling/Modeling';
 
 
 
-export default function UserTaskPropertiesView({ bpmnModelerRef,bpmnId }: ModelerProps) {
+export default function UserTaskPropertiesView({ bpmnModelerRef, bpmnId }: ModelerProps) {
 
     useEffect(() => {
         const modeler = bpmnModelerRef.current;
@@ -28,7 +28,7 @@ export default function UserTaskPropertiesView({ bpmnModelerRef,bpmnId }: Modele
         {
             key: '1',
             label: '通用属性',
-            children: <GeneralPropertiesView bpmnModelerRef={bpmnModelerRef} bpmnId={bpmnId}/>,
+            children: <GeneralPropertiesView bpmnModelerRef={bpmnModelerRef} bpmnId={bpmnId} />,
         },
         {
             key: '2',
@@ -53,7 +53,7 @@ export default function UserTaskPropertiesView({ bpmnModelerRef,bpmnId }: Modele
  * 
  * 任务分派面板
  */
-export function AssignTaskView({ bpmnModelerRef,bpmnId }: ModelerProps) {
+export function AssignTaskView({ bpmnModelerRef, bpmnId }: ModelerProps) {
     const [assignTypes, setAssignTypes] = useState<any>([]);
 
     const [form] = Form.useForm();
@@ -72,26 +72,26 @@ export function AssignTaskView({ bpmnModelerRef,bpmnId }: ModelerProps) {
                 const candidateGroups = userTask.businessObject.get('camunda:candidateGroups');
                 if (assignee) {
                     // 判断assignee是否符合${xxx}
-                    console.log(assignee,typeof assignee);
-                    if (typeof assignee === 'string' &&assignee.startsWith("${") && assignee.endsWith("}")) {
+                    console.log(assignee, typeof assignee);
+                    if (typeof assignee === 'string' && assignee.startsWith("${") && assignee.endsWith("}")) {
                         setAssignType("starterLeader");
                         form.setFieldValue("assigneeValue", "starterLeader")
                     } else {
                         setAssignType("assignee");
-                        service.get(`/user/${assignee}`).then(res => { 
+                        service.get(`/user/${assignee}`).then(res => {
                             const candidate = [{
                                 id: res.data.id,
-                                
+
                                 name: res.data.name
                             }];
                             setCandidates(candidate);
-                            setTimeout(()=>{
+                            setTimeout(() => {
 
                                 form.setFieldsValue({
                                     assigneeType: "assignee",
                                     assigneeValue: assignee
                                 });
-                            },200)
+                            }, 200)
                         });
                     }
                 } else if (candidateGroups) {
@@ -104,7 +104,7 @@ export function AssignTaskView({ bpmnModelerRef,bpmnId }: ModelerProps) {
 
             }
         });
-    }, [bpmnModelerRef, form,bpmnId]);
+    }, [bpmnModelerRef, form, bpmnId]);
 
     const [assignType, setAssignType] = useState<string>("");
     // 用于存储候选者列表
@@ -131,9 +131,9 @@ export function AssignTaskView({ bpmnModelerRef,bpmnId }: ModelerProps) {
 
             }
         }
-    }, [assignType,bpmnId]);
+    }, [assignType, bpmnId]);
 
-    const onFormChange = (value: string) => {
+    const onFormChange = () => {
         const modeler = bpmnModelerRef.current;
         if (modeler) {
             const selection: Selection = modeler.get('selection');
@@ -141,18 +141,13 @@ export function AssignTaskView({ bpmnModelerRef,bpmnId }: ModelerProps) {
             const userTask = selection.get()[0] as Shape;
             const propertiesToUpdate: any = {};
             const assigneeValue = form.getFieldValue("assigneeValue");
+
             switch (assignType) {
                 case "assignee":
                     propertiesToUpdate['camunda:assignee'] = assigneeValue;
                     break;
                 case "starterLeader":
-                    const moddle: Moddle = modeler.get('moddle');
-                    const executionListener = moddle.create('camunda:ExecutionListener', {
-                        event: 'start',
-                        delegateExpression: '${userTaskCreateListener}'
-                    });
                     propertiesToUpdate['camunda:assignee'] = "${starterLeader}";
-                    propertiesToUpdate['camunda:executionListener'] = [executionListener];
                     break;
                 case "assigneeDept":
                     propertiesToUpdate['camunda:candidateGroups'] = assigneeValue;
@@ -161,6 +156,17 @@ export function AssignTaskView({ bpmnModelerRef,bpmnId }: ModelerProps) {
                     break;
 
             }
+            console.log("12345");
+            const moddle: Moddle = modeler.get('moddle');
+            const executionListener = moddle.create('camunda:ExecutionListener', {
+                event: 'start',
+                delegateExpression: '${userTaskCreateListener}'
+            });
+            // 使用 extensionElements 包装 listener
+            const extensionElements = moddle.create('bpmn:ExtensionElements', {
+                values: [executionListener]
+            });
+            propertiesToUpdate['extensionElements'] = extensionElements;
             modeling.updateProperties(userTask, propertiesToUpdate);
 
         }
@@ -169,8 +175,11 @@ export function AssignTaskView({ bpmnModelerRef,bpmnId }: ModelerProps) {
     return (
         <div>
             <Form form={form}>
-                <Form.Item label="分配类型" name = "assigneeType">
-                    <Select options={assignTypes} fieldNames={{ label: 'value', value: 'key' }} onChange={(value) => setAssignType(value)} />
+                <Form.Item label="分配类型" name="assigneeType">
+                    <Select options={assignTypes} fieldNames={{ label: 'value', value: 'key' }} onChange={(value) => {
+                        setAssignType(value);
+                        onFormChange();
+                    }} />
                 </Form.Item>
                 <Form.Item label="分配" name="assigneeValue" >
                     {(() => {
@@ -185,7 +194,7 @@ export function AssignTaskView({ bpmnModelerRef,bpmnId }: ModelerProps) {
                                     }
                                 }} onChange={(value) => { onFormChange(value) }} />
                             case "assigneeDept":
-                                return <TreeSelect treeData={depts} fieldNames={{ label: 'name', value: 'id' }} onChange={(value) => { onFormChange(value) }} />
+                                return <TreeSelect treeData={depts} fieldNames={{ label: 'name', value: 'id' }} onChange={(value) => { onFormChange() }} />
                             default:
                                 return <div></div>
                         }

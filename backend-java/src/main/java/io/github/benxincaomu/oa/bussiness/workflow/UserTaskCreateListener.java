@@ -1,12 +1,15 @@
 package io.github.benxincaomu.oa.bussiness.workflow;
 
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.camunda.bpm.engine.RepositoryService;
 import org.camunda.bpm.engine.RuntimeService;
+import org.camunda.bpm.engine.delegate.DelegateExecution;
 import org.camunda.bpm.engine.delegate.DelegateTask;
+import org.camunda.bpm.engine.delegate.JavaDelegate;
 import org.camunda.bpm.engine.delegate.TaskListener;
 import org.camunda.bpm.engine.repository.ProcessDefinition;
 import org.camunda.bpm.model.bpmn.instance.UserTask;
@@ -22,7 +25,7 @@ import jakarta.annotation.Resource;
 import jakarta.transaction.Transactional;
 
 @Service("userTaskCreateListener")
-public class UserTaskCreateListener implements TaskListener {
+public class UserTaskCreateListener implements JavaDelegate {
 
     @Resource
     private UserService userService;
@@ -44,13 +47,14 @@ public class UserTaskCreateListener implements TaskListener {
 
     @Transactional
     @Override
-    public void notify(DelegateTask delegateTask) {
-        UserTask userTask = (UserTask) delegateTask.getBpmnModelElementInstance();
+    public void execute(DelegateExecution execution) throws Exception {
+        UserTask userTask = (UserTask) execution.getBpmnModelElementInstance();
 
         if (userTask != null) {
-            String processDefinitionId = delegateTask.getProcessDefinitionId();
-    
-            WorkbenchPublish workbenchPublish = workbenchPublishRepository.findByWorkflowDeployId(processDefinitionId).get();
+            String processDefinitionId = execution.getProcessDefinitionId();
+
+            WorkbenchPublish workbenchPublish = workbenchPublishRepository.findByWorkflowDeployId(processDefinitionId)
+                    .get();
             FlowFormAssignee flowFormAssignee = new FlowFormAssignee();
             flowFormAssignee.setWorkbenchId(workbenchPublish.getWorkbenchId());
 
@@ -58,21 +62,23 @@ public class UserTaskCreateListener implements TaskListener {
             String camundaAssignee = userTask.getCamundaAssignee();
             if (Objects.equals(camundaAssignee, "${starterId}")) {
                 // 获取发起人id
-                String starterId = (String) delegateTask.getVariable("starterId");
+                String starterId = (String) execution.getVariable("starterId");
                 if (starterId != null) {
                     userTask.setCamundaAssignee(userService.findLeaderId(Long.valueOf(starterId)) + "");
                     flowFormAssignee.setAssignee(Long.valueOf(starterId));
                 }
-            }else if(camundaAssignee != null){
-                 flowFormAssignee.setAssignee(Long.valueOf(camundaAssignee));
+            } else if (camundaAssignee != null) {
+                flowFormAssignee.setAssignee(Long.valueOf(camundaAssignee));
             }
             String camundaCandidateGroups = userTask.getCamundaCandidateGroups();
-            if(camundaCandidateGroups != null){
-                flowFormAssignee.setCandidateGroups(Arrays.stream(camundaCandidateGroups.split(",")).map(Long::valueOf).collect(Collectors.toList()));
+            if (camundaCandidateGroups != null) {
+                flowFormAssignee.setCandidateGroups(Arrays.stream(camundaCandidateGroups.split(",")).map(Long::valueOf)
+                        .collect(Collectors.toList()));
             }
+            Map<String, Object> variables = execution.getVariables();
+            flowFormAssignee.setActived(true);
+            flowFormAssignee.setFlowFormId((Long) execution.getVariable(FlowConsts.FLOW_FORM_ID));
             flowFormAssigneeRepository.save(flowFormAssignee, workbenchPublish.getFlowFormAssigneeTable());
-
         }
     }
-
 }

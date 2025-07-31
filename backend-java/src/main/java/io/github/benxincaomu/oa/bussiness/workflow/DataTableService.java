@@ -89,7 +89,7 @@ public class DataTableService {
                             update_by int8 NULL,
                             actived bool NULL,
                             assignee int8 NULL,
-                            candidate_groups _int8 NULL,
+                            candidate_groups jsonb NULL,
                             flow_form_id int8 NULL,
                             workbench_id int8 NULL,
                             CONSTRAINT {1}_pkey PRIMARY KEY (id)
