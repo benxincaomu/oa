@@ -11,7 +11,6 @@ import io.github.benxincaomu.oa.bussiness.user.User;
 import io.github.benxincaomu.oa.bussiness.user.UserRepository;
 import jakarta.annotation.Resource;
 import jakarta.persistence.EntityManager;
-import jakarta.transaction.Transactional;
 
 @Service
 public class FlowHistoryRepository {

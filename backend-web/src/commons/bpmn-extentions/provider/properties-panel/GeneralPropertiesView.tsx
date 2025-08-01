@@ -31,6 +31,7 @@ export default function GeneralPropertiesView({ bpmnModelerRef,bpmnId }: Modeler
             } else {
                 const canvas: Canvas = modeler.get("canvas");
                 form.setFieldValue("id", canvas.getRootElement().id);
+                console.log('canvas.getRootElement()', canvas.getRootElement());
                 form.setFieldValue("name", canvas.getRootElement().businessObject.name);
             }
         }

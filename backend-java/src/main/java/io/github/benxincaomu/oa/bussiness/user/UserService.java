@@ -216,4 +216,8 @@ public class UserService {
     public Long findLeaderId(Long userId) {
         return userRepository.findLeaderId(userId);
     }
+
+    public List<UserIdNameVo> getAllUsers() {
+        return userRepository.getAllUsers(JpaAuditorAware.getCurrentTenantId());
+    }
 }

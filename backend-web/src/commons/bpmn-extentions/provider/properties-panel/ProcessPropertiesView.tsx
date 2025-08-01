@@ -8,32 +8,30 @@ import { Mode } from 'fs';
 import ModelerProps from './ModelerProps';
 import GeneralPropertiesView from './GeneralPropertiesView';
 import Selection from 'diagram-js/lib/features/selection/Selection';
+import Modeling from 'bpmn-js/lib/features/modeling/Modeling';
+import ElementRegistry from 'diagram-js/lib/core/ElementRegistry';
+import {
+    is
+} from 'bpmn-js/lib/util/ModelUtil';
+import BpmnFactory from 'bpmn-js/lib/features/modeling/BpmnFactory';
+import Canvas from 'diagram-js/lib/core/Canvas';
 export default function ProcessPropertiesView({ bpmnModelerRef }: ModelerProps) {
     const [bpmnId, setBpmnId] = React.useState('');
     useEffect(() => {
         const modeler = bpmnModelerRef.current;
         if (modeler) {
-            const selection = modeler.get("selection") as Selection;
             
+
         }
     }, []);
+    
     const items: CollapseProps['items'] = [
-            {
-                key: '1',
-                label: '通用属性',
-                children: <GeneralPropertiesView bpmnModelerRef={bpmnModelerRef} bpmnId={bpmnId} />,
-            },
-            {
-                key: '2',
-                label: 'This is panel header 2',
-                children: <p>fasd</p>,
-            },
-            {
-                key: '3',
-                label: 'This is panel header 3',
-                children: <p>fasdf</p>,
-            },
-        ];
+        {
+            key: '1',
+            label: '通用属性',
+            children: <GeneralPropertiesView bpmnModelerRef={bpmnModelerRef} bpmnId={bpmnId} />,
+        },
+    ];
 
 
     return (
@@ -43,7 +41,7 @@ export default function ProcessPropertiesView({ bpmnModelerRef }: ModelerProps) 
                 <span>流程</span>
             </Space>
             <Collapse items={items} />
-            
+
         </div>
     )
 }

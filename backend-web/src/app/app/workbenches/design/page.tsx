@@ -75,7 +75,7 @@ const Design = () => {
           element.setAttribute('isExecutable', 'true');
         }
         // 添加 camunda:historyTimeToLive 属性
-        if (!element.hasAttribute('camunda:historyTimeToLive') || element.getAttribute('camunda:historyTimeToLive') !== '') {
+        if (!element.hasAttribute('camunda:historyTimeToLive') || element.getAttribute('camunda:historyTimeToLive') !== 'P365D') {
           element.setAttribute('camunda:historyTimeToLive', '');
         }
       });

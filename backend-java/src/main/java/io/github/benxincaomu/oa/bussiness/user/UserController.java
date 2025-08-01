@@ -289,4 +289,10 @@ public class UserController {
         return userService.findUsersByNameLike(name);
     }
 
+    @GetMapping("/getAllUsers")
+    public List<UserIdNameVo> getAllUsers(){
+
+        return userService.getAllUsers();
+    }
+
 }

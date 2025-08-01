@@ -58,52 +58,41 @@ export function AssignTaskView({ bpmnModelerRef, bpmnId }: ModelerProps) {
 
     const [form] = Form.useForm();
     useEffect(() => {
-        console.log(bpmnId);
-        service.get(`/workflowDefinition/getAssignTypes`).then((res) => {
-            // console.log(res.data);
-            setAssignTypes(res.data);
+        if (!assignTypes || assignTypes.length == 0) {
 
-            const modeler = bpmnModelerRef.current;
-            if (modeler) {
-                const selection: Selection = modeler.get('selection');
-                const modeling: Modeling = modeler.get('modeling');
-                const userTask = selection.get()[0] as Shape;
-                const assignee = userTask.businessObject.get('camunda:assignee');
-                const candidateGroups = userTask.businessObject.get('camunda:candidateGroups');
-                if (assignee) {
-                    // 判断assignee是否符合${xxx}
-                    console.log(assignee, typeof assignee);
-                    if (typeof assignee === 'string' && assignee.startsWith("${") && assignee.endsWith("}")) {
-                        setAssignType("starterLeader");
-                        form.setFieldValue("assigneeValue", "starterLeader")
-                    } else {
-                        setAssignType("assignee");
-                        service.get(`/user/${assignee}`).then(res => {
-                            const candidate = [{
-                                id: res.data.id,
-
-                                name: res.data.name
-                            }];
-                            setCandidates(candidate);
-                            setTimeout(() => {
-
-                                form.setFieldsValue({
-                                    assigneeType: "assignee",
-                                    assigneeValue: assignee
-                                });
-                            }, 200)
-                        });
-                    }
-                } else if (candidateGroups) {
-                    setAssignType("assigneeDept");
+            service.get(`/workflowDefinition/getAssignTypes`).then((res) => {
+                setAssignTypes(res.data);
+            });
+        }
+        const modeler = bpmnModelerRef.current;
+        if (modeler) {
+            const selection: Selection = modeler.get('selection');
+            const modeling: Modeling = modeler.get('modeling');
+            const userTask = selection.get()[0] as Shape;
+            const assignee = userTask.businessObject.get('camunda:assignee');
+            const candidateGroups = userTask.businessObject.get('camunda:candidateGroups');
+            if (assignee) {
+                // 判断assignee是否符合${xxx}
+                if (typeof assignee === 'string' && assignee.startsWith("${") && assignee.endsWith("}")) {
+                    setAssignType("starterLeader");
+                    form.setFieldValue("assigneeValue", "starterLeader")
+                } else {
+                    console.log(`Assignee '${assignee}' is not a valid expression.`);
+                    setAssignType("assignee");
                     form.setFieldsValue({
-                        assigneeType: "assigneeDept",
-                        assigneeValue: candidateGroups
+                        "assigneeType": "assignee",
+                        "assigneeValue": Number(assignee)
                     });
                 }
-
+            } else if (candidateGroups) {
+                setAssignType("assigneeDept");
+                form.setFieldsValue({
+                    "assigneeType": "assigneeDept",
+                    "assigneeValue": candidateGroups
+                });
             }
-        });
+
+        }
     }, [bpmnModelerRef, form, bpmnId]);
 
     const [assignType, setAssignType] = useState<string>("");
@@ -112,26 +101,20 @@ export function AssignTaskView({ bpmnModelerRef, bpmnId }: ModelerProps) {
     // 候选部门
     const [depts, setDepts] = useState<any>([]);
     useEffect(() => {
-
-        if (assignType) {
-            switch (assignType) {
-                case "assignee":
-
-                    break;
-                case "starterLeader":
-
-                    break;
-                case "assigneeDept":
-                    service.get(`/organize/listTree`).then((response) => {
-                        setDepts(response.data);
-                    })
-                    break;
-                default:
-                    break;
-
-            }
+        console.log("useEffect", candidates, depts);
+        if (!candidates || candidates.length === 0) {
+            service.get(`/user/getAllUsers`).then((res) => {
+                setCandidates(res.data);
+            });
         }
-    }, [assignType, bpmnId]);
+
+        if (!depts || depts.length === 0) {
+            service.get(`/organize/listTree`).then((response) => {
+                setDepts(response.data);
+            })
+        }
+
+    }, []);
 
     const onFormChange = () => {
         const modeler = bpmnModelerRef.current;
@@ -156,7 +139,6 @@ export function AssignTaskView({ bpmnModelerRef, bpmnId }: ModelerProps) {
                     break;
 
             }
-            console.log("12345");
             const moddle: Moddle = modeler.get('moddle');
             const executionListener = moddle.create('camunda:ExecutionListener', {
                 event: 'start',
@@ -181,25 +163,22 @@ export function AssignTaskView({ bpmnModelerRef, bpmnId }: ModelerProps) {
                         onFormChange();
                     }} />
                 </Form.Item>
-                <Form.Item label="分配" name="assigneeValue" >
-                    {(() => {
-                        switch (assignType) {
-                            case "assignee":
-                                return <Select showSearch options={candidates} fieldNames={{ label: 'name', value: 'id' }} onSearch={(value) => {
-                                    if (value) {
+                {(() => {
+                    switch (assignType) {
+                        case "assignee":
+                            return <Form.Item label="分配" name="assigneeValue"  >
+                                <Select showSearch options={candidates} fieldNames={{ label: 'name', value: 'id' }} optionFilterProp="children" onChange={(value) => { onFormChange() }} />
 
-                                        service.get(`/user/findUsersByNameLike/${value}`).then((res) => {
-                                            setCandidates(res.data);
-                                        });
-                                    }
-                                }} onChange={(value) => { onFormChange(value) }} />
-                            case "assigneeDept":
-                                return <TreeSelect treeData={depts} fieldNames={{ label: 'name', value: 'id' }} onChange={(value) => { onFormChange() }} />
-                            default:
-                                return <div></div>
-                        }
-                    })()}
-                </Form.Item>
+                            </Form.Item>
+                        case "assigneeDept":
+                            return <Form.Item label="分配" name="assigneeValue" >
+                                <TreeSelect treeData={depts} fieldNames={{ label: 'name', value: 'id' }} onChange={(value) => { onFormChange() }} />
+
+                            </Form.Item>
+                        default:
+                            return <div></div>
+                    }
+                })()}
             </Form>
         </div>
     )

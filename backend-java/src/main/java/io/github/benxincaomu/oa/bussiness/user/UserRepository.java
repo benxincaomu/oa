@@ -54,4 +54,18 @@ public interface UserRepository extends JpaRepository<User, Long> {
     )
     public Long findLeaderId(@Param("userId")Long userId);
 
+    /**
+     * 用于选择用户
+     * @param tenantId  租户id
+     * @return
+     */
+      @Query("""
+            select u.id as id, CONCAT(u.name,'-',d.name )as name
+            from User u,
+            io.github.benxincaomu.oa.bussiness.organization.Department d,
+            io.github.benxincaomu.oa.bussiness.organization.DepartmentUser du
+            where u.id = du.userId and du.departmentId = d.id and u.tenantId = :tenantId
+                """)
+    public List<UserIdNameVo> getAllUsers(@Param("tenantId")Long tenantId);
+
 }
