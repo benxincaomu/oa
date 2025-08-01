@@ -124,6 +124,8 @@ export function AssignTaskView({ bpmnModelerRef, bpmnId }: ModelerProps) {
             const userTask = selection.get()[0] as Shape;
             const propertiesToUpdate: any = {};
             const assigneeValue = form.getFieldValue("assigneeValue");
+            propertiesToUpdate['camunda:assignee'] = undefined;
+            propertiesToUpdate['camunda:candidateGroups'] = undefined;
 
             switch (assignType) {
                 case "assignee":
@@ -161,18 +163,27 @@ export function AssignTaskView({ bpmnModelerRef, bpmnId }: ModelerProps) {
                     <Select options={assignTypes} fieldNames={{ label: 'value', value: 'key' }} onChange={(value) => {
                         setAssignType(value);
                         onFormChange();
+                        form.setFieldsValue({ assigneeValue: '' });
                     }} />
                 </Form.Item>
                 {(() => {
                     switch (assignType) {
                         case "assignee":
                             return <Form.Item label="分配" name="assigneeValue"  >
-                                <Select showSearch options={candidates} fieldNames={{ label: 'name', value: 'id' }} optionFilterProp="children" onChange={(value) => { onFormChange() }} />
+                                <Select showSearch options={candidates} fieldNames={{ label: 'name', value: 'id' }} optionFilterProp="children" onChange={(value) => {
+                                    onFormChange();
+
+
+                                }} />
 
                             </Form.Item>
                         case "assigneeDept":
                             return <Form.Item label="分配" name="assigneeValue" >
-                                <TreeSelect treeData={depts} fieldNames={{ label: 'name', value: 'id' }} onChange={(value) => { onFormChange() }} />
+                                <TreeSelect treeData={depts} fieldNames={{ label: 'name', value: 'id' }} onChange={(value) => {
+                                    onFormChange();
+
+
+                                }} />
 
                             </Form.Item>
                         default:

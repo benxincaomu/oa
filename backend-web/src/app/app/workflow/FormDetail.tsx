@@ -36,11 +36,11 @@ export default function FormDetail({ workbenchId, formId }: Props) {
 
     }, [getFormDetail]);
     const [form] = Form.useForm();
-    const sunbmit = (flowId:number) => { 
+    const sunbmit = (flowId: number) => {
         form.setFieldValue("flowId", flowId);
         // console.log(form.getFieldsValue());
         service.post(`/workflow/${workbenchId}/approval`, form.getFieldsValue()).then((res) => {
-            
+
         })
     };
     return (
@@ -62,12 +62,17 @@ export default function FormDetail({ workbenchId, formId }: Props) {
                 <Card title={<Typography.Title level={4}>流转历史</Typography.Title>} style={{ marginBottom: '24px' }}>
                     <Timeline items={flowForm.flowHistories.map((history, index) => ({
                         dot: <UserOutlined style={{ fontSize: '16px' }} />,
-                        children: <><Space direction="vertical" size={0}>
-                            <Typography.Text strong>{history.operatorName}</Typography.Text>
-                            <Typography.Text>{history.flowName}</Typography.Text>
-                            <Typography.Text type="secondary">{history.createAt}</Typography.Text>
-                        </Space>
-                            <Typography.Text type="secondary">{history.approvalOpinion}</Typography.Text>
+                        children: <>
+                            <Space direction="vertical" size={0}>
+                                <Typography.Text strong>{history.nodeName}</Typography.Text>
+                                <Typography.Text >{history.operatorName}&nbsp;&nbsp;{history.flowName}</Typography.Text>
+                                <Typography.Text type="secondary">{history.createAt}</Typography.Text>
+                            </Space>
+                            &nbsp;&nbsp;&nbsp;
+                            <Space>
+
+                                <Typography.Text type="secondary">{history.approvalOpinion}</Typography.Text>
+                            </Space>
                         </>,
                         key: history.id,
 
@@ -77,20 +82,20 @@ export default function FormDetail({ workbenchId, formId }: Props) {
             {buttons && (
                 <Form form={form}>
                     <Card>
-                        <Form.Item name={"approvalOpinion"} label="审批意见"> 
+                        <Form.Item name={"approvalOpinion"} label="审批意见">
                             <Input.TextArea rows={4} placeholder="请输入审批意见" />
                         </Form.Item>
                         <Form.Item hidden name={"flowId"}>
-                            <Input/>
+                            <Input />
                         </Form.Item>
                         <Form.Item hidden name={"flowFormId"} initialValue={flowForm?.id}>
-                            <Input/>
+                            <Input />
                         </Form.Item>
                         <Row justify="end" gutter={16}>
-                            {buttons.map((button:any, index:number) => {
+                            {buttons.map((button: any, index: number) => {
                                 return (
                                     <Col key={index}>
-                                        <Button type="primary" onClick={() => {sunbmit(button.value)}}>{button.name}</Button>
+                                        <Button type="primary" onClick={() => { sunbmit(button.value) }}>{button.name}</Button>
                                     </Col>
                                 )
                             })}

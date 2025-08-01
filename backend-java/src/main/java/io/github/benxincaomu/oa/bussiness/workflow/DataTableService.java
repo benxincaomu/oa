@@ -72,6 +72,7 @@ public class DataTableService {
                         	flow_name varchar(255) NULL,
                             operator_name varchar(20) NULL,
                             flow_id varchar(50) NULL,
+                            node_name varchar(20) NULL,
                         	CONSTRAINT {1}_pkey PRIMARY KEY (id)
                         );
                     """,
@@ -95,7 +96,8 @@ public class DataTableService {
                             CONSTRAINT {1}_pkey PRIMARY KEY (id)
                             )
                     """,
-            "CREATE INDEX {0}_workbench_id_index ON public.{1} USING btree (workbench_id, actived)"
+            "CREATE INDEX {0}_workbench_id_index ON public.{1} USING btree (workbench_id, actived)",
+            "CREATE INDEX {0}_flow_form_id_index ON public.{1} USING btree (flow_form_id)"
     };
 
     private final String flowFormTableNamePrefix = "flow_form_table_";

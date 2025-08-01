@@ -71,7 +71,7 @@ public class FlowFormController {
     @GetMapping("listMyTodo")
     public PagedModel<FlowForm> listTodo(Integer currPage, Integer pageSize,
             @PathVariable("workbenchId") Long workbenchId, Long starterId) {
-        return new PagedModel<>(flowFormService.listTodo(currPage, pageSize, workbenchId));
+        return new PagedModel<>(flowFormService.listTodo(currPage, pageSize, workbenchId,starterId));
     }
 
     @GetMapping("{id}")

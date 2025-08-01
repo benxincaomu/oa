@@ -22,6 +22,8 @@ import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;
 import jakarta.annotation.Resource;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.Query;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -175,37 +177,54 @@ public class FlowFormRepository {
     /**
      * 查询我的待办
      * 
-     * @param tableName  表单表名
-     * @param deployName 流程定义名称
-     * @param userId     用户id
-     * @param currPage   当前页
-     * @param pageSize   每页数量
-     * @param starterId  发起人id
+     * @param tableName     表单表名
+     * @param todoTableName 待办表名
+     * @param workbenchId   工作流id
+     * @param userId        用户id
+     * @param deptId        部门id ，用于候选组筛选
+     * @param starterId     发起人id 用于过滤待办
+     * @param currPage      当前页
+     * @param pageSize      每页数量
+     * @param starterId     发起人id
      * @return
      */
-    public Page<FlowForm> myToDo(String tableName, String deployName, Long userId, Long starterId, Integer currPage,
+    public Page<FlowForm> myToDo(String flowTableName, String todoTableName, Long workbenchId, Long userId, Long deptId,
+            Long starterId, Integer currPage,
             Integer pageSize) {
         PageRequest page = PageRequest.of(currPage == null ? 0 : currPage - 1, pageSize == null ? 20 : pageSize,
                 Sort.by("create_at desc"));
         // 查询总数
-        String whereSql = "where create_by = :userId and deploy_name = :deployName";
-        String countSql = "select count(*) from {0} " + whereSql;
-        Long total = (Long) entityManager.createNativeQuery(MessageFormat.format(countSql, tableName), Long.class)
+        // TODO 先只处理直接分派的任务
+        String whereSql = "where tt.workbench_id = :workbenchId and tt.flow_form_id = ff.id and ( tt.assignee = :userId";
+        if (deptId != null) {
+            whereSql += " or tt.candidate_groups @> cast(:deptId as jsonb)";
+        }
+        whereSql += ")";
+        String countSql = "select count(*) from {0} ff,{1} tt " + whereSql;
+        Query countQuery = entityManager
+                .createNativeQuery(MessageFormat.format(countSql, flowTableName, todoTableName), Long.class)
                 .setParameter("userId", userId)
-                .setParameter("deployName", deployName)
-                .getSingleResult();
+                .setParameter("workbenchId", workbenchId);
+        if (deptId != null) {
+            countQuery.setParameter("deptId", "["+deptId+"]");
+        }
+        Long total = (Long) countQuery.getSingleResult();
         ;
         List<FlowForm> formList = new ArrayList<>();
         if (total > page.getOffset()) {
 
-            String sql = "select * from {0} " + whereSql;
+            String sql = "select ff.* from {0} ff,{1} tt " + whereSql;
 
-            formList = entityManager.createNativeQuery(MessageFormat.format(sql, tableName), FlowForm.class)
+            Query formListQuery = entityManager
+                    .createNativeQuery(MessageFormat.format(sql, flowTableName, todoTableName), FlowForm.class)
                     .setParameter("userId", userId)
-                    .setParameter("deployName", deployName)
+                    .setParameter("workbenchId", workbenchId)
                     .setFirstResult((int) page.getOffset())
-                    .setMaxResults(page.getPageSize())
-                    .getResultList();
+                    .setMaxResults(page.getPageSize());
+            if (deptId != null) {
+                formListQuery.setParameter("deptId", "["+deptId+"]");
+            }
+            formList = formListQuery.getResultList();
         }
         return new PageImpl<>(formList, page, total);
     }

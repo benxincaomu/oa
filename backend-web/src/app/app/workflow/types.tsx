@@ -11,4 +11,5 @@ export interface FlowHistory{
     operatorName: string;
     approvalOpinion: string;
     createAt: string;
+    nodeName: string;
 }

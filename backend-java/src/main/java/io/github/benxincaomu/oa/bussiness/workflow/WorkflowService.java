@@ -53,6 +53,10 @@ public class WorkflowService {
     @Resource
     private DepartmentUserRepository departmentUserRepository;
 
+
+    @Resource
+    private FlowFormAssigneeRepository flowFormAssigneeRepository;
+
     @Transactional
     public void approval(FlowHistory flowHistory, Long workbenchId) {
         workbenchPublishRepository.findLatestByWorkbenchId(workbenchId).ifPresent(wp -> {
@@ -65,6 +69,7 @@ public class WorkflowService {
                         .getBpmnModelInstance(wp.getWorkflowDeployId());
                 SequenceFlow sequenceFlow = modelInstance.getModelElementById(flowHistory.getFlowId());
                 flowHistory.setFlowName(sequenceFlow.getName());
+                flowHistory.setNodeName(sequenceFlow.getSource().getName());
                 FlowNode source = sequenceFlow.getSource();
                 if (source instanceof UserTask) {
                     UserTask userTask = (UserTask) source;
@@ -84,6 +89,8 @@ public class WorkflowService {
                                 .singleResult();
                     }
                     Asserts.isTrue(task != null, OaResponseCode.FLOW_TASK_NOT_EXIST);
+                    // 删除待办的关联数据
+                    flowFormAssigneeRepository.delete(flowForm.getId(), wp.getFlowFormAssigneeTable());
                     // 认领任务
                     taskService.claim(task.getId(), JpaAuditorAware.getCurrentUserId().toString());
                     // 设定任务按sequenceFlow为流向
@@ -93,6 +100,8 @@ public class WorkflowService {
                             .startBeforeActivity(sequenceFlow.getTarget().getId())
                             .execute();
                     ;
+                    
+
 
                 }
 

@@ -15,7 +15,7 @@ function RootLayout({
         algorithm: theme.defaultAlgorithm,
         token: {
           // 边框颜色
-          colorBorderSecondary:"#9b9b9bff",
+          colorBorderSecondary:"#978e8eff",
           // controlItemBgHover:"#83c298ff",
         }
       }}

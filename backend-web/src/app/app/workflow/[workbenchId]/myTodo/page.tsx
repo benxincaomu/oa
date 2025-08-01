@@ -82,7 +82,7 @@ export default function MyTodo({
   const [total, setTotal] = useState(0);
 
   const loadMystart = useCallback(() => {
-    service.get(`/flowForm/${workbenchId}/listMyStart?currPage=${currPage}&pageSize=${pageSize}`).then(res => {
+    service.get(`/flowForm/${workbenchId}/listMyTodo?currPage=${currPage}&pageSize=${pageSize}`).then(res => {
       setTableData(res.data.content);
       setTotal(res.data.page.totalElements);
     });

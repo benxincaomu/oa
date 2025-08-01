@@ -14,6 +14,7 @@ import org.camunda.bpm.engine.runtime.ProcessInstance;
 import org.camunda.bpm.engine.task.Task;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
 import org.camunda.bpm.model.bpmn.instance.SequenceFlow;
+import org.camunda.bpm.model.bpmn.instance.StartEvent;
 import org.camunda.bpm.model.bpmn.instance.UserTask;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
@@ -69,7 +70,7 @@ public class FlowFormService {
         // flowForm.setPublishId(wp.getId());
         // 填充信息
         flowForm.setWorkbenchId(workbenchId);
-        if(flowForm.getId() == null){
+        if (flowForm.getId() == null) {
             flowForm.setId(flowFormRepository.getNextId(wp.getFlowFormTable()));
         }
 
@@ -80,8 +81,7 @@ public class FlowFormService {
             variables.put(FlowConsts.DATA, flowForm.getData());
             variables.put(FlowConsts.FLOW_FORM_ASSIGNEE_TABLE, wp.getFlowFormAssigneeTable());
             variables.put(FlowConsts.FLOW_FORM_ID, flowForm.getId());
-            ProcessInstance process = runtimeService.startProcessInstanceById(wp.getWorkflowDeployId(),variables);
-            
+            ProcessInstance process = runtimeService.startProcessInstanceById(wp.getWorkflowDeployId(), variables);
             
             flowForm.setProcessId(process.getId());
             // flowForm.setDeployName(workbench.getWorkbenchKey());
@@ -89,6 +89,12 @@ public class FlowFormService {
             // 保存日志
             FlowHistory flowHistory = new FlowHistory();
             flowHistory.setFlowFormId(flowForm.getId());
+            BpmnModelInstance bpmnModelInstance = repositoryService.getBpmnModelInstance(process.getProcessDefinitionId());
+            Collection<StartEvent> startEvents = bpmnModelInstance.getModelElementsByType(StartEvent.class);
+            if(startEvents != null && startEvents.size() > 0){
+                StartEvent startEvent = startEvents.iterator().next();
+                flowHistory.setNodeName(startEvent.getName() == null? "开始":startEvent.getName());
+            }
             flowHistoryRepository.save(flowHistory, wp.getFlowHistoryTable());
 
         } else {
@@ -168,6 +174,7 @@ public class FlowFormService {
                                             buttons.add(new FlowButton(name, value));
                                         }
                                         vo.setButtons(buttons);
+
                                     }
                                 }
 
@@ -187,8 +194,20 @@ public class FlowFormService {
                 .orElse(vo);
     }
 
-    public Page<FlowForm> listTodo(Integer currPage, Integer pageSize, Long workbenchId) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'listTodo'");
+    public Page<FlowForm> listTodo(Integer currPage, Integer pageSize, Long workbenchId, Long starterId) {
+        Long currentUserId = JpaAuditorAware.getCurrentUserId();
+        Long deptId = departmentUserRepository.findDeptIdByUserId(currentUserId).orElse(0L);
+
+        return workbenchPublishRepository.findLatestByWorkbenchId(workbenchId)
+                .map(wp -> flowFormRepository.myToDo(
+                        wp.getFlowFormTable(),
+                        wp.getFlowFormAssigneeTable(),
+                        workbenchId,
+                        currentUserId,
+                        deptId,
+                        starterId,
+                        currPage,
+                        pageSize))
+                .orElse(Page.empty());
     }
 }

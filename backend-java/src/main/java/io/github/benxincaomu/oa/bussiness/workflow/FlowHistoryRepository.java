@@ -28,8 +28,8 @@ public class FlowHistoryRepository {
      */
     public void save(FlowHistory flowHistory, String tableName) {
         String sql = """
-                insert into {0} (flow_form_id,approval_opinion,flow_name,create_by,create_at,update_by,update_at,tenant_id,operator_name)
-                values          (:flowFormId,:approvalOpinion,:flowName,:createBy,:createAt,:updateBy,:updateAt,:tenantId,:operatorName)
+                insert into {0} (flow_form_id,approval_opinion,flow_name,create_by,create_at,update_by,update_at,tenant_id,operator_name,node_name)
+                values          (:flowFormId,:approvalOpinion,:flowName,:createBy,:createAt,:updateBy,:updateAt,:tenantId,:operatorName,:nodeName)
                 """;
         LocalDateTime now = LocalDateTime.now();
         Long currentUserId = JpaAuditorAware.getCurrentUserId();
@@ -44,6 +44,7 @@ public class FlowHistoryRepository {
                 .setParameter("updateBy", currentUserId)
                 .setParameter("updateAt", now)
                 .setParameter("tenantId", JpaAuditorAware.getCurrentUserId())
+                .setParameter("nodeName", flowHistory.getNodeName())
                 .executeUpdate()
                 ;
 

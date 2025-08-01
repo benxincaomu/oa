@@ -52,4 +52,11 @@ public class FlowFormAssigneeRepository {
                 .setParameter("tenantId", JpaAuditorAware.getCurrentTenantId())
                 .executeUpdate();
     }
+
+    public void delete(Long flowFormId, String tableName) {
+        String sql = "delete from {0} where flow_form_id = :flowFormId";
+        entityManager.createNativeQuery(MessageFormat.format(sql, tableName))
+                .setParameter("flowFormId", flowFormId)
+                .executeUpdate();
+    }
 }
