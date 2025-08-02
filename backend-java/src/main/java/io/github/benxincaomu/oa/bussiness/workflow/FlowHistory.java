@@ -10,7 +10,9 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "flow_history_sample", indexes = {
-        @Index(name = "flow_history_sample_flow_form_id_index", columnList = "flowFormId") })
+        @Index(name = "flow_history_sample_flow_form_id_index", columnList = "flowFormId"),
+        @Index(name = "flow_history_sample_starter_id_index", columnList = "createBy")
+     })
 @Comment("流程历史示例表")
 public class FlowHistory extends BaseEntity {
     @Comment("流程表单id")
@@ -34,6 +36,8 @@ public class FlowHistory extends BaseEntity {
     @Comment("操作人姓名")
     @Column(columnDefinition = "varchar(20)", length = 20)
     private String operatorName;
+
+    
 
     public Long getFlowFormId() {
         return flowFormId;

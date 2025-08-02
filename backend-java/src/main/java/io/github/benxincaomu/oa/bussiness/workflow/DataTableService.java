@@ -76,7 +76,8 @@ public class DataTableService {
                         	CONSTRAINT {1}_pkey PRIMARY KEY (id)
                         );
                     """,
-            "CREATE INDEX {0}_id_index ON public.{1} USING btree (flow_form_id);"
+            "CREATE INDEX {0}_id_index ON public.{1} USING btree (flow_form_id);",
+            "CREATE INDEX {0}_starter_id_index ON public.{1} USING btree (create_by);"
     };
 
     private final String[] flowFormAssigneeDdls = {

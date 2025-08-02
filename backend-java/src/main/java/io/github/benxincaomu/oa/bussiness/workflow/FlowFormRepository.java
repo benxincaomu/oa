@@ -162,7 +162,7 @@ public class FlowFormRepository {
         List<FlowForm> formList = new ArrayList<>();
         if (total > page.getOffset()) {
 
-            String sql = "select * from {0} " + whereSql;
+            String sql = "select * from {0} " + whereSql +" order by create_at desc";
 
             formList = entityManager.createNativeQuery(MessageFormat.format(sql, tableName), FlowForm.class)
                     .setParameter("userId", userId)
@@ -192,39 +192,97 @@ public class FlowFormRepository {
             Long starterId, Integer currPage,
             Integer pageSize) {
         PageRequest page = PageRequest.of(currPage == null ? 0 : currPage - 1, pageSize == null ? 20 : pageSize,
-                Sort.by("create_at desc"));
+                Sort.by("tt.create_at desc"));
         // 查询总数
-        // TODO 先只处理直接分派的任务
+
         String whereSql = "where tt.workbench_id = :workbenchId and tt.flow_form_id = ff.id and ( tt.assignee = :userId";
         if (deptId != null) {
             whereSql += " or tt.candidate_groups @> cast(:deptId as jsonb)";
         }
         whereSql += ")";
+        if (starterId != null) {
+            whereSql += " and ff.create_by = :starterId";
+        }
         String countSql = "select count(*) from {0} ff,{1} tt " + whereSql;
         Query countQuery = entityManager
                 .createNativeQuery(MessageFormat.format(countSql, flowTableName, todoTableName), Long.class)
                 .setParameter("userId", userId)
                 .setParameter("workbenchId", workbenchId);
         if (deptId != null) {
-            countQuery.setParameter("deptId", "["+deptId+"]");
+            countQuery.setParameter("deptId", "[" + deptId + "]");
+        }
+        if (starterId != null) {
+            countQuery.setParameter("starterId", starterId);
         }
         Long total = (Long) countQuery.getSingleResult();
         ;
         List<FlowForm> formList = new ArrayList<>();
         if (total > page.getOffset()) {
 
-            String sql = "select ff.* from {0} ff,{1} tt " + whereSql;
+            String sql = "select distinct on (ff.id) ff.* from {0} ff,{1} tt " + whereSql +" order by ff.id desc,tt.create_at desc";
 
             Query formListQuery = entityManager
-                    .createNativeQuery(MessageFormat.format(sql, flowTableName, todoTableName), FlowForm.class)
+                    .createNativeQuery(MessageFormat.format(sql , flowTableName, todoTableName), FlowForm.class)
                     .setParameter("userId", userId)
                     .setParameter("workbenchId", workbenchId)
                     .setFirstResult((int) page.getOffset())
-                    .setMaxResults(page.getPageSize());
+                    .setMaxResults(page.getPageSize())
+                    ;
             if (deptId != null) {
-                formListQuery.setParameter("deptId", "["+deptId+"]");
+                formListQuery.setParameter("deptId", "[" + deptId + "]");
+            }
+            if (starterId != null) {
+                formListQuery.setParameter("starterId", starterId);
             }
             formList = formListQuery.getResultList();
+        }
+        return new PageImpl<>(formList, page, total);
+    }
+
+    /**
+     * w查询我的已办
+     * 
+     * @param flowTableName    表单表名
+     * @param historyTableName 历史表名
+     * @param workbenchId      工作流id
+     * @param userId           用户id
+     * @param starterId        发起人id
+     * @param currPage         当前页
+     * @param pageSize         每页数量
+     * @return
+     */
+    public Page<FlowForm> myDone(String flowTableName, String historyTableName, Long workbenchId, Long userId,
+            Long starterId, Integer currPage, Integer pageSize) {
+        PageRequest page = PageRequest.of(currPage == null ? 0 : currPage - 1, pageSize == null ? 20 : pageSize,
+                Sort.by("ff.create_at desc"));
+        String whereSql = "where ff.workbench_id = :workbenchId and fh.flow_form_id = ff.id and fh.create_by = :userId and ff.create_by <> :userId";
+
+        if (starterId != null) {
+            whereSql += " and ff.create_by = :starterId";
+        }
+        String countSql = "select  count(distinct ff.id) from {0} ff,{1} fh " + whereSql;
+        Query countQuery = entityManager
+                .createNativeQuery(MessageFormat.format(countSql, flowTableName, historyTableName), Long.class)
+                .setParameter("userId", userId)
+                .setParameter("workbenchId", workbenchId);
+        if (starterId != null) {
+            countQuery.setParameter("starterId", starterId);
+        }
+        Long total = (Long) countQuery.getSingleResult();
+        List<FlowForm> formList = new ArrayList<>();
+        if (total > page.getOffset()) { 
+            String sql = "select distinct on (ff.id) ff.* from {0} ff,{1} fh " + whereSql +" order by ff.id desc,ff.create_at desc";
+            Query formListQuery = entityManager
+                    .createNativeQuery(MessageFormat.format(sql, flowTableName, historyTableName), FlowForm.class)
+                    .setParameter("userId", userId)
+                    .setParameter("workbenchId", workbenchId)
+                    .setFirstResult((int) page.getOffset())
+                    .setMaxResults(page.getPageSize())
+                    ;
+                    if (starterId != null) {
+                        formListQuery.setParameter("starterId", starterId);
+                    }
+                    formList = formListQuery.getResultList();
         }
         return new PageImpl<>(formList, page, total);
     }

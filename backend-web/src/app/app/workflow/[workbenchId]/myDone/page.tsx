@@ -1,5 +1,5 @@
 "use client"
-import { Button, Modal, Space, Table } from "antd";
+import { Button, Modal, Space, Table, Typography } from "antd";
 import { useState, useEffect, use, useCallback } from "react";
 import FormNew from "../../FormNew";
 import service from "@/commons/base/service";
@@ -63,7 +63,7 @@ export default function MyTodo({
   const [columns, setColumns] = useState<any>([]);
   const [flowFormId, setFlowFormId] = useState<number>(0);
   useEffect(() => {
-    document.title = "我的待办";
+    document.title = "我的已办";
     if (workbenchId) {
       service.get(`/flowForm/${workbenchId}/getWorkbenchPublishById`).then(res => {
         if (res.data) {
@@ -81,8 +81,8 @@ export default function MyTodo({
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
 
-  const loadMyTodo = useCallback(() => {
-    service.get(`/flowForm/${workbenchId}/listMyTodo?currPage=${currPage}&pageSize=${pageSize}`).then(res => {
+  const loadMyDone = useCallback(() => {
+    service.get(`/flowForm/${workbenchId}/listMyDone?currPage=${currPage}&pageSize=${pageSize}`).then(res => {
       setTableData(res.data.content);
       setTotal(res.data.page.totalElements);
     });
@@ -91,20 +91,21 @@ export default function MyTodo({
 
   useEffect(() => {
     if (columns && columns.length > 0) {
-      loadMyTodo();
+      loadMyDone();
 
     }
-  }, [columns, loadMyTodo]);
+  }, [columns, loadMyDone]);
 
   const [addOpen, setAddOpen] = useState(false);
 
 
   return (
     <div>
+      <Typography.Title level={4}>我的已办</Typography.Title>
       <Modal title={modalTitle} open={addOpen} onCancel={() => setAddOpen(false)} footer={null} width={800} destroyOnHidden={true} >
         <FormDetail workbenchId={workbenchId} formId={flowFormId} onCancel={() => setAddOpen(false)} onSubmit={() => {
           setAddOpen(false);
-          loadMyTodo();
+          loadMyDone();
         }} />
 
       </Modal>

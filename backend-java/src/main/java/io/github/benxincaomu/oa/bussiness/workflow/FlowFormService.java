@@ -210,4 +210,19 @@ public class FlowFormService {
                         pageSize))
                 .orElse(Page.empty());
     }
+
+    public Page<FlowForm> listMyDone(Integer currPage, Integer pageSize, Long workbenchId, Long starterId) {
+        Long currentUserId = JpaAuditorAware.getCurrentUserId();
+
+        return workbenchPublishRepository.findLatestByWorkbenchId(workbenchId)
+                .map(wp -> flowFormRepository.myDone(
+                        wp.getFlowFormTable(),
+                        wp.getFlowHistoryTable(),
+                        workbenchId,
+                        currentUserId,
+                        starterId,
+                        currPage,
+                        pageSize))
+                .orElse(Page.empty());
+    }
 }

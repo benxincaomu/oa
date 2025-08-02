@@ -10,10 +10,12 @@ import { FlowForm } from "./types";
 interface Props {
     workbenchId: string;
     formId: number;
+    onSubmit?: () => void;
+    onCancel?: () => void;
 
 
 }
-export default function FormDetail({ workbenchId, formId }: Props) {
+export default function FormDetail({ workbenchId, formId,onSubmit,onCancel }: Props) {
     const [columns, setColumns] = useState<ColumnDefinition[]>([]);
     const [flowForm, setFlowForm] = useState<FlowForm>();
     const [buttons, setButtons] = useState<any>(null);
@@ -40,7 +42,11 @@ export default function FormDetail({ workbenchId, formId }: Props) {
         form.setFieldValue("flowId", flowId);
         // console.log(form.getFieldsValue());
         service.post(`/workflow/${workbenchId}/approval`, form.getFieldsValue()).then((res) => {
+            console.log("操作成功");
+            if(onSubmit){
+                onSubmit();
 
+            }
         })
     };
     return (
