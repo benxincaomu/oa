@@ -1,11 +1,12 @@
 "use client"
-import { Button, Modal, Space, Table } from "antd";
-import { useState, useEffect, use, useCallback } from "react";
+import { Button, Col, Form, Modal, Row, Space, Table } from "antd";
+import { useState, useEffect, use, useCallback, useRef } from "react";
 import FormNew from "../../FormNew";
 import service from "@/commons/base/service";
 import { WorkbenchPublish, ColumnDefinition } from "@/app/app/workbenches/design/types";
 import FormDetail from "../../FormDetail";
 import { FlowForm } from "../../types";
+import DeptUserSelect from "../../DeptUserSelect";
 
 
 
@@ -80,27 +81,41 @@ export default function MyTodo({
   const [currPage, setCurrPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
-
+  const [starterId, setStarterId] = useState<number>(0);
   const loadMyTodo = useCallback(() => {
-    service.get(`/flowForm/${workbenchId}/listMyTodo?currPage=${currPage}&pageSize=${pageSize}`).then(res => {
-      setTableData(res.data.content);
-      setTotal(res.data.page.totalElements);
-    });
-  }, [currPage, pageSize, workbenchId]);
+    
+      service.get(`/flowForm/${workbenchId}/listMyTodo?currPage=${currPage}&pageSize=${pageSize}&starterId=${starterId > 0 ? starterId : ""}`).then(res => {
+        setTableData(res.data.content);
+        setTotal(res.data.page.totalElements);
+      });
+    
+  }, [currPage, pageSize,starterId, workbenchId]);
 
+  
 
   useEffect(() => {
     if (columns && columns.length > 0) {
       loadMyTodo();
 
     }
-  }, [columns, loadMyTodo]);
+  }, [columns, loadMyTodo, starterId]);
 
   const [addOpen, setAddOpen] = useState(false);
-
+  const [userSelectForm] = Form.useForm();
+  
 
   return (
     <div>
+      <Row gutter={16}>
+        <Col span={8}>
+          <DeptUserSelect form={userSelectForm} formItemSpan={12} userSelectLabel="发起人"/>
+        </Col>
+        <Col span={4}>
+          <Button type="primary" onClick={() => {
+            setStarterId(userSelectForm.getFieldValue('userId'));
+          }}>搜索</Button>
+        </Col>
+      </Row>
       <Modal title={modalTitle} open={addOpen} onCancel={() => setAddOpen(false)} footer={null} width={800} destroyOnHidden={true} >
         <FormDetail workbenchId={workbenchId} formId={flowFormId} onCancel={() => setAddOpen(false)} onSubmit={() => {
           setAddOpen(false);

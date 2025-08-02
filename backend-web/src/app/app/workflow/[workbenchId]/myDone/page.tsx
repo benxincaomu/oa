@@ -1,11 +1,12 @@
 "use client"
-import { Button, Modal, Space, Table, Typography } from "antd";
+import { Button, Col, Form, Modal, Row, Space, Table, Typography } from "antd";
 import { useState, useEffect, use, useCallback } from "react";
 import FormNew from "../../FormNew";
 import service from "@/commons/base/service";
 import { WorkbenchPublish, ColumnDefinition } from "@/app/app/workbenches/design/types";
 import FormDetail from "../../FormDetail";
 import { FlowForm } from "../../types";
+import DeptUserSelect from "../../DeptUserSelect";
 
 
 
@@ -80,13 +81,13 @@ export default function MyTodo({
   const [currPage, setCurrPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
-
+  const [starterId, setStarterId] = useState<number>(0);
   const loadMyDone = useCallback(() => {
-    service.get(`/flowForm/${workbenchId}/listMyDone?currPage=${currPage}&pageSize=${pageSize}`).then(res => {
+    service.get(`/flowForm/${workbenchId}/listMyDone?currPage=${currPage}&pageSize=${pageSize}&starterId=${starterId > 0 ? starterId : ""}`).then(res => {
       setTableData(res.data.content);
       setTotal(res.data.page.totalElements);
     });
-  }, [currPage, pageSize, workbenchId]);
+  }, [currPage, pageSize, starterId, workbenchId]);
 
 
   useEffect(() => {
@@ -99,8 +100,21 @@ export default function MyTodo({
   const [addOpen, setAddOpen] = useState(false);
 
 
+  const [userSelectForm] = Form.useForm();
+  
+
   return (
     <div>
+      <Row gutter={16}>
+        <Col span={8}>
+          <DeptUserSelect form={userSelectForm} formItemSpan={12} userSelectLabel="发起人"/>
+        </Col>
+        <Col span={4}>
+          <Button type="primary" onClick={() => {
+            setStarterId(userSelectForm.getFieldValue('userId'));
+          }}>搜索</Button>
+        </Col>
+      </Row>
       <Typography.Title level={4}>我的已办</Typography.Title>
       <Modal title={modalTitle} open={addOpen} onCancel={() => setAddOpen(false)} footer={null} width={800} destroyOnHidden={true} >
         <FormDetail workbenchId={workbenchId} formId={flowFormId} onCancel={() => setAddOpen(false)} onSubmit={() => {
