@@ -1,26 +1,10 @@
 spring:
+  profiles:
+    active:
+    - oa1
   application: 
     name: oa
-  datasource:
-    url:  jdbc:postgresql://10.0.0.130:5432/oa?characterEncoding=utf8&stringtype=unspecified&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useUnicode=true&&TimeZone=Asia/Shanghai&reWriteBatchedInserts=true
-    password: oa
-    username: oa
-    driver-class-name: org.postgresql.Driver
-    hikari: 
-      connectionTimeout: 10000
-      idle-timeout: 30000
-      minimum-idle: 4
-      maximum-pool-size: 10
-      driver-class-name: org.postgresql.Driver
-      transaction-isolation: TRANSACTION_READ_COMMITTED
-      
-  data:
-    redis:
-      host: 10.0.0.130
-      port: 6379
-      password: redisPwd
-      repositories:
-        enabled: false
+
   jpa:
     hibernate:
       ddl-auto: update

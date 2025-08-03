@@ -70,7 +70,7 @@ public class UserService {
         return userRepository.save(user).getId() == null ? 0 : 1;
     }
 
-    public String insert(User user) {
+    public User insert(User user) {
         Asserts.isFalse(userRepository.existsByUserName(user.getUserName()), OaResponseCode.USER_NAME_EXITS);
         if(user.getEmail()!=null){
             Asserts.isFalse(userRepository.existsByEmail(user.getEmail()), OaResponseCode.EMAIL_EXITS);
@@ -84,7 +84,7 @@ public class UserService {
         userRepository.save(user);
         // 发送邮件
         String passwordSetId = StringGenerator.generate(20);
-        if(user.getEmail()!=null){
+        if(user.getEmail()!=null  && user.getPassword() == null){
             String content ="""
         <html>
         <body>
@@ -98,7 +98,7 @@ public class UserService {
         redisTemplate.opsForValue().set(passwordSetId,user.getId()+"",Duration.ofHours(24));
 
         logger.info("inserted user \"{}\",id={}",user.getUserName(),user.getId());
-        return null;
+        return user;
     }
 
     public Page<User> users(Integer currPage, Integer pageSize, String userName, String name) {

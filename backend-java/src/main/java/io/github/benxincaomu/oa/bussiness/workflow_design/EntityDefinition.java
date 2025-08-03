@@ -17,7 +17,7 @@ import jakarta.persistence.Table;
 @Comment("实体定义")
 public class EntityDefinition extends BaseEntity{
     @Comment("实体名称")
-    @Column(name = "entity_name",columnDefinition = "varchar(20) not null")
+    @Column(name = "entity_name",columnDefinition = "varchar(20)")
     private String entityName;
 
     @Comment("实体描述")

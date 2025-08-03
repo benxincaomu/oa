@@ -2,8 +2,8 @@
 // import type { Metadata } from "next";
 import { Layout } from "antd";
 import React from "react";
-import Login from "@/app/login/Login";
-import SideMenu from "@/app/login/Menu";
+import Login from "@/app/app/login/Login";
+import SideMenu from "@/app/app/login/Menu";
 
 const { Header, Sider, Content, Footer } = Layout;
 

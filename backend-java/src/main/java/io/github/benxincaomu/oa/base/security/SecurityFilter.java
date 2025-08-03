@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -19,6 +20,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benxincaomu.notry.exception.handler.ResponseMessage;
 import com.github.benxincaomu.notry.utils.Asserts;
 
+import io.github.benxincaomu.oa.base.init.InitService;
 import io.github.benxincaomu.oa.base.web.OaResponseCode;
 import io.github.benxincaomu.oa.bussiness.user.Permission;
 import io.github.benxincaomu.oa.bussiness.user.Role;
@@ -40,6 +42,9 @@ public class SecurityFilter extends OncePerRequestFilter {
 
     private Set<String> excludeUrls = new HashSet<>();
 
+    @Resource
+    private InitService initService;
+
     @PostConstruct
     public void init() {
         for (int i = 0; i < SecurityConsts.PUBLIC_URLS.length; i++) {
@@ -51,7 +56,27 @@ public class SecurityFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+        // 判断项目是否已经初始话，未初始化要跳转到初始化页面
         String servletPath = request.getServletPath();
+        if (!initService.isInitialized() && !(servletPath.equals("/initProject")&& request.getMethod().equals("POST"))) {
+
+            String referer = request.getHeader("Referer");
+            // String userAgent = request.getHeader("User-Agent");
+            // String origin = request.getHeader("Origin");
+            if (referer != null && referer.endsWith("/init")) {
+                return;
+            }
+
+            ResponseMessage<String> responseMessage = new ResponseMessage<>(OaResponseCode.PROJECT_NOT_INITIALIZED,
+                    null);
+            response.setHeader("Content-Type", "application/json;charset=UTF-8");
+            ObjectMapper objectMapper = new ObjectMapper();
+            response.getWriter().write(objectMapper.writeValueAsString(responseMessage));
+            response.getWriter().flush();
+
+            return;
+        }
+        // String servletPath = request.getServletPath();
         AntPathMatcher matcher = new AntPathMatcher();
         for (String url : SecurityConsts.PUBLIC_URLS) {
             if (matcher.match(url, servletPath)) {
@@ -62,7 +87,7 @@ public class SecurityFilter extends OncePerRequestFilter {
         // String token = request.getHeader("token");
         String token = null;
         Cookie[] cookies = request.getCookies();
-        if(cookies != null){
+        if (cookies != null) {
             for (Cookie cookie : cookies) {
                 if (cookie.getName().equals("token")) {
                     token = cookie.getValue();
@@ -91,7 +116,7 @@ public class SecurityFilter extends OncePerRequestFilter {
         TokenValue tv = tokenValue.get();
 
         Set<String> urls = tv.getUrls();
-        if(urls == null || !urls.stream().anyMatch(url -> matcher.match(url, servletPath))){
+        if (urls == null || !urls.stream().anyMatch(url -> matcher.match(url, servletPath))) {
             ResponseMessage<String> responseMessage = new ResponseMessage<>(OaResponseCode.NO_PERMISSION, null);
             response.setHeader("Content-Type", "application/json;charset=UTF-8");
             ObjectMapper objectMapper = new ObjectMapper();
@@ -99,11 +124,11 @@ public class SecurityFilter extends OncePerRequestFilter {
             response.getWriter().flush();
             return;
         }
-            
+
         final List<SimpleGrantedAuthority> authorities = new ArrayList<>();
         Role role = tv.getRole();
         SaltedUser user = new SaltedUser(tv.getUserName(), tv.getSalt(), true, true, true, true, authorities,
-                tv.getUserId(), tv.getSalt(), tv.getTenantId(),role.getId());
+                tv.getUserId(), tv.getSalt(), tv.getTenantId(), role.getId());
 
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 user, tv, authorities);

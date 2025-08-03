@@ -33,7 +33,7 @@ public class InitBaseData {
 
 
     private final Logger logger = LoggerFactory.getLogger(InitBaseData.class);
-    @PostConstruct
+    // @PostConstruct
     public void init() {
         if (tenantRepository.count() == 0) {
             Tenant tenant = new Tenant();

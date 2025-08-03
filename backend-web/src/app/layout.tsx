@@ -12,11 +12,15 @@ function RootLayout({
     <body><ConfigProvider
       theme={{
 
-        algorithm: theme.defaultAlgorithm,
-        token: {
-          // 边框颜色
-          colorBorderSecondary:"#978e8eff",
-          // controlItemBgHover:"#83c298ff",
+        // algorithm: theme.defaultAlgorithm,
+        components:{
+          Table: {
+            colorBorder:"#180bccff",
+            colorBorderSecondary:"#7b799eff",
+            rowSelectedHoverBg:"#f1f8f2ff",
+            headerBg:"#7d9474ff",
+            
+          }
         }
       }}
     >{children}</ConfigProvider></body></html>

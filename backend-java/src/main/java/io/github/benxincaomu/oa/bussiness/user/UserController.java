@@ -92,7 +92,7 @@ public class UserController {
      * @param user 用户信息
      */
     @PostMapping()
-    public String insert(@RequestBody User user) {
+    public User insert(@RequestBody User user) {
         return userService.insert(user);
     }
 

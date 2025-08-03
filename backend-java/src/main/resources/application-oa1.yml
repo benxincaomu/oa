@@ -1,0 +1,54 @@
+spring:
+  application: 
+    name: oa
+  datasource:
+    url:  jdbc:postgresql://10.0.0.130:5432/oa1?characterEncoding=utf8&stringtype=unspecified&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useUnicode=true&&TimeZone=Asia/Shanghai&reWriteBatchedInserts=true
+    password: oa
+    username: oa
+    driver-class-name: org.postgresql.Driver
+    hikari: 
+      connectionTimeout: 10000
+      idle-timeout: 30000
+      minimum-idle: 4
+      maximum-pool-size: 10
+      driver-class-name: org.postgresql.Driver
+      
+      
+  data:
+    redis:
+      host: 10.0.0.130
+      port: 6379
+      password: redisPwd
+      database: 1
+      repositories:
+        enabled: false
+      
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        jdbc: 
+          batch_size: 100
+          order_inserts: true
+          order_updates: true
+          return-first-only: false
+        enhancer:
+          enableLazyInitialization: true
+          enableAssociationManagement: true
+          enableDirtyTracking: true
+
+  mail:
+    host: mail.tt
+    port: 465
+    username: service@mail.tt
+    password: sftadmin
+    protocol: smtp
+    properties: 
+      mail: 
+        smtp: 
+          auth: true
+          ssl: 
+            enable: true
+            trust: "*"
+            checkserveridentity: false
+
+
