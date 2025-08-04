@@ -1,3 +1,4 @@
+// @ts-expect-error: 导入json
 import zhTrans  from 'bpmn-js-i18n/translations/zn';
 
 // eslint-disable-next-line import/no-anonymous-default-export

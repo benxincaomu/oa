@@ -1,5 +1,4 @@
 "use client";
-// import type { Metadata } from "next";
 import { Layout } from "antd";
 import React from "react";
 import Login from "@/app/app/login/Login";

@@ -1,4 +1,4 @@
-
+"use client"; 
 import service from "@/commons/base/service";
 import { Button, Col, Form, Input, InputNumber, Row, Space, message } from "antd"
 import { useCallback, useEffect, useState } from "react";
@@ -6,6 +6,7 @@ import { WorkbenchPublish } from "../workbenches/design/types";
 
 interface Props {
     workbenchId?: string;
+    columnDefinitions?: any;
     formId?: number;
     workbenchPublish?: WorkbenchPublish;
     onSubmit?: () => void;

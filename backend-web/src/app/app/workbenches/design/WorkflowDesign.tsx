@@ -12,7 +12,7 @@ import 'bpmn-js/dist/assets/bpmn-js.css';
 import 'bpmn-js/dist/assets/bpmn-font/css/bpmn-embedded.css';
 import '@bpmn-io/properties-panel/assets/properties-panel.css';
 
-import { BpmnPropertiesPanelModule, BpmnPropertiesProviderModule } from 'bpmn-js-properties-panel';
+
 
 // 如果你需要 Camunda 特有属性，保留这两个导入：
 import CamundaModdleExtension from 'camunda-bpmn-moddle/resources/camunda.json';
@@ -32,7 +32,7 @@ interface BpmnModelerComponentProps {
     bpmnModelerRef: React.RefObject<BpmnModeler | null>;
 
 }
-function customTranslate(template, replacements) {
+function customTranslate(template:string, replacements:Map<string, string>) {
     replacements = replacements || {};
 
     // Translate
@@ -40,7 +40,7 @@ function customTranslate(template, replacements) {
 
     // Replace
     return template.replace(/{([^}]+)}/g, function (_, key) {
-        return replacements[key] || '{' + key + '}';
+        return replacements.get(key) || '{' + key + '}';
     });
 }
 

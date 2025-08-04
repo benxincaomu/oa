@@ -1,3 +1,4 @@
+"use client"
 import BpmnModeler from 'camunda-bpmn-js/lib/base/Modeler';
 
 import React, { Component, useState, useEffect } from 'react';

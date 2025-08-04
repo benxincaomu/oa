@@ -81,7 +81,6 @@ const RoleManager = () => {
                 ...values
             },
             headers: {
-                token: localStorage.getItem('token'),
             },
         }).then((res) => {
             // console.log("获取角色数据成功:", res.data);
@@ -93,7 +92,6 @@ const RoleManager = () => {
     useEffect(() => {
         document.title = "角色管理";
         setTimeout(() => {
-            // console.log("role token:",localStorage.getItem('token'));
             loadRoles({});
             loadPermissions();
         }, 1000);
@@ -104,7 +102,6 @@ const RoleManager = () => {
     const handleAddRole = async (values: any) => {
         await axios.post("/role", values, {
             headers: {
-                "token": localStorage.getItem("token"),
             },
         }).then((res) => {
             if (res.data.code === 200) {
@@ -130,7 +127,6 @@ const RoleManager = () => {
     const loadPermissions = async () => {
         await axios.get("/permission/getMenuTree", {
             headers: {
-                "token": localStorage.getItem("token"),
             },
         }).then((res) => {
             console.log("获取权限数据成功:", res.data);
@@ -144,7 +140,6 @@ const RoleManager = () => {
     const loadPermissionsByRoleId = async (id: number) => {
         await axios.get(`/role/permissionsByRoleId?roleId=${id}`, {
             headers: {
-                "token": localStorage.getItem("token"),
             },
         }).then((res) => {
             // console.log("获取权限数据成功:", res.data);

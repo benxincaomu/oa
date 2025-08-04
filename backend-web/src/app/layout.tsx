@@ -1,9 +1,7 @@
 "use client";
-// import type { Metadata } from "next";
 import "./globals.css";
-import { AntdRegistry } from '@ant-design/nextjs-registry';
-import { ConfigProvider, theme } from 'antd';
-function RootLayout({
+import { ConfigProvider } from 'antd';
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -13,17 +11,15 @@ function RootLayout({
       theme={{
 
         // algorithm: theme.defaultAlgorithm,
-        components:{
+        components: {
           Table: {
-            colorBorder:"#180bccff",
-            colorBorderSecondary:"#7b799eff",
-            rowSelectedHoverBg:"#f1f8f2ff",
-            headerBg:"#7d9474ff",
-            
+            colorBorder: "#180bccff",
+            colorBorderSecondary: "#7b799eff",
+            rowSelectedHoverBg: "#f1f8f2ff",
+            headerBg: "#7d9474ff",
+
           }
         }
       }}
     >{children}</ConfigProvider></body></html>
 }
-
-export default RootLayout;

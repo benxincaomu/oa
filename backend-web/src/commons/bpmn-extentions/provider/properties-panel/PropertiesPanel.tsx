@@ -37,7 +37,7 @@ const PropertiesPanel = ({ bpmnModelerRef }: PropertiesPanelProps) => {
 
             const selection = modeler.get('selection');
             // console.log('selection', selection);
-            const handleSelectionChange = (event) => {
+            const handleSelectionChange = (event: { newSelection: React.SetStateAction<Element[]>; }) => {
                 if (mounted) {
                     setSelectedElements(event.newSelection);
                 }

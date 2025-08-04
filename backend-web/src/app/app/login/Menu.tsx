@@ -4,7 +4,7 @@ import service from "@/commons/base/service";
 import { Menu } from 'antd';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { ItemType } from "antd/es/menu/interface";
-
+import {MenuInfo} from "rc-menu/lib/interface";
 interface MenuItem {
     id: number;
     name: string;
@@ -95,7 +95,7 @@ const SideMenu = () => {
         }, 300);
     }, []);
 
-    const onClickMenu = ({ item, key, keyPath, domEvent }) => {
+    const onClickMenu = ({ item, key, keyPath, domEvent }:MenuInfo) => {
         // console.log("item:", item);
         if (item.props.value) {
             window.location.href = item.props.value;

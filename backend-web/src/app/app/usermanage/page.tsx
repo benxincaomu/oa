@@ -1,4 +1,4 @@
-"use client"; // 因为使用了 React State 和交互，必须是 Client Component
+"use client"; 
 
 import { Button, Form, Input, message, Modal, Space, Table, Popconfirm, Select, TreeSelect } from "antd";
 import { useEffect, useState } from "react";
@@ -77,7 +77,6 @@ const UserManager = () => {
     const handleDelete = (id: number) => {
         axios.delete(`/user/${id}`, {
             headers: {
-                token: localStorage.getItem("token") || "",
             },
         }).then(() => {
             messageApi.success("用户删除成功");

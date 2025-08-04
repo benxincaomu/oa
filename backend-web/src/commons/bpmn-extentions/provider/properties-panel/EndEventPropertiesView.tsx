@@ -1,4 +1,4 @@
-
+"use client"
 import BpmnModeler from 'camunda-bpmn-js/lib/base/Modeler';
 
 import React, { useEffect } from 'react';
@@ -7,13 +7,14 @@ import { CollapseProps, Collapse, } from 'antd';
 import { Mode } from 'fs';
 import ModelerProps from './ModelerProps';
 import GeneralPropertiesView from './GeneralPropertiesView';
+import Selection from 'diagram-js/lib/features/selection/Selection';
 
 export default function EndEventPropertiesView({ bpmnModelerRef,bpmnId }: ModelerProps) {
 
     useEffect(() => {
         const modeler = bpmnModelerRef.current;
         if (modeler) {
-            const selection = modeler.get('selection');
+            const selection:Selection = modeler.get('selection');
             selection.get();
         }
     }, []);

@@ -62,10 +62,8 @@ const Permissions = () => {
     ];
     const [permissions, setPermissions] = useState<Permission[]>([]);
     const loadPermissions = async (currPage: number, pageSize: number) => {
-        // console.log("提交的权限信息:", localStorage.getItem("token"));
         await axios.get("/permission/list", {
             headers: {
-                "token": localStorage.getItem("token"),
             },
         }).then((res) => {
             // console.log("获取权限数据成功:", res.data);

@@ -1,4 +1,4 @@
-
+"use client"
 import BpmnModeler from 'camunda-bpmn-js/lib/base/Modeler';
 
 import React, { useEffect } from 'react';

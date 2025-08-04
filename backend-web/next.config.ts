@@ -9,12 +9,10 @@ const nextConfig: NextConfig = {
       {
         source: "/:path((?!app(?:$|/)).*)", // 
         destination: `${API_BASE_URL}/:path*`, 
-      },
-      
-
-      
+      },{ source: '/404', destination: '/' }, // 404跳转到首页
+      { source: '/500', destination: '/' }
     ];
-  },
+  }
 
 };
 

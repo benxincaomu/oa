@@ -1,4 +1,4 @@
-
+"use client"
 import BpmnModeler from 'camunda-bpmn-js/lib/base/Modeler';
 
 import React, { useEffect, useState } from 'react';
@@ -54,7 +54,7 @@ export default function UserTaskPropertiesView({ bpmnModelerRef, bpmnId }: Model
  * 任务分派面板
  */
 export function AssignTaskView({ bpmnModelerRef, bpmnId }: ModelerProps) {
-    const [assignTypes, setAssignTypes] = useState<any>([]);
+    const [assignTypes, setAssignTypes] = useState([]);
 
     const [form] = Form.useForm();
     useEffect(() => {
@@ -97,9 +97,9 @@ export function AssignTaskView({ bpmnModelerRef, bpmnId }: ModelerProps) {
 
     const [assignType, setAssignType] = useState<string>("");
     // 用于存储候选者列表
-    const [candidates, setCandidates] = useState<any>([]);
+    const [candidates, setCandidates] = useState([]);
     // 候选部门
-    const [depts, setDepts] = useState<any>([]);
+    const [depts, setDepts] = useState([]);
     useEffect(() => {
         console.log("useEffect", candidates, depts);
         if (!candidates || candidates.length === 0) {
@@ -122,6 +122,7 @@ export function AssignTaskView({ bpmnModelerRef, bpmnId }: ModelerProps) {
             const selection: Selection = modeler.get('selection');
             const modeling: Modeling = modeler.get('modeling');
             const userTask = selection.get()[0] as Shape;
+            /* eslint-disable @typescript-eslint/no-explicit-any */
             const propertiesToUpdate: any = {};
             const assigneeValue = form.getFieldValue("assigneeValue");
             propertiesToUpdate['camunda:assignee'] = undefined;

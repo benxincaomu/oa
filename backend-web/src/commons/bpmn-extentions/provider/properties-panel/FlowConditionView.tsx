@@ -1,3 +1,4 @@
+"use client"
 import { Form, Input } from "antd";
 import ModelerProps from "./ModelerProps";
 import { useEffect, useState } from "react";

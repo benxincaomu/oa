@@ -5,9 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import service from '@/commons/base/service';
 import { Button, FormInstance, Tabs, message } from 'antd';
 import BeanDesign from './BeanDesign';
-import PageDesign from './PageDesign';
 import WorkflowDesign from './WorkflowDesign';
-import { PageEditor } from '@/page_editor/editor';
 import BpmnModeler from 'camunda-bpmn-js/lib/camunda-platform/Modeler';
 const Design = () => {
   const params = useSearchParams();
