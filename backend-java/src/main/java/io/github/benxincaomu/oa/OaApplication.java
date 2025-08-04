@@ -14,7 +14,7 @@ import org.springframework.data.redis.repository.configuration.EnableRedisReposi
 @SpringBootApplication
 @EnableJpaRepositories(basePackages = { "io.github.benxincaomu.oa.bussiness" })
 @EnableRedisRepositories(basePackages = "io.github.benxincaomu.oa.base")
-@ComponentScan({ "com.github.benxincaomu.notry", "io.github.benxincaomu.oa" })
+@ComponentScan({ "io.github.benxincaomu.notry", "io.github.benxincaomu.oa" })
 public class OaApplication {
 	private static final Logger logger = LoggerFactory.getLogger(OaApplication.class);
 

@@ -1,7 +1,7 @@
 "use client"; // 因为使用了 React State 和交互，必须是 Client Component
 
 import { Button, Form, Input, message, Modal, Space, Table, Popconfirm, Select, TreeSelect } from "antd";
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import service from "@/commons/base/service";
 
@@ -115,34 +115,18 @@ const UserManager = () => {
             key: "action",
             render: (_: any, record: User) => (
                 <Space size="middle">
-                    {/* <a onClick={() => console.log("编辑:", record)}>编辑</a> */}
-                    <Popconfirm title="确定删除吗？" onConfirm={(e) => handleDelete(record.id)} okText="确定" cancelText="取消">
 
-                        <a
-                            onClick={() => {
-
-                            }}
-                            style={{ color: "red" }}
-                        >
-                            删除
-                        </a>
-                    </Popconfirm>
-                    <Popconfirm title="确定要禁用吗？" okText="确定" cancelText="取消">
-                        <a
-                            onClick={() => {
-
-                            }}
-                            style={{ color: "blue" }}
-                        >
+                    <Popconfirm title="确定要禁用吗？" okText="确定" cancelText="取消" onConfirm={() => { }}>
+                        <a>
                             禁用
                         </a>
                     </Popconfirm>
-                    <a>修改</a>
+                    <a onClick={() => { }}>修改</a>
                     <a onClick={() => {
                         beforeAssignRole(record as User);
                     }}>分配角色</a>
-                    <a onClick={() => { 
-                        onAssignDeptOpen(record as User); 
+                    <a onClick={() => {
+                        onAssignDeptOpen(record as User);
 
                     }}>分配部门</a>
                 </Space>
@@ -168,7 +152,7 @@ const UserManager = () => {
             setOperatingUser(user as User);
             setUserId(user.id);
             setAssignOpen(true);
-            
+
         });
     }
     const onAssignClose = () => {
@@ -210,7 +194,7 @@ const UserManager = () => {
         });
         if (depts.length == 0) {
             service.get("/organize/listTree").then((res) => {
-                setDepts([{id:0,name:"无部门"}].concat(res.data));
+                setDepts([{ id: 0, name: "无部门" }].concat(res.data));
                 // setDepts(res.data);
             });
         }
@@ -220,11 +204,11 @@ const UserManager = () => {
         setAssignDeptOpen(false);
         setOperatingUser(nullUser);
         assignDeptForm.resetFields();
-        
-        
+
+
     };
     const onAssignDeptFinish = (values: any) => {
-        values.userId=operatingUser.id;
+        values.userId = operatingUser.id;
         service.post("/user/assignDept", values).then((res) => {
             // console.log(res);
             onAssignDeptClose();
@@ -261,7 +245,7 @@ const UserManager = () => {
                     </Form.Item>
                 </Form>
             </div>
-
+            <br />
             <Table
                 dataSource={users}
                 columns={columns}
@@ -284,7 +268,11 @@ const UserManager = () => {
             >
                 <Form form={addUserFrom} onFinish={handleAddUser}>
 
-                    <Input name="id" type="hidden" />
+                    <Form.Item
+                        name="id"
+                        hidden                    >
+                        <Input />
+                    </Form.Item>
 
                     <Form.Item
                         label="用户名"
@@ -300,30 +288,7 @@ const UserManager = () => {
                     >
                         <Input />
                     </Form.Item>
-                    {/* <Form.Item
-                        label="密码"
-                        name="password"
-                        rules={[{ required: true }]}
-                    >
-                        <Input.Password  />
-                    </Form.Item>
-                    <Form.Item
-                        label="确认密码"
-                        name="confirmPassword"
-                        rules={[
-                            { required: true, message: '请再次输入密码' },
-                            {
-                                validator(_, value) {
-                                    if (!value || addUserFrom.getFieldValue('password') === value) {
-                                        return Promise.resolve();
-                                    }
-                                    return Promise.reject(new Error('两次输入的密码不一致'));
-                                },
-                            },
-                        ]}
-                    >
-                        <Input.Password />
-                    </Form.Item> */}
+
                     <Form.Item
                         label="邮箱"
                         name="email"
@@ -394,7 +359,7 @@ const UserManager = () => {
                     form={assignDeptForm}
                 >
                     <Form.Item label="部门" name="departmentId" rules={[{ required: true, message: '请选择角色' }]} >
-                        <TreeSelect showSearch treeData={depts} fieldNames={{ label: 'name', value: 'id' }} treeNodeFilterProp="name"  placeholder="请选择部门" />
+                        <TreeSelect showSearch treeData={depts} fieldNames={{ label: 'name', value: 'id' }} treeNodeFilterProp="name" placeholder="请选择部门" />
                     </Form.Item>
                     {/* <Form.Item name="userId" hidden >
                         <Input type="hidden" value={userId} />

@@ -141,6 +141,24 @@ public class InitService {
         systemManagement.setTenantId(tenantId);
         permissionRepository.save(systemManagement);
         permissions.add(systemManagement);
+        // 权限管理
+        Permission permissionManagement = new Permission();
+        permissionManagement.setName("权限管理");
+        permissionManagement.setType(Permission.TYPE_2);
+        permissionManagement.setParentId(systemManagement.getId());
+        permissionManagement.setTenantId(tenantId);
+        permissionManagement.setValue("/app/permissions");
+        permissionRepository.save(permissionManagement);
+        permissions.add(permissionManagement);
+        // 权限相关url
+        Permission permissionUrl = new Permission();
+        permissionUrl.setName("权限相关url");
+        permissionUrl.setType(Permission.TYPE_3);
+        permissionUrl.setValue("/permission/**");
+        permissionUrl.setTenantId(tenantId);
+        permissionUrl.setParentId(permissionManagement.getId());
+        permissionRepository.save(permissionUrl);
+        permissions.add(permissionUrl);
         // 用户管理
         Permission userManagement = new Permission();
         userManagement.setName("用户管理");

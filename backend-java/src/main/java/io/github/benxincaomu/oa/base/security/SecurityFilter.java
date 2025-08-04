@@ -4,11 +4,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,15 +15,11 @@ import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.benxincaomu.notry.exception.handler.ResponseMessage;
-import com.github.benxincaomu.notry.utils.Asserts;
 
+import io.github.benxincaomu.notry.exception.handler.ResponseMessage;
 import io.github.benxincaomu.oa.base.init.InitService;
 import io.github.benxincaomu.oa.base.web.OaResponseCode;
-import io.github.benxincaomu.oa.bussiness.user.Permission;
 import io.github.benxincaomu.oa.bussiness.user.Role;
-import io.github.benxincaomu.oa.bussiness.user.vo.PermissionIdName;
-import io.micrometer.core.ipc.http.HttpSender.Response;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import jakarta.servlet.FilterChain;

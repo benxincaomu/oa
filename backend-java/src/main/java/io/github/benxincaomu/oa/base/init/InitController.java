@@ -35,7 +35,7 @@ public class InitController {
         user.setMobile(initVo.getUser().getMobile());
         user.setPassword(initVo.getUser().getPassword());
         Role role = new Role();
-        role.setName(initVo.getRole().getRoleName());
+        role.setName(initVo.getRole().getName());
         initService.init(department, user, role);
     }
 

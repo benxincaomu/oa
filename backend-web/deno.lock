@@ -4269,6 +4269,7 @@
     "packageJson": {
       "dependencies": [
         "npm:@ant-design/icons@6",
+        "npm:@ant-design/nextjs-registry@^1.1.0",
         "npm:@ant-design/v5-patch-for-react-19@^1.0.3",
         "npm:@bpmn-io/properties-panel@^3.30.2",
         "npm:@eslint/eslintrc@3",

@@ -1,6 +1,6 @@
 package io.github.benxincaomu.oa.base.web;
 
-import com.github.benxincaomu.notry.code.ResponseCode;
+import io.github.benxincaomu.notry.code.ResponseCode;
 
 public enum OaResponseCode implements ResponseCode {
 	TOKEN_NOT_EXIST(10002,"token不存在"),

@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.github.benxincaomu.notry.utils.Asserts;
+import io.github.benxincaomu.notry.utils.Asserts;
 
 import io.github.benxincaomu.oa.base.consts.Const;
 import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;

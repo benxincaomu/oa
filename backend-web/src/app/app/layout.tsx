@@ -20,16 +20,14 @@ function RootLayout({
         <Login />
       </Header>
 
-      <Layout style={{ height: "100%" }}>
+      <Layout >
         <Sider >
-          {/* 左侧菜单内容 */}
 
           <SideMenu />
         </Sider>
 
         <Content style={{ margin: "24px 16px 0" }}>
-          {/* 主体内容区域 */}
-          <div className="height-100" style={{ padding: 24, minHeight: 360 }}>
+          <div  >
             {children}
           </div>
         </Content>

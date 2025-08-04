@@ -5,16 +5,18 @@ import jakarta.validation.constraints.NotNull;
 public class RoleInitVo {
 
     @NotNull(message = "角色名称不能为空")
-    private String roleName;
+    private String name;
 
-
-    public String getRoleName() {
-        return roleName;
+    public String getName() {
+        return name;
     }
 
-    public void setRoleName(String roleName) {
-        this.roleName = roleName;
+    public void setName(String name) {
+        this.name = name;
     }
+
+
+   
 
     
 }

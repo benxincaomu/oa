@@ -14,27 +14,33 @@ interface MenuItem {
     children?: MenuItem[];
 }
 const fillMenuItems = (data: MenuItem[]) => {
-    data.forEach((item: any) => {
-        item.key = item.id + "";
-        item.label = item.name;
-        item.type = item.type;
-        delete item.parentId;
-        if (item.children && item.children.length > 0) {
-            fillMenuItems(item.children);
-        }
-    });
+    if (data) {
+
+        data.forEach((item: any) => {
+            item.key = item.id + "";
+            item.label = item.name;
+            item.type = item.type;
+            delete item.parentId;
+            if (item.children && item.children.length > 0) {
+                fillMenuItems(item.children);
+            }
+        });
+    }
 }
 const findSelectedKeys = (data: MenuItem[], value?: string) => {
     if (value == null) {
         return [];
     }
     let selectedKeys: string[] = [];
-    for (let i = 0; i < data.length; i++) {
-        const item = data[i];
-        if (item.value === value) {
-            return [item.key + ""];
-        } else if (item.children && item.children.length > 0) {
-            selectedKeys = selectedKeys.concat(findSelectedKeys(item.children, value));
+    if (data && data.length > 0) {
+
+        for (let i = 0; i < data.length; i++) {
+            const item = data[i];
+            if (item.value === value) {
+                return [item.key + ""];
+            } else if (item.children && item.children.length > 0) {
+                selectedKeys = selectedKeys.concat(findSelectedKeys(item.children, value));
+            }
         }
     }
     return selectedKeys;
@@ -78,7 +84,7 @@ const SideMenu = () => {
                 setMenuItems(res.data as MenuItem[]);
                 // console.log("res.data", res.data);
                 const keys = findSelectedKeys(res.data as MenuItem[], pathName as string);
-                if(typeof keys !== "undefined"){
+                if (typeof keys !== "undefined") {
                     setSelectedKeys(keys);
                     if (keys.length > 0) {
                         const ancestorKeys = getAncestorKeys(res.data as MenuItem[], keys[0]);
