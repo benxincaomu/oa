@@ -1,6 +1,8 @@
 "use client";
 import "./globals.css";
 import { ConfigProvider } from 'antd';
+import { AntdRegistry } from '@ant-design/nextjs-registry';
+import { Suspense } from "react";
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -21,5 +23,14 @@ export default function RootLayout({
           }
         }
       }}
-    >{children}</ConfigProvider></body></html>
+    >
+      <AntdRegistry>
+        <Suspense fallback={<div>Loading...</div>}>
+
+          {children}
+        </Suspense>
+      </AntdRegistry>
+    </ConfigProvider>
+    </body>
+  </html>
 }

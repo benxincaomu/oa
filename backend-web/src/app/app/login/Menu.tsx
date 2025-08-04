@@ -95,7 +95,7 @@ const SideMenu = () => {
         }, 300);
     }, []);
 
-    const onClickMenu = ({ item, key, keyPath, domEvent }:MenuInfo) => {
+    const onClickMenu = ({ item, key, keyPath, domEvent }:any) => {
         // console.log("item:", item);
         if (item.props.value) {
             window.location.href = item.props.value;

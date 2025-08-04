@@ -15,7 +15,7 @@ export default function ResetPassword() {
   useEffect(() => {
     setResetPasswordId(query.get('id') || '');
     form.setFieldValue("id", query.get('id'));
-  }, []);
+  }, [form, query]);
   const router = useRouter();
   const onfFinished = (values: any) => {
     if (values.password !== values.confirmPassword) {

@@ -5,22 +5,27 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import service from '@/commons/base/service';
 import { Button, FormInstance, Tabs, message } from 'antd';
 import BeanDesign from './BeanDesign';
-import WorkflowDesign from './WorkflowDesign';
+// import WorkflowDesign from './WorkflowDesign';
+import dynamic from 'next/dynamic';
 import BpmnModeler from 'camunda-bpmn-js/lib/camunda-platform/Modeler';
+// 动态导入 WorkflowDesign 组件并禁用 SSR
+const WorkflowDesign = dynamic(() => import('./WorkflowDesign'), { 
+  ssr: false,
+  loading: () => <div>Loading...</div>
+});
 const Design = () => {
   const params = useSearchParams();
   const [wid, setWid] = useState<number>(0);
   const [beanForm, setBeanForm] = useState<FormInstance>();
   const [messageApi, contextHolder] = message.useMessage();
   useEffect(() => {
-    document.title = "设计";
     if (params) {
 
       const wid = params.get('wid');
       getWorkbench(Number(wid));
       setWid(Number(wid));
     }
-  }, []);
+  }, [params]);
   const getWorkbench = (wid: number) => {
     service.get(`/workbench/${wid}`).then((res) => {
       document.title = `流程设计:${res.data.name}`;

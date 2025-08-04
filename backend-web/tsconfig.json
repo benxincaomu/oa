@@ -22,6 +22,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/page_editor/components.tsx", "src/commons/bpmn-extentions/provider/properties-panel/OaProvider.js", "src/commons/bpmn-extentions/provider/properties-panel/parts/UserSelect.js", "src/commons/bpmn-extentions/provider/properties-panel/OaPropertiesPanel.js", "src/app/global-not-found.js", "src/app/error.js", "src/app/global-error.tsx"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
 }
