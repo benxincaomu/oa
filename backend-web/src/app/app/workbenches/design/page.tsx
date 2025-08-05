@@ -104,7 +104,7 @@ const Design = () => {
   return (
     <>
       {contextHolder}
-      <Tabs defaultActiveKey="2" items={tabData}
+      <Tabs defaultActiveKey="1" items={tabData}
         tabBarExtraContent={
           { right: <Button type="primary" onClick={(e) => { publish(e) }}>发布</Button> }
         } />

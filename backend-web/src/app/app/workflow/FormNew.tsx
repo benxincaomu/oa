@@ -97,7 +97,34 @@ export default function FormEditor({ workbenchPublish, formId, onSubmit, onCance
                     {(columnDefinitions || workbenchPublish?.entityDefinition.columns)?.map(column => {
                         return (
                             <Col key={column.columnName} span={column.columnType === "longtext" ? 24 : 12}>
-                                <Form.Item label={column.label} name={column.columnName}>
+                                <Form.Item label={column.label} name={column.columnName} rules={[
+                                    { required: column.required, message: `请输入${column.label}` },
+                                    {
+                                        validator: (_, value) => {
+                                            if(column.range){
+                                                // 匹配标准区间格式 [1, 10] 或 (1, 10) 等
+                                                const standardRangeRegex = /([\[\(])\s*(\d+)\s*,\s*(\d+)\s*([\]\)])/;
+                                                const match = column.range?.match(standardRangeRegex);
+                                                console.log(column.range);
+                                                console.log(match);
+                                                if (match) {
+                                                    const [,leftBound, leftValue, rightValue, rightBound] = match;
+                                                    const isLeftInclusive = leftBound === "[";
+                                                    const isRightInclusive = rightBound === "]";
+                                                    const isInRange = (value >= leftValue && value <= rightValue) || (value > leftValue && value < rightValue);
+                                                    if (!isInRange) {
+                                                        return Promise.reject(`${column.label}必须在${leftValue}, ${rightValue}之间`);
+                                                    }
+                                                }
+                                            }else if(column.regExp){
+                                                if (!new RegExp(column.regExp).test(value)) {
+                                                    return Promise.reject(`${column.label}格式不正确`);
+                                                }
+                                            }
+                                            return Promise.resolve();
+                                        },
+                                    }
+                                ]}>
                                     {(() => {
                                         switch (column.columnType) {
                                             case "string":

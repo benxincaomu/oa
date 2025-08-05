@@ -7,6 +7,9 @@ export interface ColumnDefinition {
     sort: number;
     unit?: string;
     validateTypes?: string[];
+    required:boolean;
+    regExp?: string;
+    range?: string;
 }
 export interface WorkbenchPublish {
     id:number;

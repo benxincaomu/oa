@@ -16,7 +16,7 @@ const BeanDesign = ({ wid, setBeanForm }: Props) => {
     useEffect(() => {
         setBeanForm(form);
     }, [form, setBeanForm]);
-    
+
     const [id, setId] = useState(0);
     const onSave = (values: any) => {
         service.post("/entityDefinition", values).then(res => {
@@ -26,9 +26,8 @@ const BeanDesign = ({ wid, setBeanForm }: Props) => {
         });
     };
     const [columnTypes, setColumnTypes] = useState<any[]>([]);
-    const [columnTypeWatches, setColumnTypeWatches] = useState([]);
     useEffect(() => {
-        
+
         service.get(`/entityDefinition/getColumnTypes`).then(res => {
             setColumnTypes(res.data);
         });
@@ -40,7 +39,7 @@ const BeanDesign = ({ wid, setBeanForm }: Props) => {
         }
     }, [form, id]);
     useEffect(() => {
-        
+
         if (wid > 0) {
             service.get("/entityDefinition/getByWorkbenchId/" + wid).then(res => {
                 if (res.data) {
@@ -108,17 +107,64 @@ const BeanDesign = ({ wid, setBeanForm }: Props) => {
                                         }}>
                                             {({ getFieldValue }) => {
                                                 const columnType = getFieldValue(['columns', index, 'columnType']);
-                                                if (columnType == 'number') {
-                                                    return <Col className="content-center" span={4}>
-                                                        <Form.Item {...formListSpan} name={[field.name, "unit"]} label="单位" rules={[
-                                                            { required: true, message: '请输入数值单位' },
-                                                            { max: 5, message: '数值单位长度不能超过5个字符' }
-                                                        ]}>
-                                                            <Input />
-                                                        </Form.Item>
-                                                    </Col>
-                                                } else {
+                                                if (columnType === 'number') {
+                                                    return <>
+                                                        <Col className="content-center" span={4}>
+                                                            <Form.Item {...formListSpan} name={[field.name, "unit"]} label="单位" rules={[
+                                                                { required: true, message: '请输入数值单位' },
+                                                                { max: 5, message: '数值单位长度不能超过5个字符' }
+                                                            ]}>
+                                                                <Input />
+                                                            </Form.Item>
+                                                        </Col>
+                                                        <Col className="content-center" span={3}>
+                                                            <Form.Item {...formListSpan} name={[field.name, "range"]} label="取值范围" rules={[
+                                                                {
+                                                                    validator: (_, value) => {
+                                                                        if (!value) {
+                                                                            return Promise.resolve();
+                                                                        }
+                                                                        const rangeRegex = /^[\[\(]\s*(-?\d+(\.\d+)?)\s*,\s*(-?\d+(\.\d+)?)\s*[\]\)]$|^(-?\d+(\.\d+)?)\s*-\s*(-?\d+(\.\d+)?)$/;
 
+                                                                        const match = value.match(rangeRegex);
+                                                                        if (!match) {
+                                                                            return Promise.reject(new Error('请输入正确的范围'));
+                                                                        }
+                                                                        return Promise.resolve();
+                                                                    }
+                                                                }
+                                                            ]}>
+                                                                <Input />
+                                                            </Form.Item>
+                                                        </Col>
+                                                    </>
+                                                } else if (columnType === 'string') {
+
+                                                    return (
+                                                        <>
+                                                            <Col className="content-center" span={3}>
+                                                                <Form.Item {...formListSpan} name={[field.name, "regExp"]} label="正则" rules={[
+                                                                    {
+                                                                        validator: (_, value) => {
+                                                                            if (!value) {
+                                                                                return Promise.resolve();
+                                                                            }
+                                                                            console.log(value);
+                                                                            try {
+                                                                                new RegExp(value);
+                                                                                return Promise.resolve();
+                                                                            } catch (e) {
+                                                                                return Promise.reject(new Error('请输入有效的正则表达式'));
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                ]}>
+                                                                    <Input />
+                                                                </Form.Item>
+                                                            </Col>
+                                                        </>
+                                                    );
+                                                } else {
                                                     return (
                                                         <></>
                                                     );
@@ -127,12 +173,18 @@ const BeanDesign = ({ wid, setBeanForm }: Props) => {
 
                                         </Form.Item>
                                         <Col className="content-center" span={2}>
-                                            <Form.Item labelCol={{ span: 20 }} wrapperCol={{ span: 4 }} name={[field.name, "listAble"]} valuePropName="checked" label="列表字段">
+                                            <Form.Item {...formListSpan} name={[field.name, "required"]} valuePropName="checked" label="必填">
                                                 <Checkbox />
                                             </Form.Item>
-
                                         </Col>
-                                        <Col className="content-center" span={3} >
+                                        <Col className="content-center" span={3}>
+                                            <Form.Item {...formListSpan} name={[field.name, "listAble"]} valuePropName="checked" label="列表字段">
+                                                <Checkbox />
+                                            </Form.Item>
+                                        </Col>
+
+
+                                        <Col className="content-center" span={2} >
                                             <Form.Item>
 
                                                 <MinusCircleOutlined onClick={() => remove(index)} />
@@ -157,9 +209,9 @@ const BeanDesign = ({ wid, setBeanForm }: Props) => {
                     <Space>
 
                         <Button type="primary" htmlType="submit">
-                            提交
+                            保存
                         </Button>
-                        <Button type="primary" onClick={()=>{
+                        <Button type="primary" onClick={() => {
                             setPreviewFormVisitable(true)
                         }}>
                             预览表单
