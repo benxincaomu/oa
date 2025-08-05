@@ -1,7 +1,8 @@
 spring:
   profiles:
     active:
-    - oa1
+    - oa
+    - oa
   application: 
     name: oa
 

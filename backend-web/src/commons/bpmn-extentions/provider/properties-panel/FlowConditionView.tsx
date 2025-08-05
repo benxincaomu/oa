@@ -41,6 +41,7 @@ export default function FlowConditionView({ bpmnModelerRef, bpmnId }: ModelerPro
             modeling.updateProperties(selectedElement, {
                 conditionExpression
             });
+            
         }
     };
 

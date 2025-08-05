@@ -95,11 +95,12 @@ public class WorkflowService {
                     taskService.claim(task.getId(), JpaAuditorAware.getCurrentUserId().toString());
                     // 设定任务按sequenceFlow为流向
                     String executionId = task.getExecutionId();
-                    runtimeService.createProcessInstanceModification(flowForm.getProcessId())
+                    taskService.setVariableLocal(executionId, "flowId", flowHistory.getFlowId());;
+                   /*  runtimeService.createProcessInstanceModification(flowForm.getProcessId())
                             .cancelActivityInstance(executionId)
                             .startBeforeActivity(sequenceFlow.getTarget().getId())
                             .execute();
-                    ;
+                    ; */
                     
 
 

@@ -1,24 +1,24 @@
-"use client"; 
+"use client";
 import service from "@/commons/base/service";
 import { Button, Col, Form, Input, InputNumber, Row, Space, message } from "antd"
 import { useCallback, useEffect, useState } from "react";
-import { WorkbenchPublish } from "../workbenches/design/types";
+import { WorkbenchPublish, ColumnDefinition } from "../workbenches/design/types";
 
 interface Props {
     workbenchId?: string;
-    columnDefinitions?: any;
+    columnDefinitions?: ColumnDefinition[];
     formId?: number;
     workbenchPublish?: WorkbenchPublish;
     onSubmit?: () => void;
     onCancel?: () => void;
-    disabled?:boolean;
+    disabled?: boolean;
 }
 /**
  * 
  *  表单的新增与编辑
  *  
  */
-export default function FormEditor({ workbenchPublish, formId, onSubmit, onCancel,disabled=false }: Props) {
+export default function FormEditor({ workbenchPublish, formId, onSubmit, onCancel, disabled = false, columnDefinitions }: Props) {
     const [messageApi, contextHolder] = message.useMessage();
     const [form] = Form.useForm();
     const getFlowForm = useCallback(() => {
@@ -36,7 +36,7 @@ export default function FormEditor({ workbenchPublish, formId, onSubmit, onCance
     useEffect(() => {
 
         getFlowForm();
-        if(!formId){
+        if (!formId) {
             form.resetFields();
         }
 
@@ -88,13 +88,13 @@ export default function FormEditor({ workbenchPublish, formId, onSubmit, onCance
     return (
         <div>
             {contextHolder}
-            <Form form={form} onFinish={(values) => { onFinish(values) }} disabled = {disabled}>
+            <Form form={form} onFinish={(values) => { onFinish(values) }} disabled={disabled}>
                 <Form.Item hidden name={"id"}>
                     <Input />
                 </Form.Item>
                 <Row gutter={16}>
 
-                    {workbenchPublish?.entityDefinition.columns.map(column => {
+                    {(columnDefinitions || workbenchPublish?.entityDefinition.columns)?.map(column => {
                         return (
                             <Col key={column.columnName} span={column.columnType === "longtext" ? 24 : 12}>
                                 <Form.Item label={column.label} name={column.columnName}>

@@ -1,5 +1,5 @@
 "use client"
-import { Button, Divider, Form, Input, message, Modal, Space, Table } from "antd";
+import { Button, Divider, Form, Input, message, Modal, Space, Table, Typography } from "antd";
 import service from "@/commons/base/service";
 import { useEffect, useState, useCallback } from "react";
 interface Workbench {
@@ -53,7 +53,7 @@ const Workbench = () => {
             render: (text: any, record: any) => (
                 <Space size="middle">
                     <a>编辑</a>
-                    <a>删除</a>
+                    <a>删除</a>     
                     <a target="_blank" href={`/app/workbenches/design?wid=${record.id}`}>设计</a>
                 </Space>
             )
@@ -63,7 +63,7 @@ const Workbench = () => {
     return (
         <div>
             {contextHolder}
-            <div className="text-2xl font-bold">设计工作台</div>
+            <Typography.Title level={4} >设计工作台</Typography.Title>
             <Form form={seachForm} onFinish={(values) => { loadWorkbench(values) }} layout="inline">
                 <Form.Item label="名称" name="name"><Input placeholder="请输入名称" /></Form.Item>
                 <Form.Item>
