@@ -13,5 +13,7 @@ export default {
   "Candidate starter":"候选发起者",
   "Assignee":"承办人",
   "Candidate groups":"候选组",
-  "Candidate users":"候选用户"
+  "Candidate users":"候选用户",
+  "Open minimap": "打开缩略图",
+  "Close minimap": "隐藏缩略图",
 }

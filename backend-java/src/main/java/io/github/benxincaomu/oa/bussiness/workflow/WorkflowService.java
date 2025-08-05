@@ -1,5 +1,7 @@
 package io.github.benxincaomu.oa.bussiness.workflow;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import org.camunda.bpm.engine.ProcessEngine;
@@ -11,6 +13,8 @@ import org.camunda.bpm.model.bpmn.BpmnModelInstance;
 import org.camunda.bpm.model.bpmn.instance.FlowNode;
 import org.camunda.bpm.model.bpmn.instance.SequenceFlow;
 import org.camunda.bpm.model.bpmn.instance.UserTask;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import io.github.benxincaomu.notry.utils.Asserts;
@@ -57,8 +61,11 @@ public class WorkflowService {
     @Resource
     private FlowFormAssigneeRepository flowFormAssigneeRepository;
 
+    private final Logger logger = LoggerFactory.getLogger(getClass());
+
     @Transactional
     public void approval(FlowHistory flowHistory, Long workbenchId) {
+        // logger.info("approval");
         workbenchPublishRepository.findLatestByWorkbenchId(workbenchId).ifPresent(wp -> {
             userRepository.findById(JpaAuditorAware.getCurrentUserId()).ifPresent(user -> {
                 flowHistory.setOperatorName(user.getName());
@@ -88,25 +95,18 @@ public class WorkflowService {
                                 .active()
                                 .singleResult();
                     }
+                    flowHistoryRepository.save(flowHistory, wp.getFlowHistoryTable());
                     Asserts.isTrue(task != null, OaResponseCode.FLOW_TASK_NOT_EXIST);
                     // 删除待办的关联数据
                     flowFormAssigneeRepository.delete(flowForm.getId(), wp.getFlowFormAssigneeTable());
                     // 认领任务
                     taskService.claim(task.getId(), JpaAuditorAware.getCurrentUserId().toString());
-                    // 设定任务按sequenceFlow为流向
-                    String executionId = task.getExecutionId();
-                    taskService.setVariableLocal(executionId, "flowId", flowHistory.getFlowId());;
-                   /*  runtimeService.createProcessInstanceModification(flowForm.getProcessId())
-                            .cancelActivityInstance(executionId)
-                            .startBeforeActivity(sequenceFlow.getTarget().getId())
-                            .execute();
-                    ; */
-                    
-
+                    Map<String, Object> variables = new HashMap<>();
+                    variables.put("flowId", flowHistory.getFlowId());
+                    taskService.complete(task.getId(),variables);
 
                 }
 
-                flowHistoryRepository.save(flowHistory, wp.getFlowHistoryTable());
             }
 
 

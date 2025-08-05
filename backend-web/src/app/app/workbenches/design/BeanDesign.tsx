@@ -13,7 +13,10 @@ type Props = {
 const BeanDesign = ({ wid, setBeanForm }: Props) => {
     const [messageApi, contextHolder] = message.useMessage();
     const [form] = Form.useForm();
-    setBeanForm(form);
+    useEffect(() => {
+        setBeanForm(form);
+    }, [form, setBeanForm]);
+    
     const [id, setId] = useState(0);
     const onSave = (values: any) => {
         service.post("/entityDefinition", values).then(res => {
@@ -25,6 +28,7 @@ const BeanDesign = ({ wid, setBeanForm }: Props) => {
     const [columnTypes, setColumnTypes] = useState<any[]>([]);
     const [columnTypeWatches, setColumnTypeWatches] = useState([]);
     useEffect(() => {
+        
         service.get(`/entityDefinition/getColumnTypes`).then(res => {
             setColumnTypes(res.data);
         });
@@ -36,6 +40,7 @@ const BeanDesign = ({ wid, setBeanForm }: Props) => {
         }
     }, [form, id]);
     useEffect(() => {
+        
         if (wid > 0) {
             service.get("/entityDefinition/getByWorkbenchId/" + wid).then(res => {
                 if (res.data) {
@@ -44,7 +49,7 @@ const BeanDesign = ({ wid, setBeanForm }: Props) => {
             });
             form.setFieldValue("workbenchId", wid);
         }
-    }, [wid]);
+    }, [form, wid]);
     const formListSpan = {
         labelCol: { span: 10 }, wrapperCol: { span: 14 }
     };

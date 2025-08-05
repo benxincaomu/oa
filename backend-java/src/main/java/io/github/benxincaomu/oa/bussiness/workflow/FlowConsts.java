@@ -4,7 +4,9 @@ public class FlowConsts {
     public  static final String STARTER_ID = "starterId";
     public  static final String DATA = "data";
     public  static final String FLOW_FORM_ID = "flowFormId";
+    public  static final String FLOW_HISTORY_TABLE = "flowHistoryTable";
     public  static final String FLOW_FORM_ASSIGNEE_TABLE= "flowFormAssignTable";
+    public  static final String WORKBENCH_PUBLISH= "workbenchPublish";
 
 
 }

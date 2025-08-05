@@ -80,7 +80,9 @@ public class FlowFormService {
             variables.put(FlowConsts.STARTER_ID, JpaAuditorAware.getCurrentUserId());
             variables.put(FlowConsts.DATA, flowForm.getData());
             variables.put(FlowConsts.FLOW_FORM_ASSIGNEE_TABLE, wp.getFlowFormAssigneeTable());
+            variables.put(FlowConsts.FLOW_HISTORY_TABLE, wp.getFlowHistoryTable());
             variables.put(FlowConsts.FLOW_FORM_ID, flowForm.getId());
+            // variables.put(FlowConsts.WORKBENCH_PUBLISH, wp);
             ProcessInstance process = runtimeService.startProcessInstanceById(wp.getWorkflowDeployId(), variables);
             
             flowForm.setProcessId(process.getId());
