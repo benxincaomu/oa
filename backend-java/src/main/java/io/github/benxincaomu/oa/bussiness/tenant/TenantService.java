@@ -3,7 +3,6 @@ package io.github.benxincaomu.oa.bussiness.tenant;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 
 @Service

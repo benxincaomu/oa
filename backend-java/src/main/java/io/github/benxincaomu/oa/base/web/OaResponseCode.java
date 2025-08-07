@@ -16,6 +16,8 @@ public enum OaResponseCode implements ResponseCode {
 	WORKBENCH_NOT_EXIST(20002,"工作台不存在"),
 	FLOW_TASK_NOT_EXIST(20003,"流程任务已处理或无权限"),
 	PROJECT_NOT_INITIALIZED(-1,"项目未初始化"),
+
+	UPLOAD_FILE_NOT_EXIST(30001,"上传文件不存在"),
     ;
     
 

@@ -17,12 +17,10 @@ const BeanDesign = ({ wid, setBeanForm }: Props) => {
         setBeanForm(form);
     }, [form, setBeanForm]);
 
-    const [id, setId] = useState(0);
     const onSave = (values: any) => {
         service.post("/entityDefinition", values).then(res => {
             messageApi.success("保存成功");
-            setId(res.data);
-
+            form.setFieldValue("id", res.data);
         });
     };
     const [columnTypes, setColumnTypes] = useState<any[]>([]);
@@ -33,11 +31,6 @@ const BeanDesign = ({ wid, setBeanForm }: Props) => {
         });
     }, [form]);
 
-    useEffect(() => {
-        if (id > 0) {
-            form.setFieldValue("id", id);
-        }
-    }, [form, id]);
     useEffect(() => {
 
         if (wid > 0) {
@@ -145,18 +138,8 @@ const BeanDesign = ({ wid, setBeanForm }: Props) => {
                                                             <Col className="content-center" span={3}>
                                                                 <Form.Item {...formListSpan} name={[field.name, "regExp"]} label="正则" rules={[
                                                                     {
-                                                                        validator: (_, value) => {
-                                                                            if (!value) {
-                                                                                return Promise.resolve();
-                                                                            }
-                                                                            console.log(value);
-                                                                            try {
-                                                                                new RegExp(value);
-                                                                                return Promise.resolve();
-                                                                            } catch (e) {
-                                                                                return Promise.reject(new Error('请输入有效的正则表达式'));
-                                                                            }
-                                                                        }
+                                                                        type: "regexp",
+                                                                        message: "请输入有效的正则表达式"
                                                                     }
                                                                 ]}>
                                                                     <Input />
@@ -221,7 +204,7 @@ const BeanDesign = ({ wid, setBeanForm }: Props) => {
             </Form>
 
             <Modal title='表单预览' open={previewFormVisitable} footer={null} onCancel={() => setPreviewFormVisitable(false)} width={800}>
-                <FormNew workbenchId="" columnDefinitions={form.getFieldsValue().columns}></FormNew>
+                <FormNew columnDefinitions={form.getFieldsValue()?.columns} />
             </Modal>
         </div>
     );

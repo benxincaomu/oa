@@ -3,8 +3,6 @@ package io.github.benxincaomu.oa.bussiness.user;
 import java.text.MessageFormat;
 import java.time.Duration;
 import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
@@ -17,10 +15,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.web.context.request.RequestContextHolder;
 
 import io.github.benxincaomu.notry.utils.Asserts;
-
 import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;
 import io.github.benxincaomu.oa.base.utils.StringGenerator;
 import io.github.benxincaomu.oa.base.web.OaResponseCode;

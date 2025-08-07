@@ -27,9 +27,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.github.benxincaomu.notry.utils.Asserts;
-
 import io.github.benxincaomu.oa.base.consts.Const;
-import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;
 import io.github.benxincaomu.oa.base.security.SaltedUser;
 import io.github.benxincaomu.oa.base.security.TokenValue;
 import io.github.benxincaomu.oa.base.security.TokenValueRepository;
@@ -144,9 +142,20 @@ public class UserController {
             List<PermissionIdName> permissions = permissionService.getMenuTreeByRoleId(role.getId());
             Set<String> urls = new HashSet<>();
             Stack<PermissionIdName> stack = new Stack<>();
-            stack.addAll(permissions);
+            Iterator<PermissionIdName> iterator2 = permissions.iterator();
+            while (iterator2.hasNext()) { 
+                PermissionIdName permission = iterator2.next(); 
+                if (permission.getType() == Permission.TYPE_3) { 
+                    urls.add(permission.getValue());
+                    iterator2.remove();
+                } else { 
+                    stack.push(permission);
+                }
+            }
+            
             while (!stack.isEmpty()) { 
                 PermissionIdName permission = stack.pop();
+                
                 List<PermissionIdName> children = permission.getChildren();
                 if(children!=null){
 

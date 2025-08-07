@@ -9,7 +9,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import io.github.benxincaomu.oa.bussiness.organization.vo.DeptVo;
-import io.github.benxincaomu.oa.bussiness.user.vo.UserIdNameVo;
 
 @Repository
 public interface DepartmentRepository extends JpaRepository<Department, Long> {

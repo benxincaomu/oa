@@ -1,7 +1,6 @@
 package io.github.benxincaomu.oa.bussiness.user;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.data.domain.Example;
 import org.springframework.data.domain.ExampleMatcher;
@@ -14,13 +13,12 @@ import org.springframework.util.CollectionUtils;
 
 import io.github.benxincaomu.notry.utils.Asserts;
 
-import io.github.benxincaomu.oa.base.entity.BaseService;
 import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;
 import io.github.benxincaomu.oa.base.web.OaResponseCode;
 import jakarta.annotation.Resource;
 
 @Service
-public class RoleService extends BaseService{
+public class RoleService {
     @Resource
     private RoleRepository roleRepository;
 

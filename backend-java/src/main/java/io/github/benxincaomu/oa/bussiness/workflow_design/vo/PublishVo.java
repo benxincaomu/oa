@@ -1,7 +1,5 @@
 package io.github.benxincaomu.oa.bussiness.workflow_design.vo;
 
-import javax.swing.text.html.parser.Entity;
-
 import io.github.benxincaomu.oa.bussiness.workflow_design.EntityDefinition;
 import io.github.benxincaomu.oa.bussiness.workflow_design.WorkflowDefinition;
 

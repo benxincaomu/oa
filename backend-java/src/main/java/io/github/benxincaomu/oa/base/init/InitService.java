@@ -13,7 +13,6 @@ import io.github.benxincaomu.oa.bussiness.organization.DepartmentUser;
 import io.github.benxincaomu.oa.bussiness.organization.DepartmentUserRepository;
 import io.github.benxincaomu.oa.bussiness.tenant.Tenant;
 import io.github.benxincaomu.oa.bussiness.tenant.TenantRepository;
-import io.github.benxincaomu.oa.bussiness.tenant.TenantService;
 import io.github.benxincaomu.oa.bussiness.user.Permission;
 import io.github.benxincaomu.oa.bussiness.user.PermissionRepository;
 import io.github.benxincaomu.oa.bussiness.user.Role;
@@ -31,7 +30,8 @@ import jakarta.transaction.Transactional;
 @Service
 public class InitService {
 
-    private final DepartmentRepository departmentRepository;
+    @Resource
+    private DepartmentRepository departmentRepository;
 
     @Resource
     private RedisTemplate<String, Boolean> redisTemplate;
@@ -60,9 +60,6 @@ public class InitService {
 
     private final String isInitializedKey = "projectIsInitialized";
 
-    InitService(DepartmentRepository departmentRepository) {
-        this.departmentRepository = departmentRepository;
-    }
 
     /**
      * 判断项目是否已经初始化
@@ -251,6 +248,14 @@ public class InitService {
         flowUrlPermission.setTenantId(tenantId);
         permissionRepository.save(flowUrlPermission);
         permissions.add(flowUrlPermission);
+
+        // 文件上传权限
+        Permission uploadPermission = new Permission();
+        uploadPermission.setName("文件上传权限相关url");
+        uploadPermission.setType(Permission.TYPE_3);
+        uploadPermission.setValue("/file/**");
+        uploadPermission.setTenantId(tenantId);
+        permissions.add(uploadPermission);
 
         return permissions;
     }

@@ -1,6 +1,5 @@
 package io.github.benxincaomu.oa.bussiness.user.vo;
 
-import jakarta.annotation.Nonnull;
 import jakarta.validation.constraints.NotNull;
 
 /**

@@ -39,7 +39,9 @@ spring:
             enable: true
             trust: "*"
             checkserveridentity: false
-      
+  threads:
+    virtual:
+      enabled: true  
 logging:
   level:
     root: info

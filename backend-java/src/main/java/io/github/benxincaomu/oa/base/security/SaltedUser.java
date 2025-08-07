@@ -35,6 +35,11 @@ public class SaltedUser extends User {
     public Long getTenantId() {
         return tenantId;
     }
+
+    public Long getRoleId() {
+        return roleId;
+    }
+    
     
 
     
