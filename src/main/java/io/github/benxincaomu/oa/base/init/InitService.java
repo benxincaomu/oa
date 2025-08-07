@@ -7,6 +7,7 @@ import java.util.List;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;
 import io.github.benxincaomu.oa.bussiness.organization.Department;
 import io.github.benxincaomu.oa.bussiness.organization.DepartmentRepository;
 import io.github.benxincaomu.oa.bussiness.organization.DepartmentUser;
@@ -143,6 +144,7 @@ public class InitService {
         permissionManagement.setName("权限管理");
         permissionManagement.setType(Permission.TYPE_2);
         permissionManagement.setParentId(systemManagement.getId());
+        permissionManagement.setParentName(systemManagement.getName());
         permissionManagement.setTenantId(tenantId);
         permissionManagement.setValue("/app/permissions");
         permissionRepository.save(permissionManagement);
@@ -154,6 +156,7 @@ public class InitService {
         permissionUrl.setValue("/permission/**");
         permissionUrl.setTenantId(tenantId);
         permissionUrl.setParentId(permissionManagement.getId());
+        permissionUrl.setParentName(permissionManagement.getName());
         permissionRepository.save(permissionUrl);
         permissions.add(permissionUrl);
         // 用户管理
@@ -162,6 +165,7 @@ public class InitService {
         userManagement.setType(Permission.TYPE_2);
         userManagement.setValue("/app/usermanage");
         userManagement.setParentId(systemManagement.getId());
+        permissionUrl.setParentName(permissionManagement.getName());
         userManagement.setTenantId(tenantId);
         permissionRepository.save(userManagement);
         permissions.add(userManagement);
@@ -171,15 +175,24 @@ public class InitService {
         userUrlPermission.setType(Permission.TYPE_3);
         userUrlPermission.setValue("/user/**");
         userUrlPermission.setParentId(userManagement.getId());
+        userUrlPermission.setParentName(userManagement.getName());
         userUrlPermission.setTenantId(tenantId);
         permissionRepository.save(userUrlPermission);
         permissions.add(userUrlPermission);
+        // 个人信息相关url权限
+        Permission personalInfo = new Permission();
+        personalInfo.setName("个人信息相关url");
+        personalInfo.setType(Permission.TYPE_3);
+        personalInfo.setValue("/login/**");
+        permissionRepository.save(personalInfo);
+        permissions.add(personalInfo);
         // 角色管理
         Permission roleManagement = new Permission();
         roleManagement.setName("角色管理");
         roleManagement.setType(Permission.TYPE_2);
         roleManagement.setValue("/app/roles");
         roleManagement.setParentId(systemManagement.getId());
+        roleManagement.setParentName(systemManagement.getName());
         roleManagement.setTenantId(tenantId);
         permissionRepository.save(roleManagement);
         permissions.add(roleManagement);
@@ -190,6 +203,7 @@ public class InitService {
         roleUrlPermission.setType(Permission.TYPE_3);
         roleUrlPermission.setValue("/role/**");
         roleUrlPermission.setParentId(roleManagement.getId());
+        roleUrlPermission.setParentName(roleManagement.getName());
         roleUrlPermission.setTenantId(tenantId);
         permissionRepository.save(roleUrlPermission);
         permissions.add(roleUrlPermission);
@@ -199,6 +213,7 @@ public class InitService {
         organizationManagement.setType(Permission.TYPE_2);
         organizationManagement.setValue("/app/organizes");
         organizationManagement.setParentId(systemManagement.getId());
+        organizationManagement.setParentName(systemManagement.getName());
         organizationManagement.setTenantId(tenantId);
         permissionRepository.save(organizationManagement);
         permissions.add(organizationManagement);
@@ -209,6 +224,7 @@ public class InitService {
         orgUrlPermission.setType(Permission.TYPE_3);
         orgUrlPermission.setValue("/organize/**");
         orgUrlPermission.setParentId(organizationManagement.getId());
+        orgUrlPermission.setParentName(organizationManagement.getName());
         orgUrlPermission.setTenantId(tenantId);
         permissionRepository.save(orgUrlPermission);
         permissions.add(orgUrlPermission);
@@ -227,6 +243,7 @@ public class InitService {
         designWorkbenchUrlPermission.setType(Permission.TYPE_3);
         designWorkbenchUrlPermission.setValue("/workbench/**");
         designWorkbenchUrlPermission.setParentId(designWorkbench.getId());
+        designWorkbenchUrlPermission.setParentName(designWorkbench.getName());
         permissionRepository.save(designWorkbenchUrlPermission);
         permissions.add(designWorkbenchUrlPermission);
         // 设计工作台实体相关url
@@ -235,6 +252,7 @@ public class InitService {
         entityUrlPermission.setType(Permission.TYPE_3);
         entityUrlPermission.setValue("/entityDefinition/**");
         entityUrlPermission.setParentId(designWorkbench.getId());
+        entityUrlPermission.setParentName(designWorkbench.getName());
         entityUrlPermission.setTenantId(tenantId);
         permissionRepository.save(entityUrlPermission);
         permissions.add(entityUrlPermission);
@@ -245,6 +263,7 @@ public class InitService {
         flowUrlPermission.setType(Permission.TYPE_3);
         flowUrlPermission.setValue("/workflowDefinition/**");
         flowUrlPermission.setParentId(designWorkbench.getId());
+        flowUrlPermission.setParentName(designWorkbench.getName());
         flowUrlPermission.setTenantId(tenantId);
         permissionRepository.save(flowUrlPermission);
         permissions.add(flowUrlPermission);

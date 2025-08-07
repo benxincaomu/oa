@@ -1,8 +1,4 @@
 spring:
-  profiles:
-    active:
-    - oa
-    - oa
   application: 
     name: oa
 
@@ -62,4 +58,7 @@ camunda:
     generic-properties:
       properties:
         enforceHistoryTimeToLive: false
-
+server:
+  tomcat:
+    threads:
+      max: 50

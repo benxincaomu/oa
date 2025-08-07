@@ -3,6 +3,9 @@ package io.github.benxincaomu.oa.bussiness.user;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.pulsar.PulsarProperties.Threads;
 import org.springframework.data.web.PagedModel;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,6 +28,7 @@ public class RoleController {
     @Resource
     private PermissionService permissionService;
 
+    private final Logger logger = LoggerFactory.getLogger(getClass());
     /**
      * 角色列表
      * 
@@ -35,6 +39,7 @@ public class RoleController {
      */
     @GetMapping("list")
     public PagedModel<Role> list(Integer currPage, Integer pageSize, String name) {
+        
         PagedModel<Role> page = new PagedModel<>(roleService.roles(currPage, pageSize, name));
         return page;
     }

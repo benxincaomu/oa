@@ -129,6 +129,8 @@ public class WorkbenchService {
                 myStart.setType(Permission.TYPE_2);
                 myStart.setValue("/app/workflow/" + publish.getWorkbenchId() + "/myStart");
                 myStart.setParentId(parentPermission.getId());
+                myStart.setParentName(parentPermission.getName());
+                myStart.setTenantId(JpaAuditorAware.getCurrentTenantId());
                 permissionService.insert(myStart);
                 ;
 
@@ -138,6 +140,8 @@ public class WorkbenchService {
                 myTodo.setType(Permission.TYPE_2);
                 myTodo.setValue("/app/workflow/" + publish.getWorkbenchId() + "/myTodo");
                 myTodo.setParentId(parentPermission.getId());
+                myTodo.setParentName(parentPermission.getName());
+                myTodo.setTenantId(JpaAuditorAware.getCurrentTenantId());
                 permissionService.insert(myTodo);
 
                 // 我的已办
@@ -146,6 +150,8 @@ public class WorkbenchService {
                 myDone.setType(Permission.TYPE_2);
                 myDone.setValue("/app/workflow/" + publish.getWorkbenchId() + "/myDone");
                 myDone.setParentId(parentPermission.getId());
+                myDone.setParentName(parentPermission.getName());
+                myDone.setTenantId(JpaAuditorAware.getCurrentTenantId());
                 permissionService.insert(myDone);
 
                 // url权限
@@ -155,6 +161,8 @@ public class WorkbenchService {
                 urlPermission1.setType(Permission.TYPE_3);
                 urlPermission1.setValue("/flowForm/" + publish.getWorkbenchId() + "/**");
                 urlPermission1.setParentId(parentPermission.getId());
+                urlPermission1.setParentName(parentPermission.getName());
+                urlPermission1.setTenantId(JpaAuditorAware.getCurrentTenantId());
                 permissionService.insert(urlPermission1);
 
                 // 处理流程数据
@@ -163,6 +171,8 @@ public class WorkbenchService {
                 urlPermission2.setType(Permission.TYPE_3);
                 urlPermission2.setValue("/workflow/" + publish.getWorkbenchId() + "/**");
                 urlPermission2.setParentId(parentPermission.getId());
+                urlPermission2.setParentName(parentPermission.getName());
+                urlPermission2.setTenantId(JpaAuditorAware.getCurrentTenantId());
                 permissionService.insert(urlPermission2);
 
             }

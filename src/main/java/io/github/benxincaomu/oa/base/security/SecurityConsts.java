@@ -4,8 +4,8 @@ public final class SecurityConsts {
     private SecurityConsts(){}
 
     public static final String[] PUBLIC_URLS = {
-            "/user/login",
-            "/user/logout",
+            "/login/login",
+            "/login/logout",
             "/actuator/beans",
             "/user/setPassword",
             "/initProject/**"
