@@ -62,6 +62,12 @@ public class EntityColumn {
      */
     private String regExp;
 
+
+    /**
+     * 最大数量或长度
+     */
+    private Integer max;
+
     public int getSort() {
         return sort;
     }
@@ -148,6 +154,14 @@ public class EntityColumn {
 
     public void setRegExp(String regExp) {
         this.regExp = regExp;
+    }
+
+    public Integer getMax() {
+        return max;
+    }
+
+    public void setMax(Integer max) {
+        this.max = max;
     }
     
 

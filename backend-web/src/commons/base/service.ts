@@ -45,6 +45,8 @@ service.interceptors.response.use(
         if (res.code === 10002) {
             const cookies = new Cookies();
             cookies.remove('token',{path:'/'});
+            cookies.remove('name',{path:'/'});
+            message.error(res.message);
         } else if (res.code === -1 && window.location.pathname !== '/init') {
             message.error(res.message || '项目未初始化');
             setTimeout(() => {

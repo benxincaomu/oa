@@ -1,8 +1,8 @@
-"use client"; 
+"use client";
 import service from "@/commons/base/service";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ColumnDefinition } from "../workbenches/design/types";
-import { Button, Card, Col, Form, Input, Row, Space, Timeline, Typography } from "antd";
+import { Button, Card, Col, Form, Input, Row, Space, Timeline, Typography, Image } from "antd";
 import { UserOutlined } from "@ant-design/icons";
 import { FlowForm } from "./types";
 
@@ -15,7 +15,7 @@ interface Props {
 
 
 }
-export default function FormDetail({ workbenchId, formId,onSubmit,onCancel }: Props) {
+export default function FormDetail({ workbenchId, formId, onSubmit, onCancel }: Props) {
     const [columns, setColumns] = useState<ColumnDefinition[]>([]);
     const [flowForm, setFlowForm] = useState<FlowForm>();
     const [buttons, setButtons] = useState<any>(null);
@@ -43,7 +43,7 @@ export default function FormDetail({ workbenchId, formId,onSubmit,onCancel }: Pr
         // console.log(form.getFieldsValue());
         service.post(`/workflow/${workbenchId}/approval`, form.getFieldsValue()).then((res) => {
             console.log("操作成功");
-            if(onSubmit){
+            if (onSubmit) {
                 onSubmit();
 
             }
@@ -54,12 +54,37 @@ export default function FormDetail({ workbenchId, formId,onSubmit,onCancel }: Pr
             <Row gutter={16}>
 
                 {columns.map((column) => {
+                    const fullLine = column.columnType === "image" || column.columnType === "longtext";
                     return (
-                        <Col span={12} key={column.columnName}>
-                            <Space>
-                                <Typography.Text strong>{column.label}:</Typography.Text>
-                                <Typography.Text>{flowForm?.data[column.columnName]}{column.unit}</Typography.Text>
-                            </Space>
+                        <Col span={fullLine ? 24 : 12} key={column.columnName}>
+                            <Row>
+                                <Col span={fullLine ? 2 : 4}>
+                                    <Typography.Text strong >{column.label}:</Typography.Text>
+                                </Col>
+                                {(() => {
+                                    switch (column.columnType) {
+                                        case "image":
+                                            return <Col span={18}>
+                                                <Row>
+                                                    {flowForm?.data[column.columnName]?.map((item: any, index: number) =>
+                                                        <Col key={index} span={4}>
+                                                            <Image src={item.url} alt={item.name} />
+                                                        </Col>
+                                                    )}
+                                                </Row>
+                                            </Col>
+                                                ;
+
+
+                                        default:
+                                            return <Col span={16}>
+                                                <Typography.Paragraph type="secondary"> {flowForm?.data[column.columnName]}{column.unit}</Typography.Paragraph>
+                                            </Col>
+                                    }
+                                    return <></>
+                                })()}
+                            </Row>
+
                         </Col>
                     )
                 })}

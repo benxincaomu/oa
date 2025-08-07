@@ -25,20 +25,7 @@ spring:
           enableDirtyTracking: true
   jackson: 
     default-property-inclusion: NON_NULL
-  mail:
-    host: mail.tt
-    port: 465
-    username: service@mail.tt
-    password: sftadmin
-    protocol: smtp
-    properties: 
-      mail: 
-        smtp: 
-          auth: true
-          ssl: 
-            enable: true
-            trust: "*"
-            checkserveridentity: false
+
   threads:
     virtual:
       enabled: true  

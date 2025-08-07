@@ -56,3 +56,4 @@ minio:
   secret-key: 9PzPCpQ6oRGFsyad23ma0Uz87Op5BeA91MStGIwj
   endpoint: http://10.0.0.130:9000
   bucket-name: oafile
+  static-url: http://10.0.0.130:9000/oafile/

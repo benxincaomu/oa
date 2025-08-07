@@ -1,5 +1,5 @@
 "use client"
-import { Button, Checkbox, Col, Form, Input, Modal, Row, Select, Space, Table, message } from "antd";
+import { Button, Checkbox, Col, Form, Input, InputNumber, Modal, Row, Select, Space, Table, message } from "antd";
 import { useEffect, useState } from "react";
 import { ArrowUpOutlined, MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import service from "@/commons/base/service";
@@ -147,6 +147,19 @@ const BeanDesign = ({ wid, setBeanForm }: Props) => {
                                                             </Col>
                                                         </>
                                                     );
+                                                } else if (columnType === 'image') {
+                                                    return <>
+                                                        <Col className="content-center" span={3}>
+                                                            <Form.Item {...formListSpan} name={[field.name, "max"]} label="数量" rules={[
+                                                                {
+                                                                    required: true,
+                                                                    message: "请输入图片最大数量"
+                                                                }
+                                                            ]}>
+                                                                <InputNumber precision={0} />
+                                                            </Form.Item>
+                                                        </Col>
+                                                    </>
                                                 } else {
                                                     return (
                                                         <></>
@@ -161,8 +174,23 @@ const BeanDesign = ({ wid, setBeanForm }: Props) => {
                                             </Form.Item>
                                         </Col>
                                         <Col className="content-center" span={3}>
-                                            <Form.Item {...formListSpan} name={[field.name, "listAble"]} valuePropName="checked" label="列表字段">
-                                                <Checkbox />
+                                            <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => {
+                                                const prevType = prevValues.columns[index].columnType;
+                                                const currentType = currentValues.columns[index].columnType;
+                                                return prevType !== currentType;
+                                            }}>
+
+                                                {({ getFieldValue }) => {
+                                                    const type = getFieldValue(["columns", index, "columnType"]);
+                                                    if (type === "image" || type === "file") {
+                                                        return <></>
+                                                    } else {
+                                                        return <Form.Item {...formListSpan} name={[field.name, "listAble"]} valuePropName="checked" label="列表字段" >
+                                                            <Checkbox />
+                                                        </Form.Item>;
+                                                    }
+
+                                                }}
                                             </Form.Item>
                                         </Col>
 

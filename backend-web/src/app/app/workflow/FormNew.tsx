@@ -153,6 +153,7 @@ export default function FormEditor({ workbenchPublish, formId, onSubmit, onCance
                                                     maxCount={10}
                                                     fileList={currentFileList}
                                                     listType="picture-card"
+                                                    accept=".jpg,.png,.jpeg"
                                                     onChange={(info) => {
                                                         // 处理文件上传状态变化
                                                         const fileList = info.fileList.map(file => {
