@@ -2,7 +2,7 @@ spring:
   application: 
     name: oa
   datasource:
-    url:  jdbc:postgresql://10.0.0.130:5432/oa?characterEncoding=utf8&stringtype=unspecified&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useUnicode=true&&TimeZone=Asia/Shanghai&reWriteBatchedInserts=true
+    url:  jdbc:postgresql://10.0.0.130:5432/oaprod?characterEncoding=utf8&stringtype=unspecified&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useUnicode=true&&TimeZone=Asia/Shanghai&reWriteBatchedInserts=true
     password: oa
     username: oa
     driver-class-name: org.postgresql.Driver
@@ -19,10 +19,9 @@ spring:
       host: 10.0.0.130
       port: 6379
       password: redisPwd
-      database: 0
+      database: 2
       repositories:
         enabled: false
-      
 
   mail:
     host: mail.tt
@@ -38,10 +37,10 @@ spring:
             enable: true
             trust: "*"
             checkserveridentity: false
-
 minio:
   access-key: NIezSomaqCOcZoSA4IOz
   secret-key: 9PzPCpQ6oRGFsyad23ma0Uz87Op5BeA91MStGIwj
   endpoint: http://10.0.0.130:9000
   bucket-name: oafile
-  static-url: http://10.0.0.130:9000/oafile/
+  static-url: https://static1.benxincaomu.com.cn/oafile/
+
