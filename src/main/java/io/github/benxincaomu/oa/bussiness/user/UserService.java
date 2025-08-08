@@ -78,9 +78,9 @@ public class UserService {
             user.setPassword(DigestUtils.md5Hex(user.getPassword() + salt));
         }
         userRepository.save(user);
-        // 发送邮件
-        String passwordSetId = StringGenerator.generate(20);
         if(user.getEmail()!=null  && user.getPassword() == null){
+            // 发送邮件
+            String passwordSetId = StringGenerator.generate(20);
             String content ="""
         <html>
         <body>
@@ -89,9 +89,9 @@ public class UserService {
         </html>
         """;
             mailService.sendMail(user.getEmail(), "设置密码", MessageFormat.format(content, projectBaseUrl, passwordSetId, user.getName()));
+            redisTemplate.opsForValue().set(passwordSetId,user.getId()+"",Duration.ofHours(24));
         }
 
-        redisTemplate.opsForValue().set(passwordSetId,user.getId()+"",Duration.ofHours(24));
 
         logger.info("inserted user \"{}\",id={}",user.getUserName(),user.getId());
         return user;

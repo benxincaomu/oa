@@ -2,3 +2,5 @@
 target/
 /**/.next/
 /**/node_modules/
+.env
+logs/

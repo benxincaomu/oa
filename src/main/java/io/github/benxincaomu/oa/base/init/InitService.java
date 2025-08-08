@@ -233,7 +233,7 @@ public class InitService {
         Permission designWorkbench = new Permission();
         designWorkbench.setName("设计工作台");
         designWorkbench.setType(Permission.TYPE_2);
-        designWorkbench.setValue("/app/organizes");
+        designWorkbench.setValue("/app/workbenches");
         designWorkbench.setTenantId(tenantId);
         permissionRepository.save(designWorkbench);
         permissions.add(designWorkbench);

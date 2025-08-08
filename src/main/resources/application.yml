@@ -37,9 +37,11 @@ logging:
     org.springframework.data: info
     io.lettuce: info
     org.springframework.security.web: info
+  logback:
+    rollingpolicy:
+      max-file-size: 100Mb
   file: 
-    path: /home/sunft/oa/logs/
-    name: /home/sunft/oa/logs/oa.log
+    name: ${LOG_PATH}
   pattern:
     dateformat: yyyy-MM-dd HH:mm:ss,Asia/Shanghai,zh-CN
     file: "%date{yyyy-MM-dd HH:mm:ss.SSS,Asia/Shanghai,zh-CN} %-5level [%-15.15(%thread)] %-50.50(%logger{50}) : %msg%n" 
