@@ -79,6 +79,7 @@ public class WorkflowService {
                 flowHistory.setNodeName(sequenceFlow.getSource().getName());
                 FlowNode source = sequenceFlow.getSource();
                 if (source instanceof UserTask) {
+                    flowHistory.setNodeType(source.getElementType().getTypeName());;
                     UserTask userTask = (UserTask) source;
                     Task task = taskService.createTaskQuery()
                             .processInstanceId(flowForm.getProcessId())

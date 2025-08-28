@@ -76,14 +76,14 @@ public class WorkbenchService {
             }
             // 发布流程
             Deployment deploy = repositoryService.createDeployment()
-            .name(workbench.getWorkbenchKey())
-                    .addString(workbench.getWorkbenchKey()+ ".bpmn", vo.getWorkflowDefinition().getFlowDefinition())
+                    .name(workbench.getWorkbenchKey())
+                    .addString(workbench.getWorkbenchKey() + ".bpmn", vo.getWorkflowDefinition().getFlowDefinition())
                     .deploy();
             // entityManager.flush();
             ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
                     .deploymentId(deploy.getId())
                     // .processDefinitionName(workbench.getWorkbenchKey())
-                    
+
                     // .processDefinitionKey(workbench.getWorkbenchKey())
                     .singleResult();
             WorkbenchPublish publish = workbenchPublishRepository.findLatestByWorkbenchId(workbench.getId())
@@ -121,7 +121,6 @@ public class WorkbenchService {
                 parentPermission.setValue("/app/workflow/" + publish.getWorkbenchId());
 
                 permissionService.insert(parentPermission);
-
 
                 // 我启动的
                 Permission myStart = new Permission();
@@ -182,7 +181,8 @@ public class WorkbenchService {
     }
 
     public Page<Workbench> list(String name, Integer currPage, Integer pageSize) {
-        PageRequest page = PageRequest.of(currPage == null ? 0 : currPage - 1, pageSize == null ? 20 : pageSize);
+        PageRequest page = PageRequest.of(currPage == null || currPage <= 0 ? 0 : currPage - 1,
+                pageSize == null ? 20 : pageSize);
         Workbench workbench = new Workbench();
         ExampleMatcher matcher = ExampleMatcher.matching();
         if (name != null && !name.isEmpty()) {

@@ -98,7 +98,7 @@ public class UserService {
     }
 
     public Page<User> users(Integer currPage, Integer pageSize, String userName, String name) {
-        currPage = currPage == null || currPage < 0 ? 0 : currPage - 1;
+        currPage = currPage == null || currPage <= 0 ? 0 : currPage - 1;
         pageSize = pageSize == null || pageSize < 1 ? 20 : pageSize;
 
         PageRequest page = PageRequest.of(currPage, pageSize, Sort.by("createAt"));

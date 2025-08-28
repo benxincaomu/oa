@@ -73,7 +73,7 @@ public class WorkFlowListener {
             VariableMap variables = runtimeService.getVariablesTyped(executionEvent.getProcessInstanceId());
             flowHistory.setFlowFormId(variables.getValue(FlowConsts.FLOW_FORM_ID, Long.class));
             flowHistory.setNodeName(executionEvent.getCurrentActivityName());
-            flowHistory.setFlowName("流程结束");
+            flowHistory.setNodeType(flowElement.getElementType().getTypeName());;
 
             String historyTable = variables.getValue(FlowConsts.FLOW_HISTORY_TABLE, String.class);
             flowHistoryRepository.save(flowHistory, historyTable);

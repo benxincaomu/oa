@@ -37,6 +37,10 @@ public class FlowHistory extends BaseEntity {
     @Column(columnDefinition = "varchar(20)", length = 20)
     private String operatorName;
 
+    @Comment("节点类型")
+    @Column(columnDefinition = "varchar(20)", length = 20)
+    private String nodeType;
+
     
 
     public Long getFlowFormId() {
@@ -85,6 +89,14 @@ public class FlowHistory extends BaseEntity {
 
     public void setNodeName(String nodeName) {
         this.nodeName = nodeName;
+    }
+
+    public String getNodeType() {
+        return nodeType;
+    }
+
+    public void setNodeType(String nodeType) {
+        this.nodeType = nodeType;
     }
 
 

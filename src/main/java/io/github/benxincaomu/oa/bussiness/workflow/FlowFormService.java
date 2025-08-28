@@ -96,6 +96,7 @@ public class FlowFormService {
             if(startEvents != null && startEvents.size() > 0){
                 StartEvent startEvent = startEvents.iterator().next();
                 flowHistory.setNodeName(startEvent.getName() == null? "开始":startEvent.getName());
+                flowHistory.setNodeType("startEvent");
             }
             flowHistoryRepository.save(flowHistory, wp.getFlowHistoryTable());
 

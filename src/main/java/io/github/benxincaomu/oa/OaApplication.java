@@ -6,13 +6,16 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.ComponentScan.Filter;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.data.redis.repository.configuration.EnableRedisRepositories;
+import org.springframework.stereotype.Repository;
 
 @EnableJpaAuditing
 @SpringBootApplication
-@EnableJpaRepositories(basePackages = { "io.github.benxincaomu.oa.bussiness" })
+@EnableJpaRepositories(basePackages = { "io.github.benxincaomu.oa.bussiness" },includeFilters = {@Filter(type = FilterType.ANNOTATION, classes = { Repository.class})})
 @EnableRedisRepositories(basePackages = "io.github.benxincaomu.oa.base")
 @ComponentScan({ "io.github.benxincaomu.notry", "io.github.benxincaomu.oa" })
 @EnableConfigurationProperties
