@@ -40,7 +40,29 @@ public class DepartmentService {
     }
     @Transactional
     public int update(Department department){
+        Asserts.isFalse(departmentRepository.existsByNameAndIdNot(department.getName(), department.getId()), OaResponseCode.DEPT_NAME_EXITS);
+        
+        if (department.getParentId() != null) {
+            Long deptId = department.getId();
+            Long parentId = department.getParentId();
+            
+            Asserts.isFalse(deptId.equals(parentId), OaResponseCode.DEPT_PARENT_INVALID);
+            
+            List<Long> descendantIds = getAllDescendantIds(deptId);
+            Asserts.isFalse(descendantIds.contains(parentId), OaResponseCode.DEPT_PARENT_INVALID);
+        }
+        
         return departmentRepository.save(department).getId() == null?0 :1;
+    }
+    
+    private List<Long> getAllDescendantIds(Long parentId) {
+        List<Long> result = new java.util.ArrayList<>();
+        List<Department> children = departmentRepository.findAllByParentIdDept(parentId, JpaAuditorAware.getCurrentTenantId());
+        for (Department child : children) {
+            result.add(child.getId());
+            result.addAll(getAllDescendantIds(child.getId()));
+        }
+        return result;
     }
 
     public Page<Department> list(String name,String code,Integer currPage,Integer pageSize){

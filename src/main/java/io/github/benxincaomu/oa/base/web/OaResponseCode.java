@@ -18,6 +18,7 @@ public enum OaResponseCode implements ResponseCode {
 	PROJECT_NOT_INITIALIZED(-1,"项目未初始化"),
 
 	UPLOAD_FILE_NOT_EXIST(30001,"上传文件不存在"),
+	DEPT_PARENT_INVALID(10007,"上级部门不能是当前部门或其下级部门"),
     ;
     
 

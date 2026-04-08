@@ -13,7 +13,12 @@ import io.github.benxincaomu.oa.bussiness.organization.vo.DeptVo;
 @Repository
 public interface DepartmentRepository extends JpaRepository<Department, Long> {
 
+  boolean existsByNameAndIdNot(String name, Long id);
+
   boolean existsByName(String name);
+
+  @Query("select d from Department d where d.parentId = :parentId and d.tenantId = :tenantId")
+  List<Department> findAllByParentIdDept(@Param("parentId") Long parentId, @Param("tenantId") Long tenantId);
 
   @Query("select new io.github.benxincaomu.oa.bussiness.organization.vo.DeptVo(d.id, d.name, d.parentId,d.code) from Department d where CASE WHEN :parentId is NULL THEN d.parentId is null ELSE d.parentId = :parentId END")
   List<DeptVo> findAllByParentId(@Param("parentId") Long parentId, @Param("tenantId") Long tenantId);
