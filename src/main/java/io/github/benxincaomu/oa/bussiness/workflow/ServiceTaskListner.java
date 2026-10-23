@@ -9,8 +9,8 @@ import jakarta.annotation.Resource;
 
 @Service("serviceTaskListner")
 public class ServiceTaskListner  implements JavaDelegate {
-    @Resource
-    private RestClient restClient;
+    /* @Resource
+    private RestClient restClient; */
 
     @Override
     public void execute(DelegateExecution execution) throws Exception {

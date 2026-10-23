@@ -23,13 +23,14 @@ public class User extends BaseEntity{
     private String userName;
 
 
-    @Comment("密码")
-    @Column(columnDefinition="varchar(36)")
+    @Comment("密码(BCrypt)")
+    @Column(columnDefinition="varchar(60)")
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
-    
-    @Comment("md5 salt")
+
+    @Deprecated
+    @Comment("md5 salt (deprecated, BCrypt自带加盐)")
     @Column(columnDefinition="varchar(10)")
     private String salt;
 

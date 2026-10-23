@@ -1,15 +1,26 @@
 spring:
-  application: 
+  application:
     name: oa
+
+  datasource:
+    url: @db.url@
+    password: @db.password@
+    username: @db.username@
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connectionTimeout: 10000
+      idle-timeout: 30000
+      minimum-idle: 4
+      maximum-pool-size: 10
+      driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: false
-      
     properties:
       hibernate:
-        jdbc: 
+        jdbc:
           batch_size: 100
           order_inserts: true
           order_updates: true
@@ -18,12 +29,38 @@ spring:
           enableLazyInitialization: true
           enableAssociationManagement: true
           enableDirtyTracking: true
-  jackson: 
+
+  data:
+    redis:
+      host: @redis.host@
+      port: @redis.port@
+      password: @redis.password@
+      database: @redis.database@
+      repositories:
+        enabled: false
+
+  jackson:
     default-property-inclusion: NON_NULL
 
   threads:
     virtual:
-      enabled: true  
+      enabled: true
+
+  mail:
+    host: @mail.host@
+    port: @mail.port@
+    username: @mail.username@
+    password: @mail.password@
+    protocol: smtp
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+            trust: "*"
+            checkserveridentity: false
+
 logging:
   level:
     root: info
@@ -39,27 +76,37 @@ logging:
   logback:
     rollingpolicy:
       max-file-size: 100Mb
-  file: 
-    name: ${LOG_PATH}
+  file:
+    name: ${LOG_PATH:/var/logs/oa/oa.log}
   pattern:
     dateformat: yyyy-MM-dd HH:mm:ss,Asia/Shanghai,zh-CN
-    file: "%date{yyyy-MM-dd HH:mm:ss.SSS,Asia/Shanghai,zh-CN} %-5level [%-15.15(%thread)] %-50.50(%logger{50}) : %msg%n" 
-    
-management: 
+    file: "%date{yyyy-MM-dd HH:mm:ss.SSS,Asia/Shanghai,zh-CN} %-5level [%-15.15(%thread)] %-50.50(%logger{50}) : %msg%n"
+
+management:
   endpoints:
-    web: 
+    web:
       exposure:
-        include: 
+        include:
          - beans
-app: 
-  base-url: http://10.0.0.130:4000
+
+app:
+  base-url: @app.base-url@
   data-table-nums: 5
+
 camunda:
   bpm:
     generic-properties:
       properties:
         enforceHistoryTimeToLive: false
+
 server:
   tomcat:
     threads:
       max: 50
+
+minio:
+  access-key: @minio.access-key@
+  secret-key: @minio.secret-key@
+  endpoint: @minio.endpoint@
+  bucket-name: @minio.bucket-name@
+  static-url: @minio.static-url@

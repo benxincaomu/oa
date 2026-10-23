@@ -4,10 +4,10 @@ import java.text.MessageFormat;
 import java.time.Duration;
 import java.util.List;
 
-import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.data.domain.Example;
 import org.springframework.data.domain.ExampleMatcher;
 import org.springframework.data.domain.Page;
@@ -58,6 +58,9 @@ public class UserService {
     @Resource
     private MailService mailService;
 
+    @Resource
+    private PasswordEncoder passwordEncoder;
+
     @Value("${app.base-url}")
     private String projectBaseUrl;
 
@@ -72,10 +75,8 @@ public class UserService {
             Asserts.isFalse(userRepository.existsByEmail(user.getEmail()), OaResponseCode.EMAIL_EXITS);
         }
         user.setEnable(true);
-        String salt = StringGenerator.generate(8);
-        user.setSalt(salt);    
         if(user.getPassword() != null){
-            user.setPassword(DigestUtils.md5Hex(user.getPassword() + salt));
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
         }
         userRepository.save(user);
         if(user.getEmail()!=null  && user.getPassword() == null){
@@ -199,10 +200,10 @@ public class UserService {
     
     @Transactional
     public void updatePassword(User user) {
-        userRepository.findById(user.getId()).ifPresent(user1 -> { 
-            user1.setPassword(DigestUtils.md5Hex(user.getPassword() + user1.getSalt()));
+        userRepository.findById(user.getId()).ifPresent(user1 -> {
+            user1.setPassword(passwordEncoder.encode(user.getPassword()));
         });
-        
+
     }
 
     public List<UserIdNameVo> findUsersByNameLike(String name) {

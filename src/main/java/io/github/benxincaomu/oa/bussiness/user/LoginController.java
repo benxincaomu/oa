@@ -9,11 +9,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.Stack;
 
-import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,6 +30,7 @@ import io.github.benxincaomu.oa.bussiness.user.vo.PermissionIdName;
 import io.github.benxincaomu.oa.bussiness.user.vo.SimpleUserInfo;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
@@ -58,6 +59,9 @@ public class LoginController {
     @Resource
     private RedisTemplate<String, String> redisTemplate;
 
+    @Resource
+    private PasswordEncoder passwordEncoder;
+
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     /**
@@ -67,14 +71,13 @@ public class LoginController {
      * @return token
      */
     @PostMapping("login")
-    public String login(@RequestBody User login,HttpServletResponse response) {
+    public String login(@RequestBody User login, HttpServletResponse response, HttpServletRequest request) {
         logger.info("loggin");
         User user = userService.findByUserName(login.getUserName());
         if (user == null) {
             throw new RuntimeException("username or password error.");
         }
-        String password = DigestUtils.md5Hex(login.getPassword() + user.getSalt());
-        if (!password.equals(user.getPassword())) {
+        if (!passwordEncoder.matches(login.getPassword(), user.getPassword())) {
             throw new RuntimeException("username or password error.");
         }
         TokenValue tokenValue = new TokenValue();
@@ -137,10 +140,15 @@ public class LoginController {
         Cookie nameCookie = new Cookie("name", Base64.getEncoder().encodeToString(user.getName().getBytes(StandardCharsets.UTF_8)));
         nameCookie.setMaxAge(60 * 60 * 24 * 30);
         nameCookie.setPath("/");
+        nameCookie.setHttpOnly(false); // 前端需要读取用户名来展示
+        nameCookie.setSecure(request.isSecure());
         response.addCookie(nameCookie);
         Cookie cookie = new Cookie("token", token);
         cookie.setMaxAge(60 * 60 * 24 * 30);
         cookie.setPath("/");
+        cookie.setHttpOnly(true);
+        cookie.setSecure(request.isSecure());
+        cookie.setAttribute("SameSite", "Lax");
         response.addCookie(cookie);
         return token;
 
@@ -170,14 +178,24 @@ public class LoginController {
 
 
       @PostMapping("/logout")
-    public void logout(@CookieValue(name = "token",required = false) String token){
-        if(token != null){
-            tokenValueRepository.findById(token).ifPresent(tokenVlue ->{
+    public void logout(@CookieValue(name = "token", required = false) String token,
+            HttpServletResponse response) {
+        if (token != null) {
+            tokenValueRepository.findById(token).ifPresent(tokenVlue -> {
                 redisTemplate.delete(Const.UID_TOKEN_PREFIX + tokenVlue.getUserId());
-                logger.info("logout userId:{}",tokenVlue.getUserId());
+                logger.info("logout userId:{}", tokenVlue.getUserId());
             });
             tokenValueRepository.deleteById(token);
         }
+        // 清除浏览器端cookie
+        Cookie clearTokenCookie = new Cookie("token", "");
+        clearTokenCookie.setMaxAge(0);
+        clearTokenCookie.setPath("/");
+        response.addCookie(clearTokenCookie);
 
+        Cookie clearNameCookie = new Cookie("name", "");
+        clearNameCookie.setMaxAge(0);
+        clearNameCookie.setPath("/");
+        response.addCookie(clearNameCookie);
     }
 }

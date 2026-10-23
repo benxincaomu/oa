@@ -99,9 +99,55 @@
         </dependency>
     </dependencies>
 
+    <profiles>
+        <profile>
+            <id>oa</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <build>
+                <filters>
+                    <filter>src/main/filters/oa.properties</filter>
+                </filters>
+            </build>
+        </profile>
+        <profile>
+            <id>oa1</id>
+            <build>
+                <filters>
+                    <filter>src/main/filters/oa1.properties</filter>
+                </filters>
+            </build>
+        </profile>
+        <profile>
+            <id>prod</id>
+            <build>
+                <filters>
+                    <filter>src/main/filters/prod.properties</filter>
+                </filters>
+            </build>
+        </profile>
+    </profiles>
+
     <build>
         <finalName>oa-java</finalName>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <configuration>
+                    <delimiters>
+                        <delimiter>@</delimiter>
+                    </delimiters>
+                    <useDefaultDelimiters>false</useDefaultDelimiters>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
