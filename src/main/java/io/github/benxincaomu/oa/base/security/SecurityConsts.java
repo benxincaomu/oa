@@ -5,7 +5,6 @@ public final class SecurityConsts {
 
     public static final String[] PUBLIC_URLS = {
             "/error",
-            "/actuator/beans",
             "/actuator/health",
             "/initProject/**"
     };
