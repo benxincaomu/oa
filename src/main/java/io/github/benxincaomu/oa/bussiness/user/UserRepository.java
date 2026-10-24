@@ -14,6 +14,8 @@ import io.github.benxincaomu.oa.bussiness.user.vo.UserIdNameVo;
 public interface UserRepository extends JpaRepository<User, Long> {
     public User findByUserName(String userName);
 
+    public User findByUserNameAndTenantId(String userName, Long tenantId);
+
     public boolean existsByUserName(String userName);
 
     public boolean existsByEmail(String email);

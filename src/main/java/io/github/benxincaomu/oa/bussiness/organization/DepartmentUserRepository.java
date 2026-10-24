@@ -14,6 +14,8 @@ import io.github.benxincaomu.oa.bussiness.user.vo.UserIdNameVo;
 @Repository
 public interface DepartmentUserRepository extends JpaRepository<DepartmentUser, Long> {
 
+    List<DepartmentUser> findAllByDepartmentId(Long departmentId);
+
     @Query("select u from User u,DepartmentUser du where u.id = du.userId and du.departmentId = :deptId")
     List<User> findUsersByDeptId(Long deptId);
 

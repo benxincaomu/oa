@@ -17,6 +17,8 @@ public interface DepartmentRepository extends JpaRepository<Department, Long> {
 
   boolean existsByName(String name);
 
+  List<Department> findByNameAndParentIdAndTenantId(String name, Long parentId, Long tenantId);
+
   @Query("select d from Department d where d.parentId = :parentId and d.tenantId = :tenantId")
   List<Department> findAllByParentIdDept(@Param("parentId") Long parentId, @Param("tenantId") Long tenantId);
 
