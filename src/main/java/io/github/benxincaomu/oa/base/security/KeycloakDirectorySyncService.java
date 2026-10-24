@@ -273,7 +273,7 @@ public class KeycloakDirectorySyncService {
     }
 
     private void requireSameTenant(io.github.benxincaomu.oa.base.entity.BaseEntity entity, Long tenantId) {
-        if (entity.getTenantId() != null && !entity.getTenantId().equals(tenantId)) {
+        if (entity.getTenantId() == null || !entity.getTenantId().equals(tenantId)) {
             throw new IllegalArgumentException("Keycloak directory object belongs to another OA tenant");
         }
     }
