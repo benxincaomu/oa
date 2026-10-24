@@ -6,6 +6,7 @@ import org.springframework.data.domain.AuditorAware;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
+import io.github.benxincaomu.oa.base.security.OaOidcUserPrincipal;
 import io.github.benxincaomu.oa.base.security.SaltedUser;
 
 
@@ -14,7 +15,10 @@ public final class JpaAuditorAware  implements AuditorAware<Long> {
 
     @Override
     public Optional<Long> getCurrentAuditor() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Object principal = currentPrincipal();
+        if (principal instanceof OaOidcUserPrincipal user) {
+            return Optional.ofNullable(user.getOaUserId());
+        }
         if (principal instanceof SaltedUser) {
             SaltedUser user = (SaltedUser) principal;
             return Optional.ofNullable(user.getUserId());
@@ -24,7 +28,10 @@ public final class JpaAuditorAware  implements AuditorAware<Long> {
     }
 
     public static Long getCurrentUserId() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Object principal = currentPrincipal();
+        if (principal instanceof OaOidcUserPrincipal user) {
+            return user.getOaUserId();
+        }
         if (principal instanceof SaltedUser) {
             SaltedUser user = (SaltedUser) principal;
             return user.getUserId();
@@ -33,7 +40,10 @@ public final class JpaAuditorAware  implements AuditorAware<Long> {
         return null;
     }
     public static Long getCurrentTenantId() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Object principal = currentPrincipal();
+        if (principal instanceof OaOidcUserPrincipal user) {
+            return user.getTenantId();
+        }
         if (principal instanceof SaltedUser) {
             SaltedUser user = (SaltedUser) principal;
             return user.getTenantId();
@@ -43,13 +53,18 @@ public final class JpaAuditorAware  implements AuditorAware<Long> {
     }
 
     public static String getCurrentRoleId() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Object principal = currentPrincipal();
         if (principal instanceof SaltedUser) {
             SaltedUser user = (SaltedUser) principal;
             return user.getUsername();
         }
         
         return null;
+    }
+
+    private static Object currentPrincipal() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication == null ? null : authentication.getPrincipal();
     }
 
 }

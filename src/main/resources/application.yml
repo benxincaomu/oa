@@ -92,6 +92,8 @@ management:
 app:
   base-url: @app.base-url@
   data-table-nums: 5
+  keycloak:
+    config-encryption-key: ${KEYCLOAK_CONFIG_ENCRYPTION_KEY:}
 
 camunda:
   bpm:
@@ -100,6 +102,12 @@ camunda:
         enforceHistoryTimeToLive: false
 
 server:
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
+        secure: ${SESSION_COOKIE_SECURE:false}
   tomcat:
     threads:
       max: 50

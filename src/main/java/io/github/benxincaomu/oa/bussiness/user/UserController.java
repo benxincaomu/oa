@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import io.github.benxincaomu.notry.utils.Asserts;
 import io.github.benxincaomu.oa.base.security.SaltedUser;
+import io.github.benxincaomu.oa.base.security.OaOidcUserPrincipal;
 import io.github.benxincaomu.oa.base.web.OaResponseCode;
 import io.github.benxincaomu.oa.bussiness.organization.DepartmentUser;
 import io.github.benxincaomu.oa.bussiness.user.vo.SetPasswordVo;
@@ -102,6 +103,9 @@ public class UserController {
     @GetMapping("currUser")
     public User getCurrUser(){
         Object details = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (details instanceof OaOidcUserPrincipal user) {
+            return userService.getFullInfoUser(user.getOaUserId(), null);
+        }
         if(details instanceof SaltedUser){ 
             SaltedUser user = (SaltedUser) details;
             return userService.getFullInfoUser(user.getUserId(), null);

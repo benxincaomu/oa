@@ -1,5 +1,6 @@
 package io.github.benxincaomu.oa.base.init.vo;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
 public class InitVo {
@@ -21,6 +22,10 @@ public class InitVo {
      */
     @NotNull(message = "顶级部门名称不能为空")
     private DepartmentInitVo department;
+
+    @Valid
+    @NotNull(message = "Keycloak OAuth2/IAM 配置不能为空")
+    private KeycloakConfigVo keycloak;
 
     public UserInitVo getUser() {
         return user;
@@ -44,6 +49,14 @@ public class InitVo {
 
     public void setDepartment(DepartmentInitVo department) {
         this.department = department;
+    }
+
+    public KeycloakConfigVo getKeycloak() {
+        return keycloak;
+    }
+
+    public void setKeycloak(KeycloakConfigVo keycloak) {
+        this.keycloak = keycloak;
     }
 
 

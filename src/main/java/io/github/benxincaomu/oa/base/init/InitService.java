@@ -8,6 +8,9 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;
+import io.github.benxincaomu.oa.base.security.KeycloakBootstrapIdentity;
+import io.github.benxincaomu.oa.base.security.KeycloakObjectLink;
+import io.github.benxincaomu.oa.base.security.KeycloakObjectLinkRepository;
 import io.github.benxincaomu.oa.bussiness.organization.Department;
 import io.github.benxincaomu.oa.bussiness.organization.DepartmentRepository;
 import io.github.benxincaomu.oa.bussiness.organization.DepartmentUser;
@@ -24,7 +27,6 @@ import io.github.benxincaomu.oa.bussiness.user.User;
 import io.github.benxincaomu.oa.bussiness.user.UserRepository;
 import io.github.benxincaomu.oa.bussiness.user.UserRole;
 import io.github.benxincaomu.oa.bussiness.user.UserRoleRepository;
-import io.github.benxincaomu.oa.bussiness.user.UserService;
 import jakarta.annotation.Resource;
 import jakarta.transaction.Transactional;
 
@@ -57,7 +59,7 @@ public class InitService {
     private DepartmentUserRepository departmentUserRepository;
 
     @Resource
-    private UserService userService;
+    private KeycloakObjectLinkRepository keycloakObjectLinkRepository;
 
     private final String isInitializedKey = "projectIsInitialized";
 
@@ -82,7 +84,7 @@ public class InitService {
     }
 
     @Transactional
-    public void init(Department department, User user, Role role) {
+    public void init(Department department, User user, Role role, KeycloakBootstrapIdentity keycloakIdentity) {
         if (!isInitialized()) {
             String initializeingKey = "initializeing";
             if (redisTemplate.opsForValue().setIfAbsent(initializeingKey, true, Duration.ofSeconds(30)) == true && !isInitialized()) {
@@ -92,10 +94,10 @@ public class InitService {
                 List<Permission> permissions = initPermissions(tenant.getId());
                 // 用户
                 user.setTenantId(tenant.getId());
-                initRootUser(user);
+                user = initRootUser(user);
                 // 角色
                 role.setTenantId(tenant.getId());
-                initRootRole(role);
+                role = initRootRole(role);
                 // 用户角色关联
                 UserRole userRole = new UserRole();
                 userRole.setUserId(user.getId());
@@ -116,6 +118,10 @@ public class InitService {
                 departmentUser.setTenantId(tenant.getId());
                 tenant.setTenantId(tenant.getId());
                 departmentUserRepository.save(departmentUser);
+
+                saveKeycloakLink(KeycloakObjectLink.USER, keycloakIdentity.userId(), user.getId());
+                saveKeycloakLink(KeycloakObjectLink.DEPARTMENT, keycloakIdentity.groupId(), department.getId());
+                saveKeycloakLink(KeycloakObjectLink.ROLE, keycloakIdentity.roleId(), role.getId());
                 redisTemplate.delete(initializeingKey);
                 redisTemplate.opsForValue().set(isInitializedKey, true);
             }
@@ -290,8 +296,22 @@ public class InitService {
     }
 
     private User initRootUser(User user) {
+        user.setPassword(null);
+        user.setSalt(null);
+        user.setEnable(true);
+        user.setRawPassword(false);
+        return userRepository.save(user);
+    }
 
-        return userService.insert(user);
+    private void saveKeycloakLink(String objectType, String externalId, Long localId) {
+        if (externalId == null || externalId.isBlank()) {
+            throw new IllegalStateException("Keycloak 初始化未返回有效的" + objectType + " ID");
+        }
+        KeycloakObjectLink link = new KeycloakObjectLink();
+        link.setObjectType(objectType);
+        link.setExternalId(externalId);
+        link.setLocalId(localId);
+        keycloakObjectLinkRepository.save(link);
     }
 
     private void assignPermissionToRole(Role role, List<Permission> permissions) {

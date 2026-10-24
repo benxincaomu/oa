@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import io.github.benxincaomu.oa.base.security.OaOidcUserPrincipal;
 import io.github.benxincaomu.oa.base.security.SaltedUser;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
@@ -25,9 +26,15 @@ public class TenantIdEntityListener {
         for (Field field : allFields) {
             if (field.isAnnotationPresent(TenantId.class)) {
 
-                Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-                if (principal instanceof SaltedUser) {
-                    SaltedUser user = (SaltedUser) principal;
+                var authentication = SecurityContextHolder.getContext().getAuthentication();
+                Object principal = authentication == null ? null : authentication.getPrincipal();
+                Long tenantId = null;
+                if (principal instanceof OaOidcUserPrincipal user) {
+                    tenantId = user.getTenantId();
+                } else if (principal instanceof SaltedUser user) {
+                    tenantId = user.getTenantId();
+                }
+                if (tenantId != null) {
                     try {
                         field.setAccessible(true);
                         String fieldName = field.getName();
@@ -35,7 +42,7 @@ public class TenantIdEntityListener {
                         Object value = target.getClass().getMethod(getterName).invoke(target);
                         if(value == null){
                             String setterName = "set" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
-                            target.getClass().getMethod(setterName, field.getType()).invoke(target, user.getTenantId());
+                            target.getClass().getMethod(setterName, field.getType()).invoke(target, tenantId);
                         }
                     } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException
                             | SecurityException e) {

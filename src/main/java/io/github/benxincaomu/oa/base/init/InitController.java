@@ -7,6 +7,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.github.benxincaomu.oa.base.init.vo.InitVo;
+import io.github.benxincaomu.oa.base.security.KeycloakAdminClient;
+import io.github.benxincaomu.oa.base.security.KeycloakBootstrapIdentity;
+import io.github.benxincaomu.oa.base.security.KeycloakConnectionService;
+import io.github.benxincaomu.oa.base.security.KeycloakConnectionStatusVo;
 import io.github.benxincaomu.oa.bussiness.organization.Department;
 import io.github.benxincaomu.oa.bussiness.user.Role;
 import io.github.benxincaomu.oa.bussiness.user.User;
@@ -23,8 +27,20 @@ public class InitController {
     @Resource
     private InitService initService;
 
+    @Resource
+    private KeycloakConnectionService keycloakConnectionService;
+
+    @Resource
+    private KeycloakAdminClient keycloakAdminClient;
+
     @PostMapping()
     public void init(@RequestBody @Valid InitVo initVo) {
+        if (initService.isInitialized()) {
+            throw new IllegalStateException("项目已初始化，不能重复初始化");
+        }
+
+        keycloakConnectionService.configure(initVo.getKeycloak());
+
         Department department = new Department();
         department.setName(initVo.getDepartment().getName());
         department.setCode(initVo.getDepartment().getCode());
@@ -33,16 +49,23 @@ public class InitController {
         user.setName(initVo.getUser().getName());
         user.setEmail(initVo.getUser().getEmail());
         user.setMobile(initVo.getUser().getMobile());
-        user.setPassword(initVo.getUser().getPassword());
         Role role = new Role();
         role.setName(initVo.getRole().getName());
-        initService.init(department, user, role);
+
+        KeycloakBootstrapIdentity keycloakIdentity = keycloakAdminClient.bootstrapAdministrator(initVo.getUser(),
+                department.getName(), role.getName());
+        initService.init(department, user, role, keycloakIdentity);
     }
 
     
     @GetMapping("isInitialized")
     public boolean isInitialized() {
         return initService.isInitialized();
+    }
+
+    @GetMapping("keycloakStatus")
+    public KeycloakConnectionStatusVo keycloakStatus() {
+        return keycloakConnectionService.getStatus();
     }
 
 }
