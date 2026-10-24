@@ -30,6 +30,8 @@ import io.github.benxincaomu.oa.base.init.vo.UserInitVo;
 
 @Service
 public class KeycloakAdminClient {
+    private static final int PAGE_SIZE = 100;
+
     private final KeycloakConnectionService connectionService;
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
@@ -69,18 +71,18 @@ public class KeycloakAdminClient {
     }
 
     public KeycloakUserProfile upsertUser(KeycloakUserProfile user) {
-        String expectedExternalId = hasText(user.id())
-                ? user.id()
-                : findUserIdByUsername(user.username()).orElse(null);
-        return upsertUser(user, expectedExternalId);
+        String expectedUsernameMatchId = findUserIdByUsername(user.username()).orElse(null);
+        return upsertUser(user, expectedUsernameMatchId);
     }
 
-    public KeycloakUserProfile upsertUser(KeycloakUserProfile user, String expectedExternalId) {
+    public KeycloakUserProfile upsertUser(KeycloakUserProfile user, String expectedUsernameMatchId) {
         KeycloakIntegrationConfig config = configured();
-        String userId = hasText(user.id()) ? user.id() : findUser(config, user.username()).orElse(null);
-        if (!java.util.Objects.equals(userId, expectedExternalId)) {
+        String usernameMatchId = findUser(config, user.username()).orElse(null);
+        if (!java.util.Objects.equals(usernameMatchId, expectedUsernameMatchId)
+                || (hasText(user.id()) && usernameMatchId != null && !user.id().equals(usernameMatchId))) {
             throw new IllegalStateException("Keycloak user changed after tenant validation");
         }
+        String userId = hasText(user.id()) ? user.id() : usernameMatchId;
         ObjectNode payload = userId == null
                 ? objectMapper.createObjectNode()
                 : readUser(config, userId).deepCopy();
@@ -138,22 +140,19 @@ public class KeycloakAdminClient {
     }
 
     public KeycloakGroupProfile upsertGroup(KeycloakGroupProfile group) {
-        String expectedExternalId = hasText(group.id())
-                ? group.id()
-                : findGroupId(group.parentId(), group.name()).orElse(null);
-        return upsertGroup(group, expectedExternalId);
+        String expectedPathMatchId = findGroupId(group.parentId(), group.name()).orElse(null);
+        return upsertGroup(group, expectedPathMatchId);
     }
 
-    public KeycloakGroupProfile upsertGroup(KeycloakGroupProfile group, String expectedExternalId) {
+    public KeycloakGroupProfile upsertGroup(KeycloakGroupProfile group, String expectedPathMatchId) {
         KeycloakIntegrationConfig config = configured();
-        String groupId = hasText(group.id()) ? group.id() : null;
         String parentId = hasText(group.parentId()) ? group.parentId() : null;
-        if (groupId == null) {
-            groupId = findGroup(config, parentId, group.name()).orElse(null);
-        }
-        if (!java.util.Objects.equals(groupId, expectedExternalId)) {
+        String pathMatchId = findGroup(config, parentId, group.name()).orElse(null);
+        if (!java.util.Objects.equals(pathMatchId, expectedPathMatchId)
+                || (hasText(group.id()) && pathMatchId != null && !group.id().equals(pathMatchId))) {
             throw new IllegalStateException("Keycloak group changed after tenant validation");
         }
+        String groupId = hasText(group.id()) ? group.id() : pathMatchId;
 
         if (groupId == null) {
             ObjectNode payload = objectMapper.createObjectNode().put("name", group.name());
@@ -203,11 +202,10 @@ public class KeycloakAdminClient {
         KeycloakIntegrationConfig config = configured();
         List<String> memberIds = new ArrayList<>();
         int first = 0;
-        int pageSize = 100;
         while (true) {
             String uri = UriComponentsBuilder.fromUriString(adminRealmBase(config) + "/groups/{groupId}/members")
                     .queryParam("first", first)
-                    .queryParam("max", pageSize)
+                    .queryParam("max", PAGE_SIZE)
                     .buildAndExpand(groupId)
                     .encode()
                     .toUriString();
@@ -221,10 +219,10 @@ public class KeycloakAdminClient {
                     memberIds.add(memberId);
                 }
             }
-            if (members.size() < pageSize) {
+            if (members.size() < PAGE_SIZE) {
                 break;
             }
-            first += pageSize;
+            first += PAGE_SIZE;
         }
         return memberIds;
     }
@@ -343,21 +341,30 @@ public class KeycloakAdminClient {
 
     private Optional<String> findGroup(KeycloakIntegrationConfig config, String parentId, String name) {
         String path = parentId == null ? "/groups" : "/groups/{parentId}/children";
-        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(adminRealmBase(config) + path)
-                .queryParam("search", name)
-                .queryParam("exact", true);
-        String uri = parentId == null
-                ? builder.build().encode().toUriString()
-                : builder.buildAndExpand(parentId).encode().toUriString();
-        JsonNode groups = authorizedGet(config, uri).retrieve().body(JsonNode.class);
-        if (groups != null && groups.isArray()) {
+        int first = 0;
+        while (true) {
+            UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(adminRealmBase(config) + path)
+                    .queryParam("search", name)
+                    .queryParam("exact", true)
+                    .queryParam("first", first)
+                    .queryParam("max", PAGE_SIZE);
+            String uri = parentId == null
+                    ? builder.build().encode().toUriString()
+                    : builder.buildAndExpand(parentId).encode().toUriString();
+            JsonNode groups = authorizedGet(config, uri).retrieve().body(JsonNode.class);
+            if (groups == null || !groups.isArray() || groups.isEmpty()) {
+                return Optional.empty();
+            }
             for (JsonNode group : groups) {
                 if (name.equals(group.path("name").asText())) {
                     return Optional.of(group.path("id").asText());
                 }
             }
+            if (groups.size() < PAGE_SIZE) {
+                return Optional.empty();
+            }
+            first += PAGE_SIZE;
         }
-        return Optional.empty();
     }
 
     private ObjectNode readGroup(KeycloakIntegrationConfig config, String groupId) {

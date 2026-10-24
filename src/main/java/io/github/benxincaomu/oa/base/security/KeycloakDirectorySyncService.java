@@ -77,7 +77,7 @@ public class KeycloakDirectorySyncService {
                 ? new KeycloakUserProfile(knownExternalId, profile.username(), profile.name(), profile.email(),
                         profile.mobile(), profile.enabled())
                 : profile;
-        KeycloakUserProfile savedIdentity = adminClient.upsertUser(requestedProfile, knownExternalId);
+        KeycloakUserProfile savedIdentity = adminClient.upsertUser(requestedProfile, usernameMatchId);
         if (knownExternalId != null && !knownExternalId.equals(savedIdentity.id())) {
             throw new IllegalStateException("Keycloak user identity changed during synchronization");
         }
@@ -152,7 +152,7 @@ public class KeycloakDirectorySyncService {
         KeycloakGroupProfile requestedProfile = knownExternalId != null && !StringUtils.hasText(profile.id())
                 ? new KeycloakGroupProfile(knownExternalId, profile.name(), profile.code(), profile.parentId())
                 : profile;
-        KeycloakGroupProfile savedIdentity = adminClient.upsertGroup(requestedProfile, knownExternalId);
+        KeycloakGroupProfile savedIdentity = adminClient.upsertGroup(requestedProfile, parentAndNameMatchId);
         if (knownExternalId != null && !knownExternalId.equals(savedIdentity.id())) {
             throw new IllegalStateException("Keycloak group identity changed during synchronization");
         }
