@@ -24,13 +24,13 @@ import io.github.benxincaomu.oa.base.init.vo.KeycloakConfigVo;
 @Service
 public class KeycloakConnectionService {
     private final KeycloakIntegrationConfigRepository configRepository;
-    private final KeycloakSecretCipher secretCipher;
+    private final AesGcmSecretCipher secretCipher;
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
     private final String setupToken;
 
     public KeycloakConnectionService(KeycloakIntegrationConfigRepository configRepository,
-            KeycloakSecretCipher secretCipher, RestClient.Builder restClientBuilder, ObjectMapper objectMapper,
+            AesGcmSecretCipher secretCipher, RestClient.Builder restClientBuilder, ObjectMapper objectMapper,
             @Value("${KEYCLOAK_SETUP_TOKEN:}") String setupToken) {
         this.configRepository = configRepository;
         this.secretCipher = secretCipher;

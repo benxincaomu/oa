@@ -14,14 +14,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
-public class KeycloakSecretCipher {
+public class AesGcmSecretCipher {
     private static final int NONCE_BYTES = 12;
     private static final int TAG_BITS = 128;
 
     private final String configuredKey;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public KeycloakSecretCipher(@Value("${app.keycloak.config-encryption-key:}") String configuredKey) {
+    public AesGcmSecretCipher(@Value("${app.keycloak.config-encryption-key:}") String configuredKey) {
         this.configuredKey = configuredKey;
     }
 

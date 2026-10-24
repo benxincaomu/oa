@@ -18,12 +18,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 @Component
-public class KeycloakLogoutSuccessHandler implements LogoutSuccessHandler {
-    private final KeycloakClientRegistrationRepository registrationRepository;
+public class OidcLogoutSuccessHandler implements LogoutSuccessHandler {
+    private final OidcClientRegistrationRepository registrationRepository;
     private final KeycloakConnectionService connectionService;
     private final ObjectMapper objectMapper;
 
-    public KeycloakLogoutSuccessHandler(KeycloakClientRegistrationRepository registrationRepository,
+    public OidcLogoutSuccessHandler(OidcClientRegistrationRepository registrationRepository,
             KeycloakConnectionService connectionService, ObjectMapper objectMapper) {
         this.registrationRepository = registrationRepository;
         this.connectionService = connectionService;

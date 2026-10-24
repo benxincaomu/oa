@@ -41,10 +41,10 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity,
-            KeycloakClientRegistrationRepository clientRegistrationRepository,
-            KeycloakOidcUserService oidcUserService,
+            OidcClientRegistrationRepository clientRegistrationRepository,
+            OaOidcUserService oidcUserService,
             KeycloakAuthoritiesMapper authoritiesMapper,
-            KeycloakLogoutSuccessHandler logoutSuccessHandler,
+            OidcLogoutSuccessHandler logoutSuccessHandler,
             ProjectInitializationFilter initializationFilter) throws Exception {
         CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
         csrfTokenRepository.setCookiePath("/");

@@ -12,12 +12,12 @@ import io.github.benxincaomu.oa.bussiness.user.User;
 import io.github.benxincaomu.oa.bussiness.user.UserRepository;
 
 @Service
-public class KeycloakOidcUserService implements OAuth2UserService<OidcUserRequest, OidcUser> {
+public class OaOidcUserService implements OAuth2UserService<OidcUserRequest, OidcUser> {
     private final OidcUserService delegate = new OidcUserService();
     private final KeycloakObjectLinkRepository objectLinkRepository;
     private final UserRepository userRepository;
 
-    public KeycloakOidcUserService(KeycloakObjectLinkRepository objectLinkRepository, UserRepository userRepository) {
+    public OaOidcUserService(KeycloakObjectLinkRepository objectLinkRepository, UserRepository userRepository) {
         this.objectLinkRepository = objectLinkRepository;
         this.userRepository = userRepository;
     }

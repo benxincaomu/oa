@@ -8,14 +8,14 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.stereotype.Component;
 
 @Component
-public class KeycloakClientRegistrationRepository implements ClientRegistrationRepository {
+public class OidcClientRegistrationRepository implements ClientRegistrationRepository {
     public static final String REGISTRATION_ID = "keycloak";
 
     private final KeycloakConnectionService connectionService;
     private volatile String cacheKey;
     private volatile ClientRegistration cachedRegistration;
 
-    public KeycloakClientRegistrationRepository(KeycloakConnectionService connectionService) {
+    public OidcClientRegistrationRepository(KeycloakConnectionService connectionService) {
         this.connectionService = connectionService;
     }
 
