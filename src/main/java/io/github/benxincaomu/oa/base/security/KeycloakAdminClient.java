@@ -69,8 +69,18 @@ public class KeycloakAdminClient {
     }
 
     public KeycloakUserProfile upsertUser(KeycloakUserProfile user) {
+        String expectedExternalId = hasText(user.id())
+                ? user.id()
+                : findUserIdByUsername(user.username()).orElse(null);
+        return upsertUser(user, expectedExternalId);
+    }
+
+    public KeycloakUserProfile upsertUser(KeycloakUserProfile user, String expectedExternalId) {
         KeycloakIntegrationConfig config = configured();
         String userId = hasText(user.id()) ? user.id() : findUser(config, user.username()).orElse(null);
+        if (!java.util.Objects.equals(userId, expectedExternalId)) {
+            throw new IllegalStateException("Keycloak user changed after tenant validation");
+        }
         ObjectNode payload = userId == null
                 ? objectMapper.createObjectNode()
                 : readUser(config, userId).deepCopy();
@@ -112,6 +122,10 @@ public class KeycloakAdminClient {
         return new KeycloakUserProfile(userId, user.username(), user.name(), user.email(), user.mobile(), user.enabled());
     }
 
+    public Optional<String> findUserIdByUsername(String username) {
+        return findUser(configured(), username);
+    }
+
     public void setUserEnabled(String userId, boolean enabled) {
         KeycloakIntegrationConfig config = configured();
         ObjectNode representation = readUser(config, userId);
@@ -124,11 +138,21 @@ public class KeycloakAdminClient {
     }
 
     public KeycloakGroupProfile upsertGroup(KeycloakGroupProfile group) {
+        String expectedExternalId = hasText(group.id())
+                ? group.id()
+                : findGroupId(group.parentId(), group.name()).orElse(null);
+        return upsertGroup(group, expectedExternalId);
+    }
+
+    public KeycloakGroupProfile upsertGroup(KeycloakGroupProfile group, String expectedExternalId) {
         KeycloakIntegrationConfig config = configured();
         String groupId = hasText(group.id()) ? group.id() : null;
         String parentId = hasText(group.parentId()) ? group.parentId() : null;
         if (groupId == null) {
             groupId = findGroup(config, parentId, group.name()).orElse(null);
+        }
+        if (!java.util.Objects.equals(groupId, expectedExternalId)) {
+            throw new IllegalStateException("Keycloak group changed after tenant validation");
         }
 
         if (groupId == null) {
@@ -159,6 +183,10 @@ public class KeycloakAdminClient {
                     .toBodilessEntity();
         }
         return new KeycloakGroupProfile(groupId, group.name(), group.code(), parentId);
+    }
+
+    public Optional<String> findGroupId(String parentId, String name) {
+        return findGroup(configured(), hasText(parentId) ? parentId : null, name);
     }
 
     public void setGroupMembership(String userId, String groupId, boolean member) {
