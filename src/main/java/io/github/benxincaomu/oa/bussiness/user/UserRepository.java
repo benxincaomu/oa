@@ -16,6 +16,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     public User findByUserNameAndTenantId(String userName, Long tenantId);
 
+    public List<User> findByTenantId(Long tenantId);
+
     public boolean existsByUserName(String userName);
 
     public boolean existsByEmail(String email);
@@ -47,10 +49,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * @return 上级领导id
      */
     @Query("""
-            select d.leaderUserId from 
+            select d.leaderUserId from
             io.github.benxincaomu.oa.bussiness.organization.DepartmentUser du,
             io.github.benxincaomu.oa.bussiness.organization.Department d
-            where du.userId =:userId and du.departmentId = d.id 
+            where du.userId =:userId and du.departmentId = d.id
 
             """
     )

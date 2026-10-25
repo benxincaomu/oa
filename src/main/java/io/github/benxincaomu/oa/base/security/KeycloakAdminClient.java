@@ -32,10 +32,15 @@ import io.github.benxincaomu.oa.base.init.vo.UserInitVo;
 public class KeycloakAdminClient {
     private static final int PAGE_SIZE = 100;
 
+    /** Application client role that owns platform administration. */
+    public static final String OA_ADMIN_CLIENT_ROLE = "oa-admin";
+
     private final KeycloakConnectionService connectionService;
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
     private volatile CachedToken cachedToken;
+    private volatile CachedClientUuid cachedClientUuid;
+    private volatile String authorizationServicesConfigurationKey;
 
     public KeycloakAdminClient(KeycloakConnectionService connectionService, RestClient.Builder restClientBuilder,
             ObjectMapper objectMapper) {
@@ -44,8 +49,7 @@ public class KeycloakAdminClient {
         this.objectMapper = objectMapper;
     }
 
-    public KeycloakBootstrapIdentity bootstrapAdministrator(UserInitVo user, String rootGroupName,
-            String administratorRoleName) {
+    public KeycloakBootstrapIdentity bootstrapAdministrator(UserInitVo user, String rootGroupName) {
         KeycloakIntegrationConfig config = connectionService.getConfiguration()
                 .orElseThrow(() -> new IllegalStateException("Keycloak 尚未配置"));
         String adminBase = adminRealmBase(config);
@@ -54,20 +58,44 @@ public class KeycloakAdminClient {
                 .orElseGet(() -> createUser(config, user));
         String groupId = findGroup(config, rootGroupName)
                 .orElseGet(() -> createGroup(config, rootGroupName));
-        JsonNode role = findRole(config, administratorRoleName)
-                .orElseGet(() -> createRole(config, administratorRoleName));
+        String applicationClientUuid = clientUuid(config);
+        enableAuthorizationServices(config, applicationClientUuid);
+        JsonNode managementRole = findClientRole(config, applicationClientUuid, OA_ADMIN_CLIENT_ROLE)
+                .orElseGet(() -> createClientRole(config, applicationClientUuid,
+                        new KeycloakRoleProfile(null, OA_ADMIN_CLIENT_ROLE, "OA platform administrator")));
 
         authorizedPut(config, adminBase + "/users/{userId}/groups/{groupId}", userId, groupId)
                 .retrieve()
                 .toBodilessEntity();
 
-        authorizedPost(config, adminBase + "/users/{userId}/role-mappings/realm", userId)
+        authorizedPost(config,
+                adminBase + "/users/{userId}/role-mappings/clients/{clientUuid}", userId, applicationClientUuid)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(List.of(role))
+                .body(List.of(managementRole))
                 .retrieve()
                 .toBodilessEntity();
 
-        return new KeycloakBootstrapIdentity(userId, groupId, role.path("id").asText());
+        return new KeycloakBootstrapIdentity(userId, groupId, managementRole.path("id").asText());
+    }
+
+    /**
+     * Sets one attribute on a Keycloak group (creating the attributes map when
+     * missing). Used to mark the tenant root group with the OA tenant ID.
+     */
+    public void setGroupAttribute(String groupId, String name, String value) {
+        KeycloakIntegrationConfig config = configured();
+        ObjectNode group = readGroup(config, groupId);
+        ObjectNode attributes = group.with("attributes");
+        if (hasText(value)) {
+            attributes.putArray(name).add(value);
+        } else {
+            attributes.remove(name);
+        }
+        authorizedPut(config, adminRealmBase(config) + "/groups/{groupId}", groupId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(group)
+                .retrieve()
+                .toBodilessEntity();
     }
 
     public KeycloakUserProfile upsertUser(KeycloakUserProfile user) {
@@ -126,6 +154,79 @@ public class KeycloakAdminClient {
 
     public Optional<String> findUserIdByUsername(String username) {
         return findUser(configured(), username);
+    }
+
+    public List<KeycloakUserProfile> listUsers(String search) {
+        KeycloakIntegrationConfig config = configured();
+        List<KeycloakUserProfile> users = new ArrayList<>();
+        int first = 0;
+        while (true) {
+            UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(adminRealmBase(config) + "/users")
+                    .queryParam("first", first)
+                    .queryParam("max", PAGE_SIZE);
+            if (hasText(search)) {
+                builder.queryParam("search", search.trim());
+            }
+            JsonNode page = authorizedGet(config, builder.build().encode().toUriString())
+                    .retrieve().body(JsonNode.class);
+            if (page == null || !page.isArray() || page.isEmpty()) {
+                break;
+            }
+            for (JsonNode user : page) {
+                users.add(userProfile(user));
+            }
+            if (page.size() < PAGE_SIZE) {
+                break;
+            }
+            first += PAGE_SIZE;
+        }
+        return List.copyOf(users);
+    }
+
+    public Optional<KeycloakUserProfile> findUserProfile(String userId) {
+        if (!hasText(userId)) {
+            return Optional.empty();
+        }
+        KeycloakIntegrationConfig config = configured();
+        try {
+            JsonNode user = authorizedGet(config, adminRealmBase(config) + "/users/{userId}", userId)
+                    .retrieve().body(JsonNode.class);
+            return user == null || !user.isObject() ? Optional.empty() : Optional.of(userProfile(user));
+        } catch (RestClientResponseException exception) {
+            if (exception.getStatusCode().value() == 404) {
+                return Optional.empty();
+            }
+            throw new IllegalStateException("Unable to read Keycloak user", exception);
+        }
+    }
+
+    private KeycloakUserProfile userProfile(JsonNode user) {
+        String firstName = user.path("firstName").asText("");
+        String lastName = user.path("lastName").asText("");
+        String name = (firstName + " " + lastName).trim();
+        return new KeycloakUserProfile(
+                user.path("id").asText(),
+                user.path("username").asText(),
+                name.isEmpty() ? firstName : name,
+                user.path("email").asText(null),
+                attributeValue(user.path("attributes").path("mobile")),
+                user.path("enabled").asBoolean(true));
+    }
+
+    public void resetUserPassword(String userId, String password, boolean temporary) {
+        if (!hasText(password)) {
+            throw new IllegalArgumentException("Password cannot be blank");
+        }
+        KeycloakIntegrationConfig config = configured();
+        Map<String, Object> credential = Map.of(
+                "type", "password",
+                "value", password,
+                "temporary", temporary);
+        authorizedPut(config, adminRealmBase(config) + "/users/{userId}/reset-password", userId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(credential)
+                .retrieve()
+                .toBodilessEntity();
     }
 
     public void setUserEnabled(String userId, boolean enabled) {
@@ -188,6 +289,298 @@ public class KeycloakAdminClient {
         return findGroup(configured(), hasText(parentId) ? parentId : null, name);
     }
 
+    public List<KeycloakGroupProfile> listGroups() {
+        KeycloakIntegrationConfig config = configured();
+        List<KeycloakGroupProfile> groups = new ArrayList<>();
+        int first = 0;
+        while (true) {
+            String uri = UriComponentsBuilder.fromUriString(adminRealmBase(config) + "/groups")
+                    .queryParam("first", first)
+                    .queryParam("max", PAGE_SIZE)
+                    .queryParam("briefRepresentation", false)
+                    .build().encode().toUriString();
+            JsonNode page = authorizedGet(config, uri).retrieve().body(JsonNode.class);
+            if (page == null || !page.isArray() || page.isEmpty()) {
+                break;
+            }
+            appendGroupTree(page, null, groups);
+            if (page.size() < PAGE_SIZE) {
+                break;
+            }
+            first += PAGE_SIZE;
+        }
+        return List.copyOf(groups);
+    }
+
+    public List<OaKeycloakGroup> listGroupsWithAttributes() {
+        KeycloakIntegrationConfig config = configured();
+        List<OaKeycloakGroup> groups = new ArrayList<>();
+        int first = 0;
+        while (true) {
+            String uri = UriComponentsBuilder.fromUriString(adminRealmBase(config) + "/groups")
+                    .queryParam("first", first)
+                    .queryParam("max", PAGE_SIZE)
+                    .queryParam("briefRepresentation", false)
+                    .build().encode().toUriString();
+            JsonNode page = authorizedGet(config, uri).retrieve().body(JsonNode.class);
+            if (page == null || !page.isArray() || page.isEmpty()) {
+                break;
+            }
+            appendGroupNodes(page, null, groups);
+            if (page.size() < PAGE_SIZE) {
+                break;
+            }
+            first += PAGE_SIZE;
+        }
+        return List.copyOf(groups);
+    }
+
+    public List<OaKeycloakGroup> listUserGroups(String userId) {
+        KeycloakIntegrationConfig config = configured();
+        List<OaKeycloakGroup> groups = new ArrayList<>();
+        int first = 0;
+        while (true) {
+            String uri = UriComponentsBuilder
+                    .fromUriString(adminRealmBase(config) + "/users/{userId}/groups")
+                    .queryParam("first", first)
+                    .queryParam("max", PAGE_SIZE)
+                    .queryParam("briefRepresentation", false)
+                    .buildAndExpand(userId)
+                    .encode()
+                    .toUriString();
+            JsonNode page = authorizedGet(config, uri).retrieve().body(JsonNode.class);
+            if (page == null || !page.isArray() || page.isEmpty()) {
+                break;
+            }
+            for (JsonNode group : page) {
+                groups.add(groupNode(group, null));
+            }
+            if (page.size() < PAGE_SIZE) {
+                break;
+            }
+            first += PAGE_SIZE;
+        }
+        return List.copyOf(groups);
+    }
+
+    private void appendGroupNodes(JsonNode groups, String parentId, List<OaKeycloakGroup> result) {
+        for (JsonNode group : groups) {
+            OaKeycloakGroup node = groupNode(group, parentId);
+            result.add(node);
+            JsonNode children = group.path("subGroups");
+            if (children.isArray() && !children.isEmpty()) {
+                appendGroupNodes(children, node.id(), result);
+            }
+        }
+    }
+
+    private OaKeycloakGroup groupNode(JsonNode group, String parentId) {
+        String name = group.path("name").asText();
+        String path = group.path("path").asText();
+        if (!hasText(path)) {
+            path = "/" + name;
+        }
+        JsonNode attributes = group.path("attributes");
+        return new OaKeycloakGroup(
+                group.path("id").asText(),
+                name,
+                path,
+                parentId,
+                attributeValue(attributes.path("code")),
+                parseLong(attributeValue(attributes.path("tenant_id"))),
+                parseLong(attributeValue(attributes.path("leader_user_id"))));
+    }
+
+    private Long parseLong(String value) {
+        if (!hasText(value)) {
+            return null;
+        }
+        try {
+            return Long.valueOf(value.trim());
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    public KeycloakRoleProfile upsertClientRole(KeycloakRoleProfile requested) {
+        KeycloakIntegrationConfig config = configured();
+        String clientId = clientUuid(config);
+        JsonNode existing;
+        String endpoint;
+        if (hasText(requested.id())) {
+            existing = readClientRoleById(config, clientId, requested.id());
+            endpoint = adminRealmBase(config) + "/roles-by-id/{roleId}";
+        } else {
+            existing = findClientRole(config, clientId, requested.name()).orElse(null);
+            endpoint = adminRealmBase(config) + "/clients/{clientId}/roles/{roleName}";
+        }
+        ObjectNode representation = existing instanceof ObjectNode object ? object.deepCopy()
+                : objectMapper.createObjectNode();
+        representation.put("name", requested.name());
+        if (requested.description() != null) {
+            representation.put("description", requested.description());
+        }
+        if (existing == null) {
+            authorizedPost(config, adminRealmBase(config) + "/clients/{clientId}/roles", clientId)
+                    .contentType(MediaType.APPLICATION_JSON).body(representation).retrieve().toBodilessEntity();
+        } else {
+            if (hasText(requested.id())) {
+                authorizedPut(config, endpoint, requested.id())
+                        .contentType(MediaType.APPLICATION_JSON).body(representation).retrieve().toBodilessEntity();
+            } else {
+                authorizedPut(config, endpoint, clientId, requested.name())
+                        .contentType(MediaType.APPLICATION_JSON).body(representation).retrieve().toBodilessEntity();
+            }
+        }
+        JsonNode saved = hasText(requested.id())
+                ? readClientRoleById(config, clientId, requested.id())
+                : findClientRole(config, clientId, requested.name())
+                        .orElseThrow(() -> new IllegalStateException("Keycloak client role was not saved"));
+        return clientRoleProfile(saved);
+    }
+
+    public List<KeycloakRoleProfile> listClientRoles() {
+        KeycloakIntegrationConfig config = configured();
+        String clientId = clientUuid(config);
+        List<KeycloakRoleProfile> roles = new ArrayList<>();
+        int first = 0;
+        while (true) {
+            String uri = UriComponentsBuilder.fromUriString(adminRealmBase(config) + "/clients/{clientId}/roles")
+                    .queryParam("first", first).queryParam("max", PAGE_SIZE)
+                    .buildAndExpand(clientId).encode().toUriString();
+            JsonNode page = authorizedGet(config, uri).retrieve().body(JsonNode.class);
+            if (page == null || !page.isArray() || page.isEmpty()) {
+                break;
+            }
+            for (JsonNode role : page) {
+                roles.add(clientRoleProfile(role));
+            }
+            if (page.size() < PAGE_SIZE) {
+                break;
+            }
+            first += PAGE_SIZE;
+        }
+        return List.copyOf(roles);
+    }
+
+    public void deleteClientRole(String roleId) {
+        KeycloakIntegrationConfig config = configured();
+        String clientId = clientUuid(config);
+        JsonNode role = authorizedGet(config, adminRealmBase(config) + "/roles-by-id/{roleId}", roleId)
+                .retrieve().body(JsonNode.class);
+        if (role == null || !clientId.equals(role.path("containerId").asText())) {
+            throw new IllegalArgumentException("Keycloak role does not belong to the configured application client");
+        }
+        authorizedDelete(config,
+                adminRealmBase(config) + "/clients/{clientId}/roles/{roleName}",
+                clientId, role.path("name").asText())
+                .retrieve().toBodilessEntity();
+    }
+
+    public void replaceGroupClientRoles(String groupId, Collection<String> roleIds) {
+        KeycloakIntegrationConfig config = configured();
+        String clientId = clientUuid(config);
+        String mappingsEndpoint = adminRealmBase(config) + "/groups/{groupId}/role-mappings/clients/{clientId}";
+        JsonNode currentNode = authorizedGet(config, mappingsEndpoint, groupId, clientId)
+                .retrieve().body(JsonNode.class);
+        List<JsonNode> currentRoles = arrayValues(currentNode);
+        Set<String> desiredIds = new LinkedHashSet<>(roleIds == null ? List.of() : roleIds);
+        Set<String> currentIds = new LinkedHashSet<>();
+        currentRoles.forEach(role -> currentIds.add(role.path("id").asText()));
+        List<JsonNode> remove = currentRoles.stream()
+                .filter(role -> !desiredIds.contains(role.path("id").asText()))
+                .toList();
+        List<JsonNode> add = new ArrayList<>();
+        for (String roleId : desiredIds) {
+            if (!hasText(roleId)) {
+                throw new IllegalArgumentException("Keycloak role ID cannot be blank");
+            }
+            if (!currentIds.contains(roleId)) {
+                JsonNode role = authorizedGet(config, adminRealmBase(config) + "/roles-by-id/{roleId}", roleId)
+                        .retrieve().body(JsonNode.class);
+                if (role == null || !role.path("clientRole").asBoolean()
+                        || !clientId.equals(role.path("containerId").asText())) {
+                    throw new IllegalArgumentException(
+                            "Keycloak role does not belong to the configured application client");
+                }
+                add.add(role);
+            }
+        }
+        if (!remove.isEmpty()) {
+            authorizedDelete(config, mappingsEndpoint, groupId, clientId)
+                    .contentType(MediaType.APPLICATION_JSON).body(remove).retrieve().toBodilessEntity();
+        }
+        if (!add.isEmpty()) {
+            authorizedPost(config, mappingsEndpoint, groupId, clientId)
+                    .contentType(MediaType.APPLICATION_JSON).body(add).retrieve().toBodilessEntity();
+        }
+    }
+
+    public List<String> getEffectiveGroupClientRoleIds(String groupId) {
+        KeycloakIntegrationConfig config = configured();
+        String clientId = clientUuid(config);
+        String endpoint = adminRealmBase(config) + "/groups/{groupId}/role-mappings/clients/{clientId}/composite";
+        return getRoleIds(config, endpoint, groupId, clientId);
+    }
+
+    public JsonNode getAuthorizationResource(String path) {
+        KeycloakIntegrationConfig config = configured();
+        return authorizedGet(config, authorizationResourceServerBase(config) + path)
+                .retrieve().body(JsonNode.class);
+    }
+
+    public void ensureAuthorizationServices() {
+        KeycloakIntegrationConfig config = configured();
+        String configurationKey = config.getIssuerUri() + "|" + config.getRealm() + "|" + config.getClientId();
+        if (configurationKey.equals(authorizationServicesConfigurationKey)) {
+            return;
+        }
+        enableAuthorizationServices(config, clientUuid(config));
+        authorizationServicesConfigurationKey = configurationKey;
+    }
+
+    public JsonNode getAuthorizationResource(String path, Map<String, String> queryParams) {
+        KeycloakIntegrationConfig config = configured();
+        UriComponentsBuilder builder = UriComponentsBuilder
+                .fromUriString(authorizationResourceServerBase(config) + path);
+        queryParams.forEach(builder::queryParam);
+        return authorizedGet(config, builder.build().encode().toUriString())
+                .retrieve().body(JsonNode.class);
+    }
+
+    public JsonNode postAuthorizationResource(String path, Object body) {
+        KeycloakIntegrationConfig config = configured();
+        return authorizedPost(config, authorizationResourceServerBase(config) + path)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .body(JsonNode.class);
+    }
+
+    public String createAuthorizationResource(String path, Object body) {
+        KeycloakIntegrationConfig config = configured();
+        var response = authorizedPost(config, authorizationResourceServerBase(config) + path)
+                .contentType(MediaType.APPLICATION_JSON).body(body).retrieve().toBodilessEntity();
+        String id = locationId(response.getHeaders());
+        if (id != null) {
+            return id;
+        }
+        JsonNode responseBody = response.getBody() == null ? null : objectMapper.valueToTree(response.getBody());
+        return responseBody == null ? null : responseBody.path("_id").asText(null);
+    }
+
+    public void updateAuthorizationResource(String path, Object body) {
+        KeycloakIntegrationConfig config = configured();
+        authorizedPut(config, authorizationResourceServerBase(config) + path)
+                .contentType(MediaType.APPLICATION_JSON).body(body).retrieve().toBodilessEntity();
+    }
+
+    public void deleteAuthorizationResource(String path) {
+        KeycloakIntegrationConfig config = configured();
+        authorizedDelete(config, authorizationResourceServerBase(config) + path)
+                .retrieve().toBodilessEntity();
+    }
+
     public void setGroupMembership(String userId, String groupId, boolean member) {
         KeycloakIntegrationConfig config = configured();
         String endpoint = adminRealmBase(config) + "/users/{userId}/groups/{groupId}";
@@ -231,6 +624,17 @@ public class KeycloakAdminClient {
         KeycloakIntegrationConfig config = configured();
         String clientUuid = clientUuid(config);
         String endpoint = adminRealmBase(config) + "/users/{userId}/role-mappings/clients/{clientUuid}/composite";
+        return getRoleIds(config, endpoint, userId, clientUuid);
+    }
+
+    /**
+     * Directly assigned application client roles of a user (excluding roles
+     * inherited through composites or groups).
+     */
+    public List<String> getDirectUserClientRoleIds(String userId) {
+        KeycloakIntegrationConfig config = configured();
+        String clientUuid = clientUuid(config);
+        String endpoint = adminRealmBase(config) + "/users/{userId}/role-mappings/clients/{clientUuid}";
         return getRoleIds(config, endpoint, userId, clientUuid);
     }
 
@@ -412,28 +816,86 @@ public class KeycloakAdminClient {
         return id;
     }
 
-    private Optional<JsonNode> findRole(KeycloakIntegrationConfig config, String name) {
+    private Optional<JsonNode> findClientRole(KeycloakIntegrationConfig config, String clientId, String name) {
         try {
-            return Optional.ofNullable(authorizedGet(config,
-                    adminRealmBase(config) + "/roles/{roleName}", name)
-                    .retrieve()
-                    .body(JsonNode.class));
+            JsonNode role = authorizedGet(config,
+                    adminRealmBase(config) + "/clients/{clientId}/roles/{roleName}", clientId, name)
+                    .retrieve().body(JsonNode.class);
+            return Optional.ofNullable(role);
         } catch (RestClientResponseException exception) {
             if (exception.getStatusCode().value() == 404) {
                 return Optional.empty();
             }
-            throw new IllegalStateException("无法读取 Keycloak 管理角色", exception);
+            throw new IllegalStateException("Unable to read Keycloak client role", exception);
         }
     }
 
-    private JsonNode createRole(KeycloakIntegrationConfig config, String name) {
-        authorizedPost(config, adminRealmBase(config) + "/roles")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("name", name, "description", "OA initial administrator role"))
-                .retrieve()
-                .toBodilessEntity();
-        return findRole(config, name)
-                .orElseThrow(() -> new IllegalStateException("Keycloak 已创建管理员角色但无法读取"));
+    private JsonNode readClientRoleById(KeycloakIntegrationConfig config, String clientId, String roleId) {
+        JsonNode role = authorizedGet(config, adminRealmBase(config) + "/roles-by-id/{roleId}", roleId)
+                .retrieve().body(JsonNode.class);
+        if (role == null || !role.path("clientRole").asBoolean()
+                || !clientId.equals(role.path("containerId").asText())) {
+            throw new IllegalArgumentException("Keycloak role does not belong to the configured application client");
+        }
+        return role;
+    }
+
+    private JsonNode createClientRole(KeycloakIntegrationConfig config, String clientId,
+            KeycloakRoleProfile profile) {
+        ObjectNode representation = objectMapper.createObjectNode().put("name", profile.name());
+        if (profile.description() != null) {
+            representation.put("description", profile.description());
+        }
+        authorizedPost(config, adminRealmBase(config) + "/clients/{clientId}/roles", clientId)
+                .contentType(MediaType.APPLICATION_JSON).body(representation).retrieve().toBodilessEntity();
+        return findClientRole(config, clientId, profile.name())
+                .orElseThrow(() -> new IllegalStateException("Keycloak client role was not created"));
+    }
+
+    private void enableAuthorizationServices(KeycloakIntegrationConfig config, String clientId) {
+        String endpoint = adminRealmBase(config) + "/clients/{clientId}";
+        JsonNode client = authorizedGet(config, endpoint, clientId).retrieve().body(JsonNode.class);
+        if (!(client instanceof ObjectNode representation)) {
+            throw new IllegalStateException("Configured Keycloak application client was not found");
+        }
+        if (!representation.path("authorizationServicesEnabled").asBoolean()) {
+            representation.put("authorizationServicesEnabled", true);
+            authorizedPut(config, endpoint, clientId)
+                    .contentType(MediaType.APPLICATION_JSON).body(representation).retrieve().toBodilessEntity();
+        }
+    }
+
+    private String authorizationResourceServerBase(KeycloakIntegrationConfig config) {
+        return adminRealmBase(config) + "/clients/" + clientUuid(config) + "/authz/resource-server";
+    }
+
+    private void appendGroupTree(JsonNode groups, String parentId, List<KeycloakGroupProfile> result) {
+        for (JsonNode group : groups) {
+            String groupId = group.path("id").asText();
+            result.add(new KeycloakGroupProfile(
+                    groupId,
+                    group.path("name").asText(),
+                    attributeValue(group.path("attributes").path("code")),
+                    parentId));
+            JsonNode children = group.path("subGroups");
+            if (children.isArray() && !children.isEmpty()) {
+                appendGroupTree(children, groupId, result);
+            }
+        }
+    }
+
+    private String attributeValue(JsonNode value) {
+        if (value.isArray()) {
+            return value.isEmpty() ? null : value.get(0).asText(null);
+        }
+        return value.isMissingNode() || value.isNull() ? null : value.asText(null);
+    }
+
+    private KeycloakRoleProfile clientRoleProfile(JsonNode role) {
+        return new KeycloakRoleProfile(
+                role.path("id").asText(),
+                role.path("name").asText(),
+                role.path("description").asText(null));
     }
 
     private RestClient.RequestHeadersSpec<?> authorizedGet(KeycloakIntegrationConfig config, String uri,
@@ -466,6 +928,17 @@ public class KeycloakAdminClient {
     }
 
     private String clientUuid(KeycloakIntegrationConfig config) {
+        String configurationKey = config.getIssuerUri() + "|" + config.getRealm() + "|" + config.getClientId();
+        CachedClientUuid current = cachedClientUuid;
+        if (current != null && current.configurationKey().equals(configurationKey)) {
+            return current.uuid();
+        }
+        String uuid = lookupClientUuid(config);
+        cachedClientUuid = new CachedClientUuid(configurationKey, uuid);
+        return uuid;
+    }
+
+    private String lookupClientUuid(KeycloakIntegrationConfig config) {
         String uri = UriComponentsBuilder.fromUriString(adminRealmBase(config) + "/clients")
                 .queryParam("clientId", config.getClientId())
                 .build().encode().toUriString();
@@ -577,5 +1050,8 @@ public class KeycloakAdminClient {
     }
 
     private record CachedToken(String value, Instant expiresAt, String configurationKey) {
+    }
+
+    private record CachedClientUuid(String configurationKey, String uuid) {
     }
 }

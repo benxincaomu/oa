@@ -20,9 +20,8 @@ import org.springframework.stereotype.Service;
 import io.github.benxincaomu.notry.utils.Asserts;
 
 import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;
+import io.github.benxincaomu.oa.base.security.KeycloakDirectoryService;
 import io.github.benxincaomu.oa.base.web.OaResponseCode;
-import io.github.benxincaomu.oa.bussiness.organization.DepartmentUserRepository;
-import io.github.benxincaomu.oa.bussiness.user.UserRepository;
 import io.github.benxincaomu.oa.bussiness.workflow_design.WorkbenchPublishRepository;
 import io.github.benxincaomu.oa.bussiness.workflow_design.WorkbenchRepository;
 import jakarta.annotation.Resource;
@@ -53,9 +52,7 @@ public class WorkflowService {
     @Resource
     private RepositoryService repositoryService;
     @Resource
-    private UserRepository userRepository;
-    @Resource
-    private DepartmentUserRepository departmentUserRepository;
+    private KeycloakDirectoryService directoryService;
 
 
     @Resource
@@ -67,9 +64,10 @@ public class WorkflowService {
     public void approval(FlowHistory flowHistory, Long workbenchId) {
         // logger.info("approval");
         workbenchPublishRepository.findLatestByWorkbenchId(workbenchId).ifPresent(wp -> {
-            userRepository.findById(JpaAuditorAware.getCurrentUserId()).ifPresent(user -> {
-                flowHistory.setOperatorName(user.getName());
-            });
+            String operatorName = directoryService.displayNameForUser(JpaAuditorAware.getCurrentUserId());
+            if (operatorName != null) {
+                flowHistory.setOperatorName(operatorName);
+            }
             FlowForm flowForm = flowFormRepository.findOneById(flowHistory.getFlowFormId(), wp.getFlowFormTable());
             if (flowForm != null) {
                 BpmnModelInstance modelInstance = repositoryService
@@ -88,13 +86,18 @@ public class WorkflowService {
                             .active()
                             .singleResult();
                     if (task == null) {
-                        Optional<Long> deptId = departmentUserRepository.findDeptIdByUserId(JpaAuditorAware.getCurrentUserId());
-                        task = taskService.createTaskQuery()
-                                .processInstanceId(flowForm.getProcessId())
-                                .taskCandidateGroup(deptId.orElse(0L).toString())
-                                .taskDefinitionKey(userTask.getId())
-                                .active()
-                                .singleResult();
+                        for (Long deptId : directoryService.findDepartmentNumericIdsForUser(
+                                JpaAuditorAware.getCurrentUserId(), JpaAuditorAware.getCurrentTenantId())) {
+                            task = taskService.createTaskQuery()
+                                    .processInstanceId(flowForm.getProcessId())
+                                    .taskCandidateGroup(deptId.toString())
+                                    .taskDefinitionKey(userTask.getId())
+                                    .active()
+                                    .singleResult();
+                            if (task != null) {
+                                break;
+                            }
+                        }
                     }
                     flowHistoryRepository.save(flowHistory, wp.getFlowHistoryTable());
                     Asserts.isTrue(task != null, OaResponseCode.FLOW_TASK_NOT_EXIST);

@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.web.PagedModel;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -18,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.github.benxincaomu.notry.utils.Asserts;
+import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;
+import io.github.benxincaomu.oa.base.security.KeycloakDirectoryService;
 import io.github.benxincaomu.oa.base.security.SaltedUser;
 import io.github.benxincaomu.oa.base.security.OaOidcUserPrincipal;
 import io.github.benxincaomu.oa.base.web.OaResponseCode;
@@ -36,7 +39,7 @@ public class UserController {
     @Resource
     private RoleRepository roleRepository;
 
-    
+
     @Resource
     private PermissionRepository permissionRepository;
 
@@ -46,7 +49,10 @@ public class UserController {
     @Resource
     private RoleService roleService;
 
-    
+    @Resource
+    private KeycloakDirectoryService directoryService;
+
+
 
     @Resource
     private RedisTemplate<String, String> redisTemplate;
@@ -54,7 +60,7 @@ public class UserController {
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     /**
-     * 
+     *
      * @param currPage 当前页
      * @param pageSize 每页数量
      * @param userName 用户名
@@ -62,6 +68,7 @@ public class UserController {
      * @return
      */
     @GetMapping("list")
+    @PreAuthorize("hasAuthority('ROLE_oa-admin')")
     public PagedModel<User> list(Integer currPage, Integer pageSize, String userName, String name) {
         PagedModel<User> page = new PagedModel<>(userService.users(currPage, pageSize, userName, name));
         return page;
@@ -69,25 +76,29 @@ public class UserController {
 
     /**
      * 新增用户
-     * 
+     *
      * @param user 用户信息
      */
     @PostMapping()
+    @PreAuthorize("hasAuthority('ROLE_oa-admin')")
     public User insert(@RequestBody User user) {
-        return userService.insert(user);
+        throw new IllegalStateException("用户数据由 Keycloak 管理，请使用 /identity 接口");
     }
 
     @DeleteMapping("{id}")
+    @PreAuthorize("hasAuthority('ROLE_oa-admin')")
     public void disableUser(@PathVariable Long id) {
-        userService.changeUserEnable(id, false);
+        throw new IllegalStateException("用户数据由 Keycloak 管理，请使用 /identity 接口");
     }
 
     @PutMapping
+    @PreAuthorize("hasAuthority('ROLE_oa-admin')")
     public void updateUser(@RequestBody User user) {
-        userService.updateUser(user);
+        throw new IllegalStateException("用户数据由 Keycloak 管理，请使用 /identity 接口");
     }
 
     @GetMapping("{id}")
+    @PreAuthorize("hasAuthority('ROLE_oa-admin')")
     public User getUser(@PathVariable Long id) {
         if (id == null || id < 1) {
             throw new RuntimeException("user id can't be null.");
@@ -96,7 +107,7 @@ public class UserController {
         return userService.getUserById(id);
     }
 
-    
+
 
 
 
@@ -106,21 +117,21 @@ public class UserController {
         if (details instanceof OaOidcUserPrincipal user) {
             return userService.getFullInfoUser(user.getOaUserId(), null);
         }
-        if(details instanceof SaltedUser){ 
+        if(details instanceof SaltedUser){
             SaltedUser user = (SaltedUser) details;
             return userService.getFullInfoUser(user.getUserId(), null);
         }
         return null;
     }
 
-    
 
-   
+
+
 
 
     @GetMapping("/getRoleIdByUserId/{userId}")
     public Long getRoleIdByUserId(@PathVariable("userId") Long userId){
-        return userService.getRoleIdByUserId(userId);
+        throw new IllegalStateException("角色关系由 Keycloak 管理，请使用 /identity 接口");
 
     }
 
@@ -129,44 +140,49 @@ public class UserController {
      * @param userRole 用户角色
      */
     @PostMapping("/assignRole")
+    @PreAuthorize("hasAuthority('ROLE_oa-admin')")
     public void assignRole(@RequestBody UserRole userRole){
-        userService.assignRole(userRole);
+        throw new IllegalStateException("角色关系由 Keycloak 管理，请使用 /identity 接口");
     }
 
-  
+
 
     @GetMapping("/getDeptIdByUserId/{userId}")
     public Long getDeptIdByUserId(@PathVariable("userId") Long userId){
-        return userService.getDeptIdByUserId(userId);
+        return directoryService.findDepartmentNumericIdsForUser(userId, currentTenantId()).stream()
+                .findFirst()
+                .orElse(0L);
     }
 
     @PostMapping("/assignDept")
+    @PreAuthorize("hasAuthority('ROLE_oa-admin')")
     public void assignDept(@RequestBody DepartmentUser departmentUser){
-        userService.assignDept(departmentUser);
+        throw new IllegalStateException("组织成员关系由 Keycloak 管理，请使用 /identity 接口");
     }
 
     @PostMapping("/setPassword")
+    @PreAuthorize("hasAuthority('ROLE_oa-admin')")
     public void setPassword(@Validated @RequestBody SetPasswordVo setPasswordVo){
-        String pwdId = redisTemplate.opsForValue().get(setPasswordVo.getId());
-        Asserts.isFalse(pwdId == null,OaResponseCode.UPDATE_PASSWORD_EXPIRED);
-        Long id = Long.valueOf(pwdId);
-        User user = new User();
-        user.setId(id);
-        user.setPassword(setPasswordVo.getPassword());
-        userService.updatePassword(user);
-        redisTemplate.delete(setPasswordVo.getId());
-        ;
+        throw new IllegalStateException("密码由 Keycloak 管理，请使用 /identity 接口");
     }
     @GetMapping("/findUsersByNameLike/{name}")
     public List<UserIdNameVo> findUsersByNameLike(@PathVariable("name")String name){
 
-        return userService.findUsersByNameLike(name);
+        return directoryService.listTenantUsersForSelection(currentTenantId(), name);
     }
 
     @GetMapping("/getAllUsers")
     public List<UserIdNameVo> getAllUsers(){
 
-        return userService.getAllUsers();
+        return directoryService.listTenantUsersForSelection(currentTenantId(), null);
+    }
+
+    private Long currentTenantId() {
+        Long tenantId = JpaAuditorAware.getCurrentTenantId();
+        if (tenantId == null) {
+            throw new IllegalStateException("An OA tenant context is required");
+        }
+        return tenantId;
     }
 
 }

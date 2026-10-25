@@ -5,10 +5,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;
-import io.github.benxincaomu.oa.bussiness.user.User;
-import io.github.benxincaomu.oa.bussiness.user.UserRepository;
+import io.github.benxincaomu.oa.base.security.KeycloakDirectoryService;
 import jakarta.annotation.Resource;
 import jakarta.persistence.EntityManager;
 
@@ -19,12 +19,19 @@ public class FlowHistoryRepository {
     private EntityManager entityManager;
 
     @Resource
-    private UserRepository userRepository;
+    private KeycloakDirectoryService directoryService;
 
     /**
      * 保存流程历史
+     *
+     * <p>
+     * The operator display name is resolved from Keycloak and stored as a
+     * historical snapshot, so audit rows stay readable after a Keycloak user is
+     * renamed or disabled.
+     * </p>
+     *
      * @param flowHistory 流程历史
-     * @param tableName 表名
+     * @param tableName   表名
      */
     public void save(FlowHistory flowHistory, String tableName) {
         String sql = """
@@ -33,21 +40,23 @@ public class FlowHistoryRepository {
                 """;
         LocalDateTime now = LocalDateTime.now();
         Long currentUserId = JpaAuditorAware.getCurrentUserId();
-        User user = userRepository.findById(currentUserId).orElse(new User());
+        String operatorName = flowHistory.getOperatorName();
+        if (!StringUtils.hasText(operatorName)) {
+            operatorName = directoryService.displayNameForUser(currentUserId);
+        }
         entityManager.createNativeQuery(MessageFormat.format(sql, tableName))
                 .setParameter("flowFormId", flowHistory.getFlowFormId())
                 .setParameter("approvalOpinion", flowHistory.getApprovalOpinion())
                 .setParameter("flowName", flowHistory.getFlowName())
-                .setParameter("operatorName", user.getName())
+                .setParameter("operatorName", operatorName)
                 .setParameter("createBy", currentUserId)
                 .setParameter("createAt", now)
                 .setParameter("updateBy", currentUserId)
                 .setParameter("updateAt", now)
-                .setParameter("tenantId", JpaAuditorAware.getCurrentUserId())
+                .setParameter("tenantId", JpaAuditorAware.getCurrentTenantId())
                 .setParameter("nodeName", flowHistory.getNodeName())
-                .executeUpdate()
-                ;
-
+                .executeUpdate();
+        ;
     }
 
     public List<FlowHistory> findAll(Long flowFormId, String tableName) {

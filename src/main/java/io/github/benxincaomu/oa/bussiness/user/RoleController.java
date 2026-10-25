@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.pulsar.PulsarProperties.Threads;
 import org.springframework.data.web.PagedModel;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,6 +21,7 @@ import jakarta.annotation.Resource;
 
 @RestController
 @RequestMapping("role")
+@PreAuthorize("hasAuthority('ROLE_oa-admin')")
 public class RoleController {
 
     @Resource
@@ -31,7 +33,7 @@ public class RoleController {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     /**
      * 角色列表
-     * 
+     *
      * @param currPage 当前页
      * @param pageSize 每页大小
      * @param name     角色名
@@ -39,7 +41,7 @@ public class RoleController {
      */
     @GetMapping("list")
     public PagedModel<Role> list(Integer currPage, Integer pageSize, String name) {
-        
+
         PagedModel<Role> page = new PagedModel<>(roleService.roles(currPage, pageSize, name));
         return page;
     }
@@ -51,7 +53,7 @@ public class RoleController {
 
     @PostMapping
     public Role insert(@RequestBody Role role) {
-        return roleService.save(role);
+        throw new IllegalStateException("角色数据由 Keycloak 管理，请使用 /identity 接口");
     }
 
     /**
@@ -69,15 +71,8 @@ public class RoleController {
      */
     @PostMapping("auth")
     public void auth(@Validated @RequestBody AuthVo authVo){
-        List<RolePermission> rolePermissions = new ArrayList<>();
-        for (Long permissionId : authVo.getPermissionIds()) { 
-            RolePermission rolePermission = new RolePermission();
-            rolePermission.setRoleId(authVo.getRoleId());
-            rolePermission.setPermissionId(permissionId);
-            rolePermissions.add(rolePermission);
-        }
-        roleService.auth(authVo.getRoleId(), rolePermissions);
+        throw new IllegalStateException("角色授权由 Keycloak 授权资源管理，请使用 /identity 接口");
     }
-    
+
 
 }

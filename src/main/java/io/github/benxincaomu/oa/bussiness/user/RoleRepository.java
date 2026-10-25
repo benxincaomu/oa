@@ -12,9 +12,11 @@ public interface RoleRepository extends JpaRepository<Role,Long>{
 
     @Query("select r from Role r,UserRole ur where r.id = ur.roleId and ur.userId = :userId")
     Role findByUserId(@Param("userId") Long userId);
-    
+
 
     List<Role> findByTenantId(Long tenantId);
+
+    Role findByNameAndTenantId(String name, Long tenantId);
 
 
     @Query("select min(r.id) from Role r where r.tenantId = :tenantId")

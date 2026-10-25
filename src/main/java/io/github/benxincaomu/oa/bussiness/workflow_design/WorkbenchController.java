@@ -3,6 +3,7 @@ package io.github.benxincaomu.oa.bussiness.workflow_design;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.web.PagedModel;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,5 +40,10 @@ public class WorkbenchController {
     @PostMapping("publish")
     public void publicWorkbench(@RequestBody PublishVo publishVo) {
         workbenchService.publish(publishVo);
+    }
+
+    @DeleteMapping("{id}")
+    public void deleteWorkbench(@PathVariable("id") Long id) {
+        workbenchService.delete(id);
     }
 }

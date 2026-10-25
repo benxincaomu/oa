@@ -50,14 +50,14 @@ public class InitController {
         user.setEmail(initVo.getUser().getEmail());
         user.setMobile(initVo.getUser().getMobile());
         Role role = new Role();
-        role.setName(initVo.getRole().getName());
+        role.setName(KeycloakAdminClient.OA_ADMIN_CLIENT_ROLE);
 
         KeycloakBootstrapIdentity keycloakIdentity = keycloakAdminClient.bootstrapAdministrator(initVo.getUser(),
-                department.getName(), role.getName());
+                department.getName());
         initService.init(department, user, role, keycloakIdentity);
     }
 
-    
+
     @GetMapping("isInitialized")
     public boolean isInitialized() {
         return initService.isInitialized();

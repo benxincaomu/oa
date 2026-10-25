@@ -14,7 +14,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import io.github.benxincaomu.oa.bussiness.user.UserService;
+import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;
+import io.github.benxincaomu.oa.base.security.KeycloakDirectoryService;
 import io.github.benxincaomu.oa.bussiness.workflow_design.WorkbenchPublish;
 import io.github.benxincaomu.oa.bussiness.workflow_design.WorkbenchPublishRepository;
 import io.github.benxincaomu.oa.bussiness.workflow_design.WorkbenchRepository;
@@ -25,7 +26,7 @@ import jakarta.transaction.Transactional;
 public class UserTaskCreateListener implements JavaDelegate {
 
     @Resource
-    private UserService userService;
+    private KeycloakDirectoryService directoryService;
 
     @Resource
     private RuntimeService runtimeService;
@@ -58,12 +59,17 @@ public class UserTaskCreateListener implements JavaDelegate {
 
             // flowFormAssignee.setFlowFormId(delegateTask.getExecution().getProcessInstanceId());
             String camundaAssignee = userTask.getCamundaAssignee();
-            if (Objects.equals(camundaAssignee, "${starterId}")) {
-                // 获取发起人id
-                String starterId = (String) execution.getVariable("starterId");
-                if (starterId != null) {
-                    userTask.setCamundaAssignee(userService.findLeaderId(Long.valueOf(starterId)) + "");
-                    flowFormAssignee.setAssignee(Long.valueOf(starterId));
+            if (Objects.equals(camundaAssignee, "${starterId}") || Objects.equals(camundaAssignee, "${starterLeader}")) {
+                // 发起人部门领导审批：数字 ID 通过 Keycloak 组的 leader_user_id 属性解析
+                Object starterIdValue = execution.getVariable(FlowConsts.STARTER_ID);
+                if (starterIdValue != null) {
+                    Long starterId = Long.valueOf(starterIdValue.toString());
+                    Long leaderId = directoryService
+                            .findLeaderNumericIdForUser(starterId, JpaAuditorAware.getCurrentTenantId())
+                            .orElse(null);
+                    Long assigneeId = leaderId == null ? starterId : leaderId;
+                    userTask.setCamundaAssignee(String.valueOf(assigneeId));
+                    flowFormAssignee.setAssignee(assigneeId);
                 }
             } else if (camundaAssignee != null) {
                 flowFormAssignee.setAssignee(Long.valueOf(camundaAssignee));

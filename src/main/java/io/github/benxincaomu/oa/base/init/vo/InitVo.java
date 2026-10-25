@@ -4,18 +4,12 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
 public class InitVo {
-    
+
     /**
      * 管理员用户
      */
     @NotNull(message = "管理员用户信息不能为空")
     private UserInitVo user;
-
-    /**
-     * 管理员角色
-     */
-    @NotNull(message = "管理员角色信息不能为空")
-    private RoleInitVo role;
 
     /**
      * 顶级部门名称
@@ -35,14 +29,6 @@ public class InitVo {
         this.user = user;
     }
 
-    public RoleInitVo getRole() {
-        return role;
-    }
-
-    public void setRole(RoleInitVo role) {
-        this.role = role;
-    }
-
     public DepartmentInitVo getDepartment() {
         return department;
     }
@@ -60,5 +46,5 @@ public class InitVo {
     }
 
 
-    
+
 }

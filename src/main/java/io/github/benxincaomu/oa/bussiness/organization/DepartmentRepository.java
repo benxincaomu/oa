@@ -19,6 +19,8 @@ public interface DepartmentRepository extends JpaRepository<Department, Long> {
 
   List<Department> findByNameAndParentIdAndTenantId(String name, Long parentId, Long tenantId);
 
+  List<Department> findByTenantId(Long tenantId);
+
   @Query("select d from Department d where d.parentId = :parentId and d.tenantId = :tenantId")
   List<Department> findAllByParentIdDept(@Param("parentId") Long parentId, @Param("tenantId") Long tenantId);
 

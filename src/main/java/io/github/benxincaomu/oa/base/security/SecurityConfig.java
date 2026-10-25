@@ -3,6 +3,7 @@ package io.github.benxincaomu.oa.base.security;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfToken;
@@ -25,6 +26,7 @@ import jakarta.servlet.SessionCookieConfig;
 
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
@@ -45,7 +47,8 @@ public class SecurityConfig {
             OaOidcUserService oidcUserService,
             KeycloakAuthoritiesMapper authoritiesMapper,
             OidcLogoutSuccessHandler logoutSuccessHandler,
-            ProjectInitializationFilter initializationFilter) throws Exception {
+            ProjectInitializationFilter initializationFilter,
+            KeycloakRequestAuthorizationManager requestAuthorizationManager) throws Exception {
         CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
         csrfTokenRepository.setCookiePath("/");
 
@@ -53,7 +56,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(SecurityConsts.PUBLIC_URLS).permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**", "/error").permitAll()
-                        .anyRequest().authenticated())
+                        .requestMatchers("/identity/**").hasAuthority("ROLE_oa-admin")
+                        .requestMatchers("/login/myInfo", "/login/getMyMenus", "/login/logout").authenticated()
+                        .anyRequest().access(requestAuthorizationManager))
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfTokenRepository)
                         .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()))

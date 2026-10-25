@@ -2,24 +2,25 @@ package io.github.benxincaomu.oa.bussiness.user;
 
 import java.util.List;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.github.benxincaomu.oa.base.security.KeycloakMenuService;
+import io.github.benxincaomu.oa.base.security.OaMenuVo;
 import io.github.benxincaomu.oa.base.security.OaOidcUserPrincipal;
-import io.github.benxincaomu.oa.bussiness.user.vo.PermissionIdName;
 import io.github.benxincaomu.oa.bussiness.user.vo.SimpleUserInfo;
 
 @RestController
 @RequestMapping("login")
 public class OaLoginController {
-    private final RoleRepository roleRepository;
-    private final PermissionService permissionService;
+    private final KeycloakMenuService menuService;
 
-    public OaLoginController(RoleRepository roleRepository, PermissionService permissionService) {
-        this.roleRepository = roleRepository;
-        this.permissionService = permissionService;
+    public OaLoginController(KeycloakMenuService menuService) {
+        this.menuService = menuService;
     }
 
     @GetMapping("myInfo")
@@ -33,12 +34,19 @@ public class OaLoginController {
         return info;
     }
 
+    /**
+     * 返回当前登录用户在 Keycloak 中被授权的菜单资源树。
+     */
     @GetMapping("getMyMenus")
-    public List<PermissionIdName> getMyMenus(@AuthenticationPrincipal OaOidcUserPrincipal principal) {
-        if (principal == null) {
+    public List<OaMenuVo> getMyMenus(Authentication authentication) {
+        if (authentication == null || authentication.getAuthorities() == null) {
             return List.of();
         }
-        Role role = roleRepository.findByUserId(principal.getOaUserId());
-        return role == null ? List.of() : permissionService.getMenuTreeByRoleId(role.getId());
+        List<String> roleNames = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .filter(authority -> authority != null && authority.startsWith("ROLE_"))
+                .map(authority -> authority.substring("ROLE_".length()))
+                .toList();
+        return menuService.menusForRoles(roleNames);
     }
 }

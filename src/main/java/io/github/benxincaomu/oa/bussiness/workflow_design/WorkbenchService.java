@@ -1,5 +1,7 @@
 package io.github.benxincaomu.oa.bussiness.workflow_design;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import org.camunda.bpm.engine.RepositoryService;
@@ -13,8 +15,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;
-import io.github.benxincaomu.oa.bussiness.user.Permission;
-import io.github.benxincaomu.oa.bussiness.user.PermissionService;
+import io.github.benxincaomu.oa.base.security.KeycloakAdminClient;
+import io.github.benxincaomu.oa.base.security.KeycloakAuthorizationService;
 import io.github.benxincaomu.oa.bussiness.workflow.DataTableService;
 import io.github.benxincaomu.oa.bussiness.workflow_design.vo.PublishVo;
 import jakarta.annotation.Resource;
@@ -34,7 +36,7 @@ public class WorkbenchService {
     private WorkflowDefinitionService workflowDefinitionService;
 
     @Resource
-    private PermissionService permissionService;
+    private KeycloakAuthorizationService authorizationService;
 
     @Resource
     private WorkbenchPublishRepository workbenchPublishRepository;
@@ -112,72 +114,55 @@ public class WorkbenchService {
 
             workbenchPublishRepository.save(publishNew);
 
-            if (publishNew.getVersion() == 1L) {
-
-                // 创建菜单
-                Permission parentPermission = new Permission();
-                parentPermission.setName(workbench.getName());
-                parentPermission.setType(Permission.TYPE_1);
-                parentPermission.setValue("/app/workflow/" + publish.getWorkbenchId());
-
-                permissionService.insert(parentPermission);
-
-                // 我启动的
-                Permission myStart = new Permission();
-                myStart.setName("我发起的");
-                myStart.setType(Permission.TYPE_2);
-                myStart.setValue("/app/workflow/" + publish.getWorkbenchId() + "/myStart");
-                myStart.setParentId(parentPermission.getId());
-                myStart.setParentName(parentPermission.getName());
-                myStart.setTenantId(JpaAuditorAware.getCurrentTenantId());
-                permissionService.insert(myStart);
-                ;
-
-                // 我的待办
-                Permission myTodo = new Permission();
-                myTodo.setName("我的待办");
-                myTodo.setType(Permission.TYPE_2);
-                myTodo.setValue("/app/workflow/" + publish.getWorkbenchId() + "/myTodo");
-                myTodo.setParentId(parentPermission.getId());
-                myTodo.setParentName(parentPermission.getName());
-                myTodo.setTenantId(JpaAuditorAware.getCurrentTenantId());
-                permissionService.insert(myTodo);
-
-                // 我的已办
-                Permission myDone = new Permission();
-                myDone.setName("我的已办");
-                myDone.setType(Permission.TYPE_2);
-                myDone.setValue("/app/workflow/" + publish.getWorkbenchId() + "/myDone");
-                myDone.setParentId(parentPermission.getId());
-                myDone.setParentName(parentPermission.getName());
-                myDone.setTenantId(JpaAuditorAware.getCurrentTenantId());
-                permissionService.insert(myDone);
-
-                // url权限
-                // 处理表单信息
-                Permission urlPermission1 = new Permission();
-                urlPermission1.setName("处理表单信息url权限");
-                urlPermission1.setType(Permission.TYPE_3);
-                urlPermission1.setValue("/flowForm/" + publish.getWorkbenchId() + "/**");
-                urlPermission1.setParentId(parentPermission.getId());
-                urlPermission1.setParentName(parentPermission.getName());
-                urlPermission1.setTenantId(JpaAuditorAware.getCurrentTenantId());
-                permissionService.insert(urlPermission1);
-
-                // 处理流程数据
-                Permission urlPermission2 = new Permission();
-                urlPermission2.setName("处理流程数据url权限");
-                urlPermission2.setType(Permission.TYPE_3);
-                urlPermission2.setValue("/workflow/" + publish.getWorkbenchId() + "/**");
-                urlPermission2.setParentId(parentPermission.getId());
-                urlPermission2.setParentName(parentPermission.getName());
-                urlPermission2.setTenantId(JpaAuditorAware.getCurrentTenantId());
-                permissionService.insert(urlPermission2);
-
-            }
-
+            // 菜单/接口资源在 Keycloak 中注册，默认授权 oa-admin；失败则发布失败
+            registerAuthorizationResources(workbench);
         });
         ;
+    }
+
+    /**
+     * 删除工作台：先回收其 Keycloak 菜单/接口资源，再删除本地工作台记录。
+     * 已发布的流程数据与历史保留。
+     */
+    @Transactional
+    public void delete(Long workbenchId) {
+        workbenchRepository.findById(workbenchId).ifPresent(workbench -> {
+            if (workbench.getWorkbenchKey() != null) {
+                authorizationService.deleteWorkbenchResources(JpaAuditorAware.getCurrentTenantId(),
+                        workbench.getWorkbenchKey());
+            }
+            workbenchRepository.delete(workbench);
+        });
+    }
+
+    /**
+     * 把工作台的菜单与接口注册为 Keycloak 授权资源，并默认授权给管理员角色。
+     * 每次发布都 upsert，因此重试不会产生重复资源。
+     */
+    private void registerAuthorizationResources(Workbench workbench) {
+        Long tenantId = JpaAuditorAware.getCurrentTenantId();
+        if (tenantId == null) {
+            throw new IllegalStateException("发布工作台需要 OA 租户上下文");
+        }
+        String workbenchKey = workbench.getWorkbenchKey();
+        String menuGroup = authorizationService.ensureMenuGroup(tenantId, "wb:" + workbenchKey,
+                workbench.getName(), null, 100);
+        String baseRoute = "/app/workflow/" + workbench.getId();
+        List<String> resourceKeys = new ArrayList<>();
+        resourceKeys.add(menuGroup);
+        resourceKeys.add(authorizationService.ensureMenuPage(tenantId, baseRoute + "/myStart", "我发起的",
+                menuGroup, 0));
+        resourceKeys.add(authorizationService.ensureMenuPage(tenantId, baseRoute + "/myTodo", "我的待办",
+                menuGroup, 1));
+        resourceKeys.add(authorizationService.ensureMenuPage(tenantId, baseRoute + "/myDone", "我的已办",
+                menuGroup, 2));
+        resourceKeys.add(authorizationService.ensureApiResource(tenantId,
+                "/flowForm/" + workbench.getId() + "/**", workbench.getName() + "表单接口", workbenchKey));
+        resourceKeys.add(authorizationService.ensureApiResource(tenantId,
+                "/workflow/" + workbench.getId() + "/**", workbench.getName() + "流程接口", workbenchKey));
+        authorizationService.grantToRole(KeycloakAdminClient.OA_ADMIN_CLIENT_ROLE, resourceKeys);
+        logger.info("Registered Keycloak authorization resources for workbench {} (key={})",
+                workbench.getId(), workbenchKey);
     }
 
     public Page<Workbench> list(String name, Integer currPage, Integer pageSize) {

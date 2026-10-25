@@ -22,8 +22,8 @@ import org.springframework.stereotype.Service;
 import io.github.benxincaomu.notry.exception.CommonException;
 
 import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;
+import io.github.benxincaomu.oa.base.security.KeycloakDirectoryService;
 import io.github.benxincaomu.oa.base.web.OaResponseCode;
-import io.github.benxincaomu.oa.bussiness.organization.DepartmentUserRepository;
 import io.github.benxincaomu.oa.bussiness.workflow.vo.FlowButton;
 import io.github.benxincaomu.oa.bussiness.workflow.vo.FlowFormDetailVo;
 import io.github.benxincaomu.oa.bussiness.workflow_design.EntityColumn;
@@ -61,7 +61,7 @@ public class FlowFormService {
     @Resource
     private RepositoryService repositoryService;
     @Resource
-    private DepartmentUserRepository departmentUserRepository;
+    private KeycloakDirectoryService directoryService;
 
     @Transactional
     public void saveFormData(FlowForm flowForm, Long workbenchId, boolean commit) {
@@ -84,7 +84,7 @@ public class FlowFormService {
             variables.put(FlowConsts.FLOW_FORM_ID, flowForm.getId());
             // variables.put(FlowConsts.WORKBENCH_PUBLISH, wp);
             ProcessInstance process = runtimeService.startProcessInstanceById(wp.getWorkflowDeployId(), variables);
-            
+
             flowForm.setProcessId(process.getId());
             // flowForm.setDeployName(workbench.getWorkbenchKey());
             flowFormRepository.save(flowForm, workbenchId, wp.getFlowFormTable());
@@ -151,16 +151,19 @@ public class FlowFormService {
                                     task = currentTasks.get(0);
 
                                 } else {
-                                    // 查询当前登陆人的部门
-                                    Long deptId = departmentUserRepository
-                                            .findDeptIdByUserId(JpaAuditorAware.getCurrentUserId()).orElse(0L);
-                                    currentTasks = taskService.createTaskQuery()
-                                            .processInstanceId(flowForm.getProcessId())
-                                            .active() // 确保只获取活跃的任务
-                                            .taskCandidateGroup(deptId + "")
-                                            .list();
-                                    if (currentTasks.size() > 0) {
-                                        task = currentTasks.get(0);
+                                    // 查询当前登陆人在 Keycloak 中的组织，映射为数字部门 ID 后匹配候选组
+                                    for (Long deptId : directoryService.findDepartmentNumericIdsForUser(
+                                            JpaAuditorAware.getCurrentUserId(),
+                                            JpaAuditorAware.getCurrentTenantId())) {
+                                        currentTasks = taskService.createTaskQuery()
+                                                .processInstanceId(flowForm.getProcessId())
+                                                .active() // 确保只获取活跃的任务
+                                                .taskCandidateGroup(deptId + "")
+                                                .list();
+                                        if (!currentTasks.isEmpty()) {
+                                            task = currentTasks.get(0);
+                                            break;
+                                        }
                                     }
                                 }
                                 if (task != null) {
@@ -199,7 +202,10 @@ public class FlowFormService {
 
     public Page<FlowForm> listTodo(Integer currPage, Integer pageSize, Long workbenchId, Long starterId) {
         Long currentUserId = JpaAuditorAware.getCurrentUserId();
-        Long deptId = departmentUserRepository.findDeptIdByUserId(currentUserId).orElse(0L);
+        Long deptId = directoryService
+                .findDepartmentNumericIdsForUser(currentUserId, JpaAuditorAware.getCurrentTenantId()).stream()
+                .findFirst()
+                .orElse(0L);
 
         return workbenchPublishRepository.findLatestByWorkbenchId(workbenchId)
                 .map(wp -> flowFormRepository.myToDo(
