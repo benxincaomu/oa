@@ -1,0 +1,361 @@
+# Review package: frontend 99adee7..4f7b28c
+
+## Commits
+4f7b28c feat: add Keycloak setup and login UI
+
+## Files changed
+ src/app/app/layout.tsx              |   2 +-
+ src/app/app/login/KeycloakLogin.tsx |  52 ++++++++++++++++++
+ src/app/init/page.tsx               | 106 +++++++++++++++++++-----------------
+ src/commons/base/service.ts         |  30 +++++-----
+ 4 files changed, 125 insertions(+), 65 deletions(-)
+
+## Diff
+diff --git a/src/app/app/layout.tsx b/src/app/app/layout.tsx
+index 67868e5..d14bd63 100644
+--- a/src/app/app/layout.tsx
++++ b/src/app/app/layout.tsx
+@@ -1,14 +1,14 @@
+ "use client";
+ import { Layout } from "antd";
+ import React from "react";
+-import Login from "@/app/app/login/Login";
++import Login from "@/app/app/login/KeycloakLogin";
+ import SideMenu from "@/app/app/login/Menu";
+ 
+ const { Header, Sider, Content, Footer } = Layout;
+ 
+ 
+ function RootLayout({
+   children,
+ }: Readonly<{
+   children: React.ReactNode;
+ }>) {
+diff --git a/src/app/app/login/KeycloakLogin.tsx b/src/app/app/login/KeycloakLogin.tsx
+new file mode 100644
+index 0000000..9ebd52f
+--- /dev/null
++++ b/src/app/app/login/KeycloakLogin.tsx
+@@ -0,0 +1,52 @@
++"use client";
++
++import { Button, Space, message } from "antd";
++import { useEffect, useState } from "react";
++import service from "@/commons/base/service";
++
++interface UserInfo {
++    name: string;
++    userName: string;
++}
++
++export default function KeycloakLogin() {
++    const [user, setUser] = useState<UserInfo | null>(null);
++    const [loading, setLoading] = useState(true);
++
++    useEffect(() => {
++        service.get<UserInfo>("/login/myInfo")
++            .then((response) => setUser(response.data))
++            .catch(() => setUser(null))
++            .finally(() => setLoading(false));
++    }, []);
++
++    const startLogin = () => {
++        window.location.assign("/server/oauth2/authorization/keycloak");
++    };
++
++    const logout = async () => {
++        try {
++            const response = await service.post<{ redirectUrl: string }>(
++                "/login/logout",
++                {},
++                { headers: { "X-Requested-With": "XMLHttpRequest" } },
++            );
++            window.location.assign(response.data.redirectUrl);
++        } catch {
++            message.error("退出登录失败，请重试");
++        }
++    };
++
++    return (
++        <div style={{ height: "100%", display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
++            {user ? (
++                <Space>
++                    <span style={{ color: "#fff" }}>{user.name || user.userName}</span>
++                    <Button type="link" onClick={logout}>退出登录</Button>
++                </Space>
++            ) : (
++                <Button loading={loading} onClick={startLogin}>使用 Keycloak 登录</Button>
++            )}
++        </div>
++    );
++}
+diff --git a/src/app/init/page.tsx b/src/app/init/page.tsx
+index f4a623d..91c268c 100644
+--- a/src/app/init/page.tsx
++++ b/src/app/init/page.tsx
+@@ -1,12 +1,12 @@
+ "use client"
+-import { use, useEffect, useState } from "react";
++import { useEffect } from "react";
+ import service from "@/commons/base/service";
+ import { Button, Card, Col, Form, Input, message, Row, Space, Typography } from "antd"
+ import { useRouter } from 'next/navigation'; 
+ 
+ const cardStyle = {
+ 
+     backgroundColor: '#bbd4f1ff',
+ };
+ const formItemLayout = {
+     labelCol: { span: 4 },
+@@ -23,92 +23,96 @@ export default function Init() {
+                 messageApi.info("项目已初始化，无需重复执行");
+                 setTimeout(() => {
+                     router.push("/app");
+                 }, 2000);
+             }
+         })
+     }, [messageApi, router]);
+     const [deptForm] = Form.useForm();
+     const [userForm] = Form.useForm();
+     const [roleForm] = Form.useForm();
++    const [keycloakForm] = Form.useForm();
++
++    useEffect(() => {
++        keycloakForm.setFieldsValue({
++            redirectUri: `${window.location.origin}/server/login/oauth2/code/keycloak`,
++            postLogoutRedirectUri: `${window.location.origin}/app`,
++        });
++    }, [keycloakForm]);
+ 
+     const onCommit = async () => {
+         try {
+-            let deptValidated = false;
+-            let userValidated = false;
+-            let roleValidated = false;
+-
+-            // 验证用户表单
+-
+-            await userForm.validateFields().then(values => {
+-                console.log('用户表单验证成功：', values);
+-                userValidated = true;
+-            }).catch(errorInfo => {
+-                console.log('用户表单验证失败：', errorInfo);
+-            });
+-
+-            // 验证部门表单
+-            await deptForm.validateFields().then(values => {
+-                console.log('部门表单验证成功：', values);
+-                deptValidated = true;
+-            }).catch(errorInfo => {
+-                console.log('部门表单验证失败：', errorInfo);
+-            });
+-
+-
+-
+-            // 验证角色表单
+-            await roleForm.validateFields().then(values => { 
+-
+-                console.log('角色表单验证成功：', values);
+-                roleValidated = true;
+-            }).catch(errorInfo => {
+-            });
+-
+-            console.log(deptValidated, userValidated, roleValidated);
+-
+-            if (deptValidated && userValidated && roleValidated) {
+-                service.post("/initProject", {
+-                    user: userForm.getFieldsValue(),
+-                    department: deptForm.getFieldsValue(),
+-                    role: roleForm.getFieldsValue()
+-                }).then(res => {
+-                    messageApi.success("初始化成功");
+-                    setTimeout(() => {
+-                        router.push("/app");
+-                    }, 1000);
+-                });
+-            }
+-
++            const [user, department, role, keycloak] = await Promise.all([
++                userForm.validateFields(),
++                deptForm.validateFields(),
++                roleForm.validateFields(),
++                keycloakForm.validateFields(),
++            ]);
++            await service.post("/initProject", { user, department, role, keycloak });
++            keycloakForm.resetFields();
++            userForm.resetFields();
++            messageApi.success("初始化成功");
++            setTimeout(() => router.push("/app"), 1000);
+         } catch (error) {
+-            // 这里的 catch 可能捕获到其他异常
+-            console.log('操作失败:', error);
+-            messageApi.error('请检查表单填写是否正确');
++            if (!error || typeof error !== "object" || !("errorFields" in error)) {
++                messageApi.error("初始化失败，请检查 Keycloak 连接信息和管理客户端权限");
++            }
+         }
+ 
+     };
+ 
+     return (
+         <div style={{ position: 'relative', height: '100vh' }}>
+ 
+             {contextHolder}
+             <div style={{
+                 position: 'absolute',
+                 top: '5%',
+                 left: '50%',
+                 minWidth: '500px',
+                 maxWidth: '700px',
+                 transform: 'translate(-50%, 0)'
+             }}>
+                 <Typography.Title level={3}>
+                     初始化项目
+                 </Typography.Title>
++                <Card title="Keycloak / OAuth2 / IAM 接入" style={cardStyle}>
++                    <Form form={keycloakForm} {...formItemLayout}>
++                        <Form.Item label="Issuer URI" name="issuerUri" required rules={[{ required: true, message: "请输入 Keycloak Realm 的 issuer URI" }]}>
++                            <Input placeholder="https://keycloak.example.com/realms/company" />
++                        </Form.Item>
++                        <Form.Item label="Realm" name="realm" required rules={[{ required: true, message: "请输入 Realm 名称" }]}>
++                            <Input />
++                        </Form.Item>
++                        <Form.Item label="OAuth2 客户端 ID" name="clientId" required rules={[{ required: true }]}>
++                            <Input />
++                        </Form.Item>
++                        <Form.Item label="OAuth2 客户端密钥" name="clientSecret" required rules={[{ required: true }]}>
++                            <Input.Password autoComplete="new-password" />
++                        </Form.Item>
++                        <Form.Item label="管理客户端 ID" name="serviceAccountClientId" required rules={[{ required: true }]}>
++                            <Input />
++                        </Form.Item>
++                        <Form.Item label="管理客户端密钥" name="serviceAccountClientSecret" required rules={[{ required: true }]}>
++                            <Input.Password autoComplete="new-password" />
++                        </Form.Item>
++                        <Form.Item label="OAuth2 回调地址" name="redirectUri" required rules={[{ required: true }]}>
++                            <Input />
++                        </Form.Item>
++                        <Form.Item label="退出回调地址" name="postLogoutRedirectUri" required rules={[{ required: true }]}>
++                            <Input />
++                        </Form.Item>
++                        <Form.Item label="Setup token" name="setupToken" required rules={[{ required: true }]}>
++                            <Input.Password autoComplete="new-password" />
++                        </Form.Item>
++                    </Form>
++                </Card>
+                 <Card title="部门设置" style={cardStyle}>
+                     <Form form={deptForm} {...formItemLayout}>
+                         <Form.Item label="部门名称" name={"name"} required rules={[{required:true,message:'请输入部门名称'}]}>
+                             <Input placeholder="请输入部门名称" />
+                         </Form.Item>
+                     </Form>
+                 </Card>
+                 <Card title="用户设置" style={cardStyle}>
+                     <Form form={userForm} {...formItemLayout}>
+                         <Form.Item label="姓名" name={"name"} rules={[{required:true,message:'请输入姓名'}]}>
+@@ -148,11 +152,11 @@ export default function Init() {
+                     <Col span={4} offset={20}>
+                         <Space>
+ 
+                             <Button type="primary" onClick={() => { onCommit() }}>提交</Button>
+                         </Space>
+                     </Col>
+                 </Row>
+             </div>
+         </div>
+     )
+-}
+\ No newline at end of file
++}
+diff --git a/src/commons/base/service.ts b/src/commons/base/service.ts
+index e6766f5..a71ae2a 100644
+--- a/src/commons/base/service.ts
++++ b/src/commons/base/service.ts
+@@ -1,69 +1,73 @@
+ "use client"
+ import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
+ import { message } from 'antd';
+-import Cookies from 'universal-cookie';
+ 
+ // 定义统一的API响应格式
+ export interface ApiResponse<T = any> {
+   code: number;
+   data: T;
+   message: string;
+   [key: string]: any;
+ }
+ 
+ // 扩展 axios 实例以支持泛型
+ interface CustomAxiosInstance {
+   get<T = any>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>>;
+   post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>>;
+   put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>>;
+   delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>>;
+ }
+ 
+ const service = axios.create({
+     baseURL:"/server",
+     timeout: 20000, // 超时时间
++    withCredentials: true,
++    withXSRFToken: true,
++    xsrfCookieName: 'XSRF-TOKEN',
++    xsrfHeaderName: 'X-XSRF-TOKEN',
+     headers: {
+         'Content-Type': 'application/json',
+     },
+ }) as CustomAxiosInstance & typeof axios;
+ 
+ // 请求拦截器
+ service.interceptors.request.use(
+-    (config) => {
+-        const cookies = new Cookies();
+-        const token = cookies.get('token');
+-        return config;
+-    },
++    (config) => config,
+     (error) => {
+         return Promise.reject(error);
+     }
+ );
+ 
+ // 响应拦截器
+ service.interceptors.response.use(
+     (response) => {
+         const res = response.data;
++        if (!res || typeof res.code !== 'number') {
++            return res;
++        }
+         if (res.code === 10002) {
+-            const cookies = new Cookies();
+-            cookies.remove('token',{path:'/'});
+-            cookies.remove('name',{path:'/'});
+             message.error(res.message);
+         } else if (res.code === -1 && window.location.pathname !== '/init') {
+             message.error(res.message || '项目未初始化');
+             setTimeout(() => {
+                 window.location.href='/init';
+             }, 3000);
+             return new Promise(() => {});
+         } else if (res.code !== 200) {
+             message.error(res.message || '操作失败');
+-            return new Promise(() => {});
++            return Promise.reject(new Error(res.message || '操作失败'));
+         }
+         return res;
+     },
+     (error) => {
+-        message.error('网络请求失败', error);
+-        return new Promise(() => {});
++        const status = error?.response?.status;
++        if (status === 403) {
++            message.error('当前账号没有执行此操作的权限');
++        } else if (status !== 401) {
++            message.error('网络请求失败');
++        }
++        return Promise.reject(error);
+     }
+ );
+ 
+-export default service;
+\ No newline at end of file
++export default service;

@@ -1,0 +1,882 @@
+﻿# Review package: 44a05c59653bd074e3c0b5b6e1aef73831bd00de..c20966a
+
+## Commits
+c20966a feat: add Keycloak directory synchronization
+
+## Files changed
+ .../oa/base/security/KeycloakAdminClient.java      | 309 ++++++++++++++++++++-
+ .../security/KeycloakDirectorySyncService.java     | 299 ++++++++++++++++++++
+ .../oa/base/security/KeycloakGroupProfile.java     |   8 +
+ .../oa/base/security/KeycloakUserProfile.java      |  10 +
+ .../organization/DepartmentRepository.java         |   2 +
+ .../organization/DepartmentUserRepository.java     |   2 +
+ .../oa/bussiness/user/UserRepository.java          |   2 +
+ 7 files changed, 627 insertions(+), 5 deletions(-)
+
+## Diff
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakAdminClient.java b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakAdminClient.java
+index e4eb64b..34724ab 100644
+--- a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakAdminClient.java
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakAdminClient.java
+@@ -1,44 +1,52 @@
+ package io.github.benxincaomu.oa.base.security;
+ 
+ import java.net.URI;
+ import java.net.URLEncoder;
+ import java.nio.charset.StandardCharsets;
+ import java.time.Instant;
+ import java.util.ArrayList;
++import java.util.Collection;
++import java.util.LinkedHashSet;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Optional;
++import java.util.Set;
+ 
+ import org.springframework.http.HttpHeaders;
+ import org.springframework.http.MediaType;
+ import org.springframework.stereotype.Service;
+ import org.springframework.util.LinkedMultiValueMap;
+ import org.springframework.util.MultiValueMap;
+ import org.springframework.web.client.RestClient;
+ import org.springframework.web.client.RestClientException;
+ import org.springframework.web.client.RestClientResponseException;
+ import org.springframework.web.util.UriComponentsBuilder;
+ 
+ import com.fasterxml.jackson.databind.JsonNode;
++import com.fasterxml.jackson.databind.ObjectMapper;
++import com.fasterxml.jackson.databind.node.ObjectNode;
+ 
+ import io.github.benxincaomu.oa.base.init.vo.UserInitVo;
+ 
+ @Service
+ public class KeycloakAdminClient {
+     private final KeycloakConnectionService connectionService;
+     private final RestClient restClient;
++    private final ObjectMapper objectMapper;
+     private volatile CachedToken cachedToken;
+ 
+-    public KeycloakAdminClient(KeycloakConnectionService connectionService, RestClient.Builder restClientBuilder) {
++    public KeycloakAdminClient(KeycloakConnectionService connectionService, RestClient.Builder restClientBuilder,
++            ObjectMapper objectMapper) {
+         this.connectionService = connectionService;
+         this.restClient = restClientBuilder.build();
++        this.objectMapper = objectMapper;
+     }
+ 
+     public KeycloakBootstrapIdentity bootstrapAdministrator(UserInitVo user, String rootGroupName,
+             String administratorRoleName) {
+         KeycloakIntegrationConfig config = connectionService.getConfiguration()
+                 .orElseThrow(() -> new IllegalStateException("Keycloak 尚未配置"));
+         String adminBase = adminRealmBase(config);
+ 
+         String userId = findUser(config, user.getUserName())
+                 .orElseGet(() -> createUser(config, user));
+@@ -53,38 +61,237 @@ public class KeycloakAdminClient {
+ 
+         authorizedPost(config, adminBase + "/users/{userId}/role-mappings/realm", userId)
+                 .contentType(MediaType.APPLICATION_JSON)
+                 .body(List.of(role))
+                 .retrieve()
+                 .toBodilessEntity();
+ 
+         return new KeycloakBootstrapIdentity(userId, groupId, role.path("id").asText());
+     }
+ 
++    public KeycloakUserProfile upsertUser(KeycloakUserProfile user) {
++        KeycloakIntegrationConfig config = configured();
++        String userId = hasText(user.id()) ? user.id() : findUser(config, user.username()).orElse(null);
++        ObjectNode payload = userId == null
++                ? objectMapper.createObjectNode()
++                : readUser(config, userId).deepCopy();
++
++        payload.put("username", user.username());
++        payload.put("firstName", user.name() == null ? "" : user.name());
++        payload.put("enabled", user.enabled());
++        if (hasText(user.email())) {
++            payload.put("email", user.email());
++        } else {
++            payload.remove("email");
++        }
++
++        ObjectNode attributes = payload.with("attributes");
++        if (hasText(user.mobile())) {
++            attributes.putArray("mobile").add(user.mobile());
++        } else {
++            attributes.remove("mobile");
++        }
++
++        if (userId == null) {
++            var response = authorizedPost(config, adminRealmBase(config) + "/users")
++                    .contentType(MediaType.APPLICATION_JSON)
++                    .body(payload)
++                    .retrieve()
++                    .toBodilessEntity();
++            userId = locationId(response.getHeaders());
++            if (userId == null) {
++                userId = findUser(config, user.username())
++                        .orElseThrow(() -> new IllegalStateException("Keycloak created a user without returning its ID"));
++            }
++        } else {
++            authorizedPut(config, adminRealmBase(config) + "/users/{userId}", userId)
++                    .contentType(MediaType.APPLICATION_JSON)
++                    .body(payload)
++                    .retrieve()
++                    .toBodilessEntity();
++        }
++        return new KeycloakUserProfile(userId, user.username(), user.name(), user.email(), user.mobile(), user.enabled());
++    }
++
++    public void setUserEnabled(String userId, boolean enabled) {
++        KeycloakIntegrationConfig config = configured();
++        ObjectNode representation = readUser(config, userId);
++        representation.put("enabled", enabled);
++        authorizedPut(config, adminRealmBase(config) + "/users/{userId}", userId)
++                .contentType(MediaType.APPLICATION_JSON)
++                .body(representation)
++                .retrieve()
++                .toBodilessEntity();
++    }
++
++    public KeycloakGroupProfile upsertGroup(KeycloakGroupProfile group) {
++        KeycloakIntegrationConfig config = configured();
++        String groupId = hasText(group.id()) ? group.id() : null;
++        String parentId = hasText(group.parentId()) ? group.parentId() : null;
++        if (groupId == null) {
++            groupId = findGroup(config, parentId, group.name()).orElse(null);
++        }
++
++        if (groupId == null) {
++            ObjectNode payload = objectMapper.createObjectNode().put("name", group.name());
++            setGroupAttributes(payload, group);
++            String endpoint = parentId == null
++                    ? adminRealmBase(config) + "/groups"
++                    : adminRealmBase(config) + "/groups/{parentId}/children";
++            var response = parentId == null
++                    ? authorizedPost(config, endpoint).contentType(MediaType.APPLICATION_JSON).body(payload)
++                            .retrieve().toBodilessEntity()
++                    : authorizedPost(config, endpoint, parentId).contentType(MediaType.APPLICATION_JSON)
++                            .body(payload).retrieve().toBodilessEntity();
++            groupId = locationId(response.getHeaders());
++            if (groupId == null) {
++                groupId = findGroup(config, parentId, group.name())
++                        .orElseThrow(() -> new IllegalStateException("Keycloak created a group without returning its ID"));
++            }
++        } else {
++            ObjectNode payload = readGroup(config, groupId);
++            ensureParentUnchanged(config, payload, parentId);
++            payload.put("name", group.name());
++            setGroupAttributes(payload, group);
++            authorizedPut(config, adminRealmBase(config) + "/groups/{groupId}", groupId)
++                    .contentType(MediaType.APPLICATION_JSON)
++                    .body(payload)
++                    .retrieve()
++                    .toBodilessEntity();
++        }
++        return new KeycloakGroupProfile(groupId, group.name(), group.code(), parentId);
++    }
++
++    public void setGroupMembership(String userId, String groupId, boolean member) {
++        KeycloakIntegrationConfig config = configured();
++        String endpoint = adminRealmBase(config) + "/users/{userId}/groups/{groupId}";
++        if (member) {
++            authorizedPut(config, endpoint, userId, groupId).retrieve().toBodilessEntity();
++        } else {
++            authorizedDelete(config, endpoint, userId, groupId).retrieve().toBodilessEntity();
++        }
++    }
++
++    public List<String> getGroupMemberIds(String groupId) {
++        KeycloakIntegrationConfig config = configured();
++        List<String> memberIds = new ArrayList<>();
++        int first = 0;
++        int pageSize = 100;
++        while (true) {
++            String uri = UriComponentsBuilder.fromUriString(adminRealmBase(config) + "/groups/{groupId}/members")
++                    .queryParam("first", first)
++                    .queryParam("max", pageSize)
++                    .buildAndExpand(groupId)
++                    .encode()
++                    .toUriString();
++            JsonNode members = authorizedGet(config, uri).retrieve().body(JsonNode.class);
++            if (members == null || !members.isArray()) {
++                break;
++            }
++            for (JsonNode member : members) {
++                String memberId = member.path("id").asText();
++                if (hasText(memberId)) {
++                    memberIds.add(memberId);
++                }
++            }
++            if (members.size() < pageSize) {
++                break;
++            }
++            first += pageSize;
++        }
++        return memberIds;
++    }
++
++    public List<String> getEffectiveUserClientRoleIds(String userId) {
++        KeycloakIntegrationConfig config = configured();
++        String clientUuid = clientUuid(config);
++        String endpoint = adminRealmBase(config) + "/users/{userId}/role-mappings/clients/{clientUuid}/composite";
++        return getRoleIds(config, endpoint, userId, clientUuid);
++    }
++
++    public List<String> getEffectiveUserRoleIds(String userId) {
++        KeycloakIntegrationConfig config = configured();
++        Set<String> roleIds = new LinkedHashSet<>();
++        roleIds.addAll(getRoleIds(config,
++                adminRealmBase(config) + "/users/{userId}/role-mappings/realm/composite", userId));
++        String clientUuid = clientUuid(config);
++        roleIds.addAll(getRoleIds(config,
++                adminRealmBase(config) + "/users/{userId}/role-mappings/clients/{clientUuid}/composite",
++                userId, clientUuid));
++        return List.copyOf(roleIds);
++    }
++
++    public void replaceUserClientRoles(String userId, Collection<String> roleIds) {
++        KeycloakIntegrationConfig config = configured();
++        String clientUuid = clientUuid(config);
++        String mappingsEndpoint = adminRealmBase(config) + "/users/{userId}/role-mappings/clients/{clientUuid}";
++        JsonNode currentRolesNode = authorizedGet(config, mappingsEndpoint, userId, clientUuid)
++                .retrieve().body(JsonNode.class);
++        List<JsonNode> currentRoles = arrayValues(currentRolesNode);
++        Set<String> desiredIds = new LinkedHashSet<>(roleIds == null ? List.of() : roleIds);
++        List<JsonNode> remove = currentRoles.stream()
++                .filter(role -> !desiredIds.contains(role.path("id").asText()))
++                .toList();
++        Set<String> currentIds = new LinkedHashSet<>();
++        currentRoles.forEach(role -> currentIds.add(role.path("id").asText()));
++        List<JsonNode> add = new ArrayList<>();
++        for (String roleId : desiredIds) {
++            if (!hasText(roleId)) {
++                throw new IllegalArgumentException("Keycloak role ID cannot be blank");
++            }
++            if (!currentIds.contains(roleId)) {
++                JsonNode role = authorizedGet(config, adminRealmBase(config) + "/roles-by-id/{roleId}", roleId)
++                        .retrieve().body(JsonNode.class);
++                if (role == null || !role.path("clientRole").asBoolean()
++                        || !clientUuid.equals(role.path("containerId").asText())) {
++                    throw new IllegalArgumentException("Keycloak role does not belong to the configured application client");
++                }
++                add.add(role);
++            }
++        }
++        if (!remove.isEmpty()) {
++            authorizedDelete(config, mappingsEndpoint, userId, clientUuid)
++                    .contentType(MediaType.APPLICATION_JSON).body(remove).retrieve().toBodilessEntity();
++        }
++        if (!add.isEmpty()) {
++            authorizedPost(config, mappingsEndpoint, userId, clientUuid)
++                    .contentType(MediaType.APPLICATION_JSON).body(add).retrieve().toBodilessEntity();
++        }
++    }
++
+     private Optional<String> findUser(KeycloakIntegrationConfig config, String username) {
+         String uri = UriComponentsBuilder.fromUriString(adminRealmBase(config) + "/users")
+                 .queryParam("username", username)
+                 .queryParam("exact", true)
+                 .build()
+                 .encode()
+                 .toUriString();
+         JsonNode users = authorizedGet(config, uri).retrieve().body(JsonNode.class);
+         if (users != null && users.isArray()) {
+             for (JsonNode user : users) {
+                 if (username.equals(user.path("username").asText())) {
+                     return Optional.of(user.path("id").asText());
+                 }
+             }
+         }
+         return Optional.empty();
+     }
+ 
++    private ObjectNode readUser(KeycloakIntegrationConfig config, String userId) {
++        JsonNode user = authorizedGet(config, adminRealmBase(config) + "/users/{userId}", userId)
++                .retrieve().body(JsonNode.class);
++        if (user instanceof ObjectNode object) {
++            return object;
++        }
++        throw new IllegalStateException("Keycloak user representation is missing");
++    }
++
+     private String createUser(KeycloakIntegrationConfig config, UserInitVo user) {
+         Map<String, Object> payload = Map.of(
+                 "username", user.getUserName(),
+                 "enabled", true,
+                 "email", user.getEmail(),
+                 "emailVerified", false,
+                 "firstName", user.getName(),
+                 "credentials", List.of(Map.of(
+                         "type", "password",
+                         "value", user.getPassword(),
+@@ -96,36 +303,73 @@ public class KeycloakAdminClient {
+                 .toBodilessEntity();
+         String id = locationId(response.getHeaders());
+         if (id == null) {
+             return findUser(config, user.getUserName())
+                     .orElseThrow(() -> new IllegalStateException("Keycloak 已创建管理员但未返回用户 ID"));
+         }
+         return id;
+     }
+ 
+     private Optional<String> findGroup(KeycloakIntegrationConfig config, String name) {
+-        String uri = UriComponentsBuilder.fromUriString(adminRealmBase(config) + "/groups")
++        return findGroup(config, null, name);
++    }
++
++    private Optional<String> findGroup(KeycloakIntegrationConfig config, String parentId, String name) {
++        String path = parentId == null ? "/groups" : "/groups/{parentId}/children";
++        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(adminRealmBase(config) + path)
+                 .queryParam("search", name)
+-                .build()
+-                .encode()
+-                .toUriString();
++                .queryParam("exact", true);
++        String uri = parentId == null
++                ? builder.build().encode().toUriString()
++                : builder.buildAndExpand(parentId).encode().toUriString();
+         JsonNode groups = authorizedGet(config, uri).retrieve().body(JsonNode.class);
+         if (groups != null && groups.isArray()) {
+             for (JsonNode group : groups) {
+                 if (name.equals(group.path("name").asText())) {
+                     return Optional.of(group.path("id").asText());
+                 }
+             }
+         }
+         return Optional.empty();
+     }
+ 
++    private ObjectNode readGroup(KeycloakIntegrationConfig config, String groupId) {
++        JsonNode group = authorizedGet(config, adminRealmBase(config) + "/groups/{groupId}", groupId)
++                .retrieve().body(JsonNode.class);
++        if (group instanceof ObjectNode object) {
++            return object;
++        }
++        throw new IllegalStateException("Keycloak group representation is missing");
++    }
++
++    private void setGroupAttributes(ObjectNode groupNode, KeycloakGroupProfile group) {
++        ObjectNode attributes = groupNode.with("attributes");
++        if (hasText(group.code())) {
++            attributes.putArray("code").add(group.code());
++        } else {
++            attributes.remove("code");
++        }
++    }
++
++    private void ensureParentUnchanged(KeycloakIntegrationConfig config, ObjectNode group, String requestedParentId) {
++        String path = group.path("path").asText();
++        int lastSlash = path.lastIndexOf('/');
++        String actualParentPath = lastSlash <= 0 ? "" : path.substring(0, lastSlash);
++        String requestedParentPath = requestedParentId == null
++                ? ""
++                : readGroup(config, requestedParentId).path("path").asText();
++        if (!actualParentPath.equals(requestedParentPath)) {
++            throw new IllegalArgumentException(
++                    "Keycloak group parent cannot be changed through the current synchronization endpoint");
++        }
++    }
++
+     private String createGroup(KeycloakIntegrationConfig config, String name) {
+         var response = authorizedPost(config, adminRealmBase(config) + "/groups")
+                 .contentType(MediaType.APPLICATION_JSON)
+                 .body(Map.of("name", name))
+                 .retrieve()
+                 .toBodilessEntity();
+         String id = locationId(response.getHeaders());
+         if (id == null) {
+             return findGroup(config, name)
+                     .orElseThrow(() -> new IllegalStateException("Keycloak 已创建组织但未返回组织 ID"));
+@@ -168,20 +412,75 @@ public class KeycloakAdminClient {
+         return restClient.post().uri(uri, uriVariables)
+                 .headers(headers -> headers.setBearerAuth(accessToken(config)));
+     }
+ 
+     private RestClient.RequestBodySpec authorizedPut(KeycloakIntegrationConfig config, String uri,
+             Object... uriVariables) {
+         return restClient.put().uri(uri, uriVariables)
+                 .headers(headers -> headers.setBearerAuth(accessToken(config)));
+     }
+ 
++    private RestClient.RequestBodySpec authorizedDelete(KeycloakIntegrationConfig config, String uri,
++            Object... uriVariables) {
++        return restClient.method(org.springframework.http.HttpMethod.DELETE).uri(uri, uriVariables)
++                .headers(headers -> headers.setBearerAuth(accessToken(config)));
++    }
++
++    private KeycloakIntegrationConfig configured() {
++        return connectionService.getConfiguration()
++                .orElseThrow(() -> new IllegalStateException("Keycloak is not configured"));
++    }
++
++    private String clientUuid(KeycloakIntegrationConfig config) {
++        String uri = UriComponentsBuilder.fromUriString(adminRealmBase(config) + "/clients")
++                .queryParam("clientId", config.getClientId())
++                .build().encode().toUriString();
++        JsonNode clients = authorizedGet(config, uri).retrieve().body(JsonNode.class);
++        if (clients != null && clients.isArray()) {
++            for (JsonNode client : clients) {
++                if (config.getClientId().equals(client.path("clientId").asText())) {
++                    String id = client.path("id").asText();
++                    if (hasText(id)) {
++                        return id;
++                    }
++                }
++            }
++        }
++        throw new IllegalStateException("Configured Keycloak application client was not found");
++    }
++
++    private List<JsonNode> arrayValues(JsonNode node) {
++        List<JsonNode> values = new ArrayList<>();
++        if (node != null && node.isArray()) {
++            node.forEach(values::add);
++        }
++        return values;
++    }
++
++    private List<String> getRoleIds(KeycloakIntegrationConfig config, String endpoint, Object... uriVariables) {
++        JsonNode roles = authorizedGet(config, endpoint, uriVariables).retrieve().body(JsonNode.class);
++        List<String> ids = new ArrayList<>();
++        if (roles != null && roles.isArray()) {
++            for (JsonNode role : roles) {
++                String id = role.path("id").asText();
++                if (hasText(id)) {
++                    ids.add(id);
++                }
++            }
++        }
++        return ids;
++    }
++
++    private boolean hasText(String value) {
++        return value != null && !value.isBlank();
++    }
++
+     private String accessToken(KeycloakIntegrationConfig config) {
+         CachedToken current = cachedToken;
+         String configurationKey = tokenCacheKey(config);
+         if (current != null && current.configurationKey().equals(configurationKey)
+                 && current.expiresAt().isAfter(Instant.now().plusSeconds(15))) {
+             return current.value();
+         }
+         synchronized (this) {
+             current = cachedToken;
+             if (current != null && current.configurationKey().equals(configurationKey)
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakDirectorySyncService.java b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakDirectorySyncService.java
+new file mode 100644
+index 0000000..95a1206
+--- /dev/null
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakDirectorySyncService.java
+@@ -0,0 +1,299 @@
++package io.github.benxincaomu.oa.base.security;
++
++import java.util.Collection;
++import java.util.LinkedHashSet;
++import java.util.List;
++import java.util.Set;
++
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++import org.springframework.util.StringUtils;
++
++import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;
++import io.github.benxincaomu.oa.bussiness.organization.Department;
++import io.github.benxincaomu.oa.bussiness.organization.DepartmentRepository;
++import io.github.benxincaomu.oa.bussiness.organization.DepartmentUser;
++import io.github.benxincaomu.oa.bussiness.organization.DepartmentUserRepository;
++import io.github.benxincaomu.oa.bussiness.user.Role;
++import io.github.benxincaomu.oa.bussiness.user.RoleRepository;
++import io.github.benxincaomu.oa.bussiness.user.User;
++import io.github.benxincaomu.oa.bussiness.user.UserRepository;
++import io.github.benxincaomu.oa.bussiness.user.UserRole;
++import io.github.benxincaomu.oa.bussiness.user.UserRoleRepository;
++
++@Service
++public class KeycloakDirectorySyncService {
++    private static final int USERNAME_MAX_LENGTH = 20;
++    private static final int NAME_MAX_LENGTH = 10;
++    private static final int EMAIL_MAX_LENGTH = 50;
++    private static final int MOBILE_MAX_LENGTH = 16;
++
++    private final KeycloakAdminClient adminClient;
++    private final KeycloakObjectLinkRepository linkRepository;
++    private final UserRepository userRepository;
++    private final DepartmentRepository departmentRepository;
++    private final DepartmentUserRepository departmentUserRepository;
++    private final RoleRepository roleRepository;
++    private final UserRoleRepository userRoleRepository;
++
++    public KeycloakDirectorySyncService(KeycloakAdminClient adminClient,
++            KeycloakObjectLinkRepository linkRepository,
++            UserRepository userRepository,
++            DepartmentRepository departmentRepository,
++            DepartmentUserRepository departmentUserRepository,
++            RoleRepository roleRepository,
++            UserRoleRepository userRoleRepository) {
++        this.adminClient = adminClient;
++        this.linkRepository = linkRepository;
++        this.userRepository = userRepository;
++        this.departmentRepository = departmentRepository;
++        this.departmentUserRepository = departmentUserRepository;
++        this.roleRepository = roleRepository;
++        this.userRoleRepository = userRoleRepository;
++    }
++
++    @Transactional
++    public User synchronizeUser(KeycloakUserProfile profile, Long tenantId) {
++        requireText(profile.username(), "username");
++        requireLength(profile.username(), USERNAME_MAX_LENGTH, "username");
++        Long effectiveTenantId = effectiveTenantId(tenantId);
++
++        KeycloakUserProfile savedIdentity = adminClient.upsertUser(profile);
++        KeycloakObjectLink link = linkRepository
++                .findByObjectTypeAndExternalId(KeycloakObjectLink.USER, savedIdentity.id())
++                .orElse(null);
++
++        User user;
++        if (link != null) {
++            user = userRepository.findById(link.getLocalId())
++                    .orElseThrow(() -> new IllegalStateException("Keycloak user link points to a missing OA user"));
++            requireSameTenant(user, effectiveTenantId);
++        } else {
++            user = userRepository.findByUserNameAndTenantId(savedIdentity.username(), effectiveTenantId);
++            if (user == null) {
++                user = new User();
++                user.setTenantId(effectiveTenantId);
++            } else {
++                requireSameTenant(user, effectiveTenantId);
++                ensureLocalObjectIsNotLinked(KeycloakObjectLink.USER, savedIdentity.id(), user.getId());
++            }
++        }
++
++        user.setUserName(savedIdentity.username());
++        user.setName(limit(savedIdentity.name(), NAME_MAX_LENGTH));
++        user.setEmail(limit(savedIdentity.email(), EMAIL_MAX_LENGTH));
++        user.setMobile(limit(savedIdentity.mobile(), MOBILE_MAX_LENGTH));
++        user.setEnable(savedIdentity.enabled());
++        user.setPassword(null);
++        user.setSalt(null);
++        user.setRawPassword(false);
++        user = userRepository.save(user);
++        saveLinkIfMissing(KeycloakObjectLink.USER, savedIdentity.id(), user.getId());
++        return user;
++    }
++
++    @Transactional
++    public void disableUser(String keycloakUserId) {
++        setUserEnabled(keycloakUserId, false);
++    }
++
++    @Transactional
++    public void setUserEnabled(String keycloakUserId, boolean enabled) {
++        KeycloakObjectLink link = requireLink(KeycloakObjectLink.USER, keycloakUserId);
++        User user = userRepository.findById(link.getLocalId())
++                .orElseThrow(() -> new IllegalStateException("Keycloak user link points to a missing OA user"));
++        adminClient.setUserEnabled(keycloakUserId, enabled);
++        user.setEnable(enabled);
++        user.setPassword(null);
++        user.setSalt(null);
++        user.setRawPassword(false);
++        userRepository.save(user);
++    }
++
++    @Transactional
++    public Department synchronizeGroup(KeycloakGroupProfile profile, Long tenantId) {
++        requireText(profile.name(), "group name");
++        Long effectiveTenantId = effectiveTenantId(tenantId);
++        Long parentLocalId = null;
++        if (StringUtils.hasText(profile.parentId())) {
++            parentLocalId = requireLink(KeycloakObjectLink.DEPARTMENT, profile.parentId()).getLocalId();
++        }
++
++        KeycloakGroupProfile savedIdentity = adminClient.upsertGroup(profile);
++        KeycloakObjectLink link = linkRepository
++                .findByObjectTypeAndExternalId(KeycloakObjectLink.DEPARTMENT, savedIdentity.id())
++                .orElse(null);
++        Department department;
++        if (link != null) {
++            department = departmentRepository.findById(link.getLocalId())
++                    .orElseThrow(() -> new IllegalStateException("Keycloak group link points to a missing OA department"));
++            requireSameTenant(department, effectiveTenantId);
++        } else {
++            List<Department> matches = departmentRepository.findByNameAndParentIdAndTenantId(
++                    savedIdentity.name(), parentLocalId, effectiveTenantId);
++            department = matches.isEmpty() ? new Department() : matches.get(0);
++            if (department.getId() != null) {
++                ensureLocalObjectIsNotLinked(KeycloakObjectLink.DEPARTMENT, savedIdentity.id(), department.getId());
++            } else {
++                department.setTenantId(effectiveTenantId);
++            }
++        }
++
++        department.setName(savedIdentity.name());
++        department.setParentId(parentLocalId);
++        department.setCode(savedIdentity.code());
++        department = departmentRepository.save(department);
++        saveLinkIfMissing(KeycloakObjectLink.DEPARTMENT, savedIdentity.id(), department.getId());
++        return department;
++    }
++
++    @Transactional
++    public void synchronizeGroupMembership(String groupId, Collection<String> memberUserIds, Long tenantId) {
++        Long effectiveTenantId = effectiveTenantId(tenantId);
++        KeycloakObjectLink groupLink = requireLink(KeycloakObjectLink.DEPARTMENT, groupId);
++        Department department = departmentRepository.findById(groupLink.getLocalId())
++                .orElseThrow(() -> new IllegalStateException("Keycloak group link points to a missing OA department"));
++        requireSameTenant(department, effectiveTenantId);
++
++        Set<Long> desiredUserIds = new LinkedHashSet<>();
++        if (memberUserIds != null) {
++            for (String memberId : memberUserIds) {
++                KeycloakObjectLink userLink = requireLink(KeycloakObjectLink.USER, memberId);
++                User user = userRepository.findById(userLink.getLocalId())
++                        .orElseThrow(() -> new IllegalStateException("Keycloak user link points to a missing OA user"));
++                requireSameTenant(user, effectiveTenantId);
++                desiredUserIds.add(user.getId());
++            }
++        }
++
++        for (DepartmentUser current : departmentUserRepository.findAllByDepartmentId(department.getId())) {
++            if (!desiredUserIds.contains(current.getUserId())) {
++                departmentUserRepository.delete(current);
++            } else {
++                desiredUserIds.remove(current.getUserId());
++            }
++        }
++        for (Long userId : desiredUserIds) {
++            DepartmentUser membership = new DepartmentUser();
++            membership.setDepartmentId(department.getId());
++            membership.setUserId(userId);
++            membership.setTenantId(effectiveTenantId);
++            departmentUserRepository.save(membership);
++        }
++    }
++
++    @Transactional
++    public void synchronizeGroupMembershipFromKeycloak(String groupId, Long tenantId) {
++        synchronizeGroupMembership(groupId, adminClient.getGroupMemberIds(groupId), tenantId);
++    }
++
++    @Transactional
++    public void setGroupMembership(String groupId, String userId, boolean member, Long tenantId) {
++        adminClient.setGroupMembership(userId, groupId, member);
++        synchronizeGroupMembershipFromKeycloak(groupId, tenantId);
++    }
++
++    @Transactional
++    public void synchronizeUserRoleMappings(String keycloakUserId) {
++        KeycloakObjectLink userLink = requireLink(KeycloakObjectLink.USER, keycloakUserId);
++        User user = userRepository.findById(userLink.getLocalId())
++                .orElseThrow(() -> new IllegalStateException("Keycloak user link points to a missing OA user"));
++        Long tenantId = user.getTenantId();
++
++        Set<Long> localRoleIds = new LinkedHashSet<>();
++        for (String externalRoleId : adminClient.getEffectiveUserRoleIds(keycloakUserId)) {
++            KeycloakObjectLink roleLink = linkRepository
++                    .findByObjectTypeAndExternalId(KeycloakObjectLink.ROLE, externalRoleId)
++                    .orElse(null);
++            if (roleLink == null) {
++                continue;
++            }
++            Role role = roleRepository.findById(roleLink.getLocalId())
++                    .orElseThrow(() -> new IllegalStateException("Keycloak role link points to a missing OA role"));
++            requireSameTenant(role, tenantId);
++            localRoleIds.add(role.getId());
++        }
++
++        userRoleRepository.deleteByUserId(user.getId());
++        for (Long roleId : localRoleIds) {
++            UserRole userRole = new UserRole();
++            userRole.setUserId(user.getId());
++            userRole.setRoleId(roleId);
++            userRole.setTenantId(tenantId);
++            userRoleRepository.save(userRole);
++        }
++    }
++
++    @Transactional
++    public void replaceUserClientRoles(String keycloakUserId, Collection<String> roleIds) {
++        adminClient.replaceUserClientRoles(keycloakUserId, roleIds);
++        synchronizeUserRoleMappings(keycloakUserId);
++    }
++
++    public Long resolveLocalUserId(String keycloakSubject) {
++        return requireLink(KeycloakObjectLink.USER, keycloakSubject).getLocalId();
++    }
++
++    private KeycloakObjectLink requireLink(String objectType, String externalId) {
++        requireText(externalId, "Keycloak external ID");
++        return linkRepository.findByObjectTypeAndExternalId(objectType, externalId)
++                .orElseThrow(() -> new IllegalStateException("Keycloak object has not been linked to an OA projection"));
++    }
++
++    private void saveLinkIfMissing(String objectType, String externalId, Long localId) {
++        KeycloakObjectLink byExternal = linkRepository.findByObjectTypeAndExternalId(objectType, externalId).orElse(null);
++        if (byExternal != null) {
++            if (!byExternal.getLocalId().equals(localId)) {
++                throw new IllegalStateException("Keycloak external ID is already linked to another OA object");
++            }
++            return;
++        }
++        ensureLocalObjectIsNotLinked(objectType, externalId, localId);
++        KeycloakObjectLink link = new KeycloakObjectLink();
++        link.setObjectType(objectType);
++        link.setExternalId(externalId);
++        link.setLocalId(localId);
++        linkRepository.save(link);
++    }
++
++    private void ensureLocalObjectIsNotLinked(String objectType, String externalId, Long localId) {
++        linkRepository.findByObjectTypeAndLocalId(objectType, localId).ifPresent(existing -> {
++            if (!existing.getExternalId().equals(externalId)) {
++                throw new IllegalStateException("OA object is already linked to another Keycloak object");
++            }
++        });
++    }
++
++    private Long effectiveTenantId(Long tenantId) {
++        Long effective = tenantId == null ? JpaAuditorAware.getCurrentTenantId() : tenantId;
++        if (effective == null) {
++            throw new IllegalStateException("An OA tenant context is required to synchronize directory data");
++        }
++        return effective;
++    }
++
++    private void requireSameTenant(io.github.benxincaomu.oa.base.entity.BaseEntity entity, Long tenantId) {
++        if (entity.getTenantId() != null && !entity.getTenantId().equals(tenantId)) {
++            throw new IllegalArgumentException("Keycloak directory object belongs to another OA tenant");
++        }
++    }
++
++    private String limit(String value, int maxLength) {
++        if (value == null || value.length() <= maxLength) {
++            return value;
++        }
++        return value.substring(0, maxLength);
++    }
++
++    private void requireText(String value, String field) {
++        if (!StringUtils.hasText(value)) {
++            throw new IllegalArgumentException(field + " cannot be blank");
++        }
++    }
++
++    private void requireLength(String value, int maxLength, String field) {
++        if (value.length() > maxLength) {
++            throw new IllegalArgumentException(field + " exceeds the OA projection length limit of " + maxLength);
++        }
++    }
++}
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakGroupProfile.java b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakGroupProfile.java
+new file mode 100644
+index 0000000..81a9bcc
+--- /dev/null
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakGroupProfile.java
+@@ -0,0 +1,8 @@
++package io.github.benxincaomu.oa.base.security;
++
++public record KeycloakGroupProfile(
++        String id,
++        String name,
++        String code,
++        String parentId) {
++}
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakUserProfile.java b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakUserProfile.java
+new file mode 100644
+index 0000000..762ebc9
+--- /dev/null
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakUserProfile.java
+@@ -0,0 +1,10 @@
++package io.github.benxincaomu.oa.base.security;
++
++public record KeycloakUserProfile(
++        String id,
++        String username,
++        String name,
++        String email,
++        String mobile,
++        boolean enabled) {
++}
+diff --git a/src/main/java/io/github/benxincaomu/oa/bussiness/organization/DepartmentRepository.java b/src/main/java/io/github/benxincaomu/oa/bussiness/organization/DepartmentRepository.java
+index 8f04f2a..486689e 100644
+--- a/src/main/java/io/github/benxincaomu/oa/bussiness/organization/DepartmentRepository.java
++++ b/src/main/java/io/github/benxincaomu/oa/bussiness/organization/DepartmentRepository.java
+@@ -10,20 +10,22 @@ import org.springframework.stereotype.Repository;
+ 
+ import io.github.benxincaomu.oa.bussiness.organization.vo.DeptVo;
+ 
+ @Repository
+ public interface DepartmentRepository extends JpaRepository<Department, Long> {
+ 
+   boolean existsByNameAndIdNot(String name, Long id);
+ 
+   boolean existsByName(String name);
+ 
++  List<Department> findByNameAndParentIdAndTenantId(String name, Long parentId, Long tenantId);
++
+   @Query("select d from Department d where d.parentId = :parentId and d.tenantId = :tenantId")
+   List<Department> findAllByParentIdDept(@Param("parentId") Long parentId, @Param("tenantId") Long tenantId);
+ 
+   @Query("select new io.github.benxincaomu.oa.bussiness.organization.vo.DeptVo(d.id, d.name, d.parentId,d.code) from Department d where CASE WHEN :parentId is NULL THEN d.parentId is null ELSE d.parentId = :parentId END")
+   List<DeptVo> findAllByParentId(@Param("parentId") Long parentId, @Param("tenantId") Long tenantId);
+ 
+   @Query("select d from Department d where d.parentId is null")
+   List<Department> findAllDeptAsTree();
+ 
+   @Query("select new io.github.benxincaomu.oa.bussiness.organization.vo.DeptVo(d.id, d.name, d.parentId,d.code)   from Department d")
+diff --git a/src/main/java/io/github/benxincaomu/oa/bussiness/organization/DepartmentUserRepository.java b/src/main/java/io/github/benxincaomu/oa/bussiness/organization/DepartmentUserRepository.java
+index 1c571a6..ba64c13 100644
+--- a/src/main/java/io/github/benxincaomu/oa/bussiness/organization/DepartmentUserRepository.java
++++ b/src/main/java/io/github/benxincaomu/oa/bussiness/organization/DepartmentUserRepository.java
+@@ -7,20 +7,22 @@ import org.springframework.data.jpa.repository.JpaRepository;
+ import org.springframework.data.jpa.repository.Query;
+ import org.springframework.data.repository.query.Param;
+ import org.springframework.stereotype.Repository;
+ 
+ import io.github.benxincaomu.oa.bussiness.user.User;
+ import io.github.benxincaomu.oa.bussiness.user.vo.UserIdNameVo;
+ 
+ @Repository
+ public interface DepartmentUserRepository extends JpaRepository<DepartmentUser, Long> {
+ 
++    List<DepartmentUser> findAllByDepartmentId(Long departmentId);
++
+     @Query("select u from User u,DepartmentUser du where u.id = du.userId and du.departmentId = :deptId")
+     List<User> findUsersByDeptId(Long deptId);
+ 
+     @Query("select du.departmentId from DepartmentUser du where du.userId = :userId")
+     Optional<Long> findDeptIdByUserId(Long userId);
+ 
+     void deleteByUserId(Long userId);
+ 
+     @Query("select u.id,u.name from DepartmentUser du, io.github.benxincaomu.oa.bussiness.user.User u where  u.id = du.userId and du.departmentId = :deptId")
+     List<UserIdNameVo> getUsersByDeptId(@Param("deptId") Long deptId);
+diff --git a/src/main/java/io/github/benxincaomu/oa/bussiness/user/UserRepository.java b/src/main/java/io/github/benxincaomu/oa/bussiness/user/UserRepository.java
+index e5e4190..2615a18 100644
+--- a/src/main/java/io/github/benxincaomu/oa/bussiness/user/UserRepository.java
++++ b/src/main/java/io/github/benxincaomu/oa/bussiness/user/UserRepository.java
+@@ -7,20 +7,22 @@ import org.springframework.data.jpa.repository.Modifying;
+ import org.springframework.data.jpa.repository.Query;
+ import org.springframework.data.repository.query.Param;
+ import org.springframework.stereotype.Repository;
+ 
+ import io.github.benxincaomu.oa.bussiness.user.vo.UserIdNameVo;
+ 
+ @Repository
+ public interface UserRepository extends JpaRepository<User, Long> {
+     public User findByUserName(String userName);
+ 
++    public User findByUserNameAndTenantId(String userName, Long tenantId);
++
+     public boolean existsByUserName(String userName);
+ 
+     public boolean existsByEmail(String email);
+ 
+     // @EntityGraph(value = "user.withoutSalt", type =
+     // EntityGraph.EntityGraphType.FETCH)
+     // Page<User> findByExample(Example<User> example, Pageable pageable);
+ 
+     @Modifying
+     @Query("update User set enable = :enable where id = :id")

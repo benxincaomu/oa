@@ -1,0 +1,56 @@
+﻿# Review package: a5c54bee1b7c6efc2c00ced9a843aed007af411b..44a05c59653bd074e3c0b5b6e1aef73831bd00de
+
+## Commits
+44a05c5 security: restrict actuator beans access
+
+## Files changed
+ .../benxincaomu/oa/base/security/ProjectInitializationFilter.java       | 2 +-
+ .../java/io/github/benxincaomu/oa/base/security/SecurityConsts.java     | 1 -
+ 2 files changed, 1 insertion(+), 2 deletions(-)
+
+## Diff
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/ProjectInitializationFilter.java b/src/main/java/io/github/benxincaomu/oa/base/security/ProjectInitializationFilter.java
+index cc83c48..395a8b4 100644
+--- a/src/main/java/io/github/benxincaomu/oa/base/security/ProjectInitializationFilter.java
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/ProjectInitializationFilter.java
+@@ -9,21 +9,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
+ 
+ import io.github.benxincaomu.notry.exception.handler.ResponseMessage;
+ import io.github.benxincaomu.oa.base.init.InitService;
+ import io.github.benxincaomu.oa.base.web.OaResponseCode;
+ import jakarta.servlet.FilterChain;
+ import jakarta.servlet.ServletException;
+ import jakarta.servlet.http.HttpServletRequest;
+ import jakarta.servlet.http.HttpServletResponse;
+ 
+ public class ProjectInitializationFilter extends OncePerRequestFilter {
+-    private static final String[] INITIALIZATION_URLS = { "/initProject/**", "/actuator/health", "/actuator/beans" };
++    private static final String[] INITIALIZATION_URLS = { "/initProject/**", "/actuator/health" };
+ 
+     private final InitService initService;
+     private final ObjectMapper objectMapper;
+     private final AntPathMatcher pathMatcher = new AntPathMatcher();
+ 
+     public ProjectInitializationFilter(InitService initService, ObjectMapper objectMapper) {
+         this.initService = initService;
+         this.objectMapper = objectMapper;
+     }
+ 
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/SecurityConsts.java b/src/main/java/io/github/benxincaomu/oa/base/security/SecurityConsts.java
+index 96f6751..57879d4 100644
+--- a/src/main/java/io/github/benxincaomu/oa/base/security/SecurityConsts.java
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/SecurityConsts.java
+@@ -1,13 +1,12 @@
+ package io.github.benxincaomu.oa.base.security;
+ 
+ public final class SecurityConsts {
+     private SecurityConsts(){}
+ 
+     public static final String[] PUBLIC_URLS = {
+             "/error",
+-            "/actuator/beans",
+             "/actuator/health",
+             "/initProject/**"
+     };
+     
+ }

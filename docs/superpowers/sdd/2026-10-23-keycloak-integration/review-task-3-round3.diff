@@ -1,0 +1,261 @@
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakAdminClient.java b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakAdminClient.java
+index 85c4455..51b855d 100644
+--- a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakAdminClient.java
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakAdminClient.java
+@@ -23,20 +23,22 @@ import org.springframework.web.client.RestClientResponseException;
+ import org.springframework.web.util.UriComponentsBuilder;
+ 
+ import com.fasterxml.jackson.databind.JsonNode;
+ import com.fasterxml.jackson.databind.ObjectMapper;
+ import com.fasterxml.jackson.databind.node.ObjectNode;
+ 
+ import io.github.benxincaomu.oa.base.init.vo.UserInitVo;
+ 
+ @Service
+ public class KeycloakAdminClient {
++    private static final int PAGE_SIZE = 100;
++
+     private final KeycloakConnectionService connectionService;
+     private final RestClient restClient;
+     private final ObjectMapper objectMapper;
+     private volatile CachedToken cachedToken;
+ 
+     public KeycloakAdminClient(KeycloakConnectionService connectionService, RestClient.Builder restClientBuilder,
+             ObjectMapper objectMapper) {
+         this.connectionService = connectionService;
+         this.restClient = restClientBuilder.build();
+         this.objectMapper = objectMapper;
+@@ -62,32 +64,32 @@ public class KeycloakAdminClient {
+         authorizedPost(config, adminBase + "/users/{userId}/role-mappings/realm", userId)
+                 .contentType(MediaType.APPLICATION_JSON)
+                 .body(List.of(role))
+                 .retrieve()
+                 .toBodilessEntity();
+ 
+         return new KeycloakBootstrapIdentity(userId, groupId, role.path("id").asText());
+     }
+ 
+     public KeycloakUserProfile upsertUser(KeycloakUserProfile user) {
+-        String expectedExternalId = hasText(user.id())
+-                ? user.id()
+-                : findUserIdByUsername(user.username()).orElse(null);
+-        return upsertUser(user, expectedExternalId);
++        String expectedUsernameMatchId = findUserIdByUsername(user.username()).orElse(null);
++        return upsertUser(user, expectedUsernameMatchId);
+     }
+ 
+-    public KeycloakUserProfile upsertUser(KeycloakUserProfile user, String expectedExternalId) {
++    public KeycloakUserProfile upsertUser(KeycloakUserProfile user, String expectedUsernameMatchId) {
+         KeycloakIntegrationConfig config = configured();
+-        String userId = hasText(user.id()) ? user.id() : findUser(config, user.username()).orElse(null);
+-        if (!java.util.Objects.equals(userId, expectedExternalId)) {
++        String usernameMatchId = findUser(config, user.username()).orElse(null);
++        if (!java.util.Objects.equals(usernameMatchId, expectedUsernameMatchId)
++                || (hasText(user.id()) && usernameMatchId != null && !user.id().equals(usernameMatchId))) {
+             throw new IllegalStateException("Keycloak user changed after tenant validation");
+         }
++        String userId = hasText(user.id()) ? user.id() : usernameMatchId;
+         ObjectNode payload = userId == null
+                 ? objectMapper.createObjectNode()
+                 : readUser(config, userId).deepCopy();
+ 
+         payload.put("username", user.username());
+         payload.put("firstName", user.name() == null ? "" : user.name());
+         payload.put("enabled", user.enabled());
+         if (hasText(user.email())) {
+             payload.put("email", user.email());
+         } else {
+@@ -131,36 +133,33 @@ public class KeycloakAdminClient {
+         ObjectNode representation = readUser(config, userId);
+         representation.put("enabled", enabled);
+         authorizedPut(config, adminRealmBase(config) + "/users/{userId}", userId)
+                 .contentType(MediaType.APPLICATION_JSON)
+                 .body(representation)
+                 .retrieve()
+                 .toBodilessEntity();
+     }
+ 
+     public KeycloakGroupProfile upsertGroup(KeycloakGroupProfile group) {
+-        String expectedExternalId = hasText(group.id())
+-                ? group.id()
+-                : findGroupId(group.parentId(), group.name()).orElse(null);
+-        return upsertGroup(group, expectedExternalId);
++        String expectedPathMatchId = findGroupId(group.parentId(), group.name()).orElse(null);
++        return upsertGroup(group, expectedPathMatchId);
+     }
+ 
+-    public KeycloakGroupProfile upsertGroup(KeycloakGroupProfile group, String expectedExternalId) {
++    public KeycloakGroupProfile upsertGroup(KeycloakGroupProfile group, String expectedPathMatchId) {
+         KeycloakIntegrationConfig config = configured();
+-        String groupId = hasText(group.id()) ? group.id() : null;
+         String parentId = hasText(group.parentId()) ? group.parentId() : null;
+-        if (groupId == null) {
+-            groupId = findGroup(config, parentId, group.name()).orElse(null);
+-        }
+-        if (!java.util.Objects.equals(groupId, expectedExternalId)) {
++        String pathMatchId = findGroup(config, parentId, group.name()).orElse(null);
++        if (!java.util.Objects.equals(pathMatchId, expectedPathMatchId)
++                || (hasText(group.id()) && pathMatchId != null && !group.id().equals(pathMatchId))) {
+             throw new IllegalStateException("Keycloak group changed after tenant validation");
+         }
++        String groupId = hasText(group.id()) ? group.id() : pathMatchId;
+ 
+         if (groupId == null) {
+             ObjectNode payload = objectMapper.createObjectNode().put("name", group.name());
+             setGroupAttributes(payload, group);
+             String endpoint = parentId == null
+                     ? adminRealmBase(config) + "/groups"
+                     : adminRealmBase(config) + "/groups/{parentId}/children";
+             var response = parentId == null
+                     ? authorizedPost(config, endpoint).contentType(MediaType.APPLICATION_JSON).body(payload)
+                             .retrieve().toBodilessEntity()
+@@ -196,42 +195,41 @@ public class KeycloakAdminClient {
+             authorizedPut(config, endpoint, userId, groupId).retrieve().toBodilessEntity();
+         } else {
+             authorizedDelete(config, endpoint, userId, groupId).retrieve().toBodilessEntity();
+         }
+     }
+ 
+     public List<String> getGroupMemberIds(String groupId) {
+         KeycloakIntegrationConfig config = configured();
+         List<String> memberIds = new ArrayList<>();
+         int first = 0;
+-        int pageSize = 100;
+         while (true) {
+             String uri = UriComponentsBuilder.fromUriString(adminRealmBase(config) + "/groups/{groupId}/members")
+                     .queryParam("first", first)
+-                    .queryParam("max", pageSize)
++                    .queryParam("max", PAGE_SIZE)
+                     .buildAndExpand(groupId)
+                     .encode()
+                     .toUriString();
+             JsonNode members = authorizedGet(config, uri).retrieve().body(JsonNode.class);
+             if (members == null || !members.isArray()) {
+                 break;
+             }
+             for (JsonNode member : members) {
+                 String memberId = member.path("id").asText();
+                 if (hasText(memberId)) {
+                     memberIds.add(memberId);
+                 }
+             }
+-            if (members.size() < pageSize) {
++            if (members.size() < PAGE_SIZE) {
+                 break;
+             }
+-            first += pageSize;
++            first += PAGE_SIZE;
+         }
+         return memberIds;
+     }
+ 
+     public List<String> getEffectiveUserClientRoleIds(String userId) {
+         KeycloakIntegrationConfig config = configured();
+         String clientUuid = clientUuid(config);
+         String endpoint = adminRealmBase(config) + "/users/{userId}/role-mappings/clients/{clientUuid}/composite";
+         return getRoleIds(config, endpoint, userId, clientUuid);
+     }
+@@ -336,35 +334,44 @@ public class KeycloakAdminClient {
+         }
+         return id;
+     }
+ 
+     private Optional<String> findGroup(KeycloakIntegrationConfig config, String name) {
+         return findGroup(config, null, name);
+     }
+ 
+     private Optional<String> findGroup(KeycloakIntegrationConfig config, String parentId, String name) {
+         String path = parentId == null ? "/groups" : "/groups/{parentId}/children";
+-        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(adminRealmBase(config) + path)
+-                .queryParam("search", name)
+-                .queryParam("exact", true);
+-        String uri = parentId == null
+-                ? builder.build().encode().toUriString()
+-                : builder.buildAndExpand(parentId).encode().toUriString();
+-        JsonNode groups = authorizedGet(config, uri).retrieve().body(JsonNode.class);
+-        if (groups != null && groups.isArray()) {
++        int first = 0;
++        while (true) {
++            UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(adminRealmBase(config) + path)
++                    .queryParam("search", name)
++                    .queryParam("exact", true)
++                    .queryParam("first", first)
++                    .queryParam("max", PAGE_SIZE);
++            String uri = parentId == null
++                    ? builder.build().encode().toUriString()
++                    : builder.buildAndExpand(parentId).encode().toUriString();
++            JsonNode groups = authorizedGet(config, uri).retrieve().body(JsonNode.class);
++            if (groups == null || !groups.isArray() || groups.isEmpty()) {
++                return Optional.empty();
++            }
+             for (JsonNode group : groups) {
+                 if (name.equals(group.path("name").asText())) {
+                     return Optional.of(group.path("id").asText());
+                 }
+             }
++            if (groups.size() < PAGE_SIZE) {
++                return Optional.empty();
++            }
++            first += PAGE_SIZE;
+         }
+-        return Optional.empty();
+     }
+ 
+     private ObjectNode readGroup(KeycloakIntegrationConfig config, String groupId) {
+         JsonNode group = authorizedGet(config, adminRealmBase(config) + "/groups/{groupId}", groupId)
+                 .retrieve().body(JsonNode.class);
+         if (group instanceof ObjectNode object) {
+             return object;
+         }
+         throw new IllegalStateException("Keycloak group representation is missing");
+     }
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakDirectorySyncService.java b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakDirectorySyncService.java
+index a0f37ed..37cb7ea 100644
+--- a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakDirectorySyncService.java
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakDirectorySyncService.java
+@@ -70,21 +70,21 @@ public class KeycloakDirectorySyncService {
+             if (user != null) {
+                 requireSameTenant(user, effectiveTenantId);
+                 ensureLocalObjectIsNotLinked(KeycloakObjectLink.USER, knownExternalId, user.getId());
+             }
+         }
+ 
+         KeycloakUserProfile requestedProfile = knownExternalId != null && !StringUtils.hasText(profile.id())
+                 ? new KeycloakUserProfile(knownExternalId, profile.username(), profile.name(), profile.email(),
+                         profile.mobile(), profile.enabled())
+                 : profile;
+-        KeycloakUserProfile savedIdentity = adminClient.upsertUser(requestedProfile, knownExternalId);
++        KeycloakUserProfile savedIdentity = adminClient.upsertUser(requestedProfile, usernameMatchId);
+         if (knownExternalId != null && !knownExternalId.equals(savedIdentity.id())) {
+             throw new IllegalStateException("Keycloak user identity changed during synchronization");
+         }
+ 
+         if (user == null) {
+             user = new User();
+             user.setTenantId(effectiveTenantId);
+         }
+ 
+         user.setUserName(savedIdentity.username());
+@@ -145,21 +145,21 @@ public class KeycloakDirectorySyncService {
+             department = matches.isEmpty() ? new Department() : matches.get(0);
+             if (department.getId() != null) {
+                 requireSameTenant(department, effectiveTenantId);
+                 ensureLocalObjectIsNotLinked(KeycloakObjectLink.DEPARTMENT, knownExternalId, department.getId());
+             }
+         }
+ 
+         KeycloakGroupProfile requestedProfile = knownExternalId != null && !StringUtils.hasText(profile.id())
+                 ? new KeycloakGroupProfile(knownExternalId, profile.name(), profile.code(), profile.parentId())
+                 : profile;
+-        KeycloakGroupProfile savedIdentity = adminClient.upsertGroup(requestedProfile, knownExternalId);
++        KeycloakGroupProfile savedIdentity = adminClient.upsertGroup(requestedProfile, parentAndNameMatchId);
+         if (knownExternalId != null && !knownExternalId.equals(savedIdentity.id())) {
+             throw new IllegalStateException("Keycloak group identity changed during synchronization");
+         }
+ 
+         if (department.getId() == null) {
+             department.setTenantId(effectiveTenantId);
+         }
+ 
+         department.setName(savedIdentity.name());
+         department.setParentId(parentLocalId);

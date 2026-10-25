@@ -1,0 +1,24 @@
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakDirectorySyncService.java b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakDirectorySyncService.java
+index 95a1206..4aa4c9a 100644
+--- a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakDirectorySyncService.java
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakDirectorySyncService.java
+@@ -268,17 +268,17 @@ public class KeycloakDirectorySyncService {
+         Long effective = tenantId == null ? JpaAuditorAware.getCurrentTenantId() : tenantId;
+         if (effective == null) {
+             throw new IllegalStateException("An OA tenant context is required to synchronize directory data");
+         }
+         return effective;
+     }
+ 
+     private void requireSameTenant(io.github.benxincaomu.oa.base.entity.BaseEntity entity, Long tenantId) {
+-        if (entity.getTenantId() != null && !entity.getTenantId().equals(tenantId)) {
++        if (entity.getTenantId() == null || !entity.getTenantId().equals(tenantId)) {
+             throw new IllegalArgumentException("Keycloak directory object belongs to another OA tenant");
+         }
+     }
+ 
+     private String limit(String value, int maxLength) {
+         if (value == null || value.length() <= maxLength) {
+             return value;
+         }
+

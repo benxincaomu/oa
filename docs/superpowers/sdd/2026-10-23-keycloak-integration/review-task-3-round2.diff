@@ -1,0 +1,429 @@
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakAdminClient.java b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakAdminClient.java
+index 34724ab..85c4455 100644
+--- a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakAdminClient.java
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakAdminClient.java
+@@ -62,22 +62,32 @@ public class KeycloakAdminClient {
+         authorizedPost(config, adminBase + "/users/{userId}/role-mappings/realm", userId)
+                 .contentType(MediaType.APPLICATION_JSON)
+                 .body(List.of(role))
+                 .retrieve()
+                 .toBodilessEntity();
+ 
+         return new KeycloakBootstrapIdentity(userId, groupId, role.path("id").asText());
+     }
+ 
+     public KeycloakUserProfile upsertUser(KeycloakUserProfile user) {
++        String expectedExternalId = hasText(user.id())
++                ? user.id()
++                : findUserIdByUsername(user.username()).orElse(null);
++        return upsertUser(user, expectedExternalId);
++    }
++
++    public KeycloakUserProfile upsertUser(KeycloakUserProfile user, String expectedExternalId) {
+         KeycloakIntegrationConfig config = configured();
+         String userId = hasText(user.id()) ? user.id() : findUser(config, user.username()).orElse(null);
++        if (!java.util.Objects.equals(userId, expectedExternalId)) {
++            throw new IllegalStateException("Keycloak user changed after tenant validation");
++        }
+         ObjectNode payload = userId == null
+                 ? objectMapper.createObjectNode()
+                 : readUser(config, userId).deepCopy();
+ 
+         payload.put("username", user.username());
+         payload.put("firstName", user.name() == null ? "" : user.name());
+         payload.put("enabled", user.enabled());
+         if (hasText(user.email())) {
+             payload.put("email", user.email());
+         } else {
+@@ -105,38 +115,52 @@ public class KeycloakAdminClient {
+         } else {
+             authorizedPut(config, adminRealmBase(config) + "/users/{userId}", userId)
+                     .contentType(MediaType.APPLICATION_JSON)
+                     .body(payload)
+                     .retrieve()
+                     .toBodilessEntity();
+         }
+         return new KeycloakUserProfile(userId, user.username(), user.name(), user.email(), user.mobile(), user.enabled());
+     }
+ 
++    public Optional<String> findUserIdByUsername(String username) {
++        return findUser(configured(), username);
++    }
++
+     public void setUserEnabled(String userId, boolean enabled) {
+         KeycloakIntegrationConfig config = configured();
+         ObjectNode representation = readUser(config, userId);
+         representation.put("enabled", enabled);
+         authorizedPut(config, adminRealmBase(config) + "/users/{userId}", userId)
+                 .contentType(MediaType.APPLICATION_JSON)
+                 .body(representation)
+                 .retrieve()
+                 .toBodilessEntity();
+     }
+ 
+     public KeycloakGroupProfile upsertGroup(KeycloakGroupProfile group) {
++        String expectedExternalId = hasText(group.id())
++                ? group.id()
++                : findGroupId(group.parentId(), group.name()).orElse(null);
++        return upsertGroup(group, expectedExternalId);
++    }
++
++    public KeycloakGroupProfile upsertGroup(KeycloakGroupProfile group, String expectedExternalId) {
+         KeycloakIntegrationConfig config = configured();
+         String groupId = hasText(group.id()) ? group.id() : null;
+         String parentId = hasText(group.parentId()) ? group.parentId() : null;
+         if (groupId == null) {
+             groupId = findGroup(config, parentId, group.name()).orElse(null);
+         }
++        if (!java.util.Objects.equals(groupId, expectedExternalId)) {
++            throw new IllegalStateException("Keycloak group changed after tenant validation");
++        }
+ 
+         if (groupId == null) {
+             ObjectNode payload = objectMapper.createObjectNode().put("name", group.name());
+             setGroupAttributes(payload, group);
+             String endpoint = parentId == null
+                     ? adminRealmBase(config) + "/groups"
+                     : adminRealmBase(config) + "/groups/{parentId}/children";
+             var response = parentId == null
+                     ? authorizedPost(config, endpoint).contentType(MediaType.APPLICATION_JSON).body(payload)
+                             .retrieve().toBodilessEntity()
+@@ -154,20 +178,24 @@ public class KeycloakAdminClient {
+             setGroupAttributes(payload, group);
+             authorizedPut(config, adminRealmBase(config) + "/groups/{groupId}", groupId)
+                     .contentType(MediaType.APPLICATION_JSON)
+                     .body(payload)
+                     .retrieve()
+                     .toBodilessEntity();
+         }
+         return new KeycloakGroupProfile(groupId, group.name(), group.code(), parentId);
+     }
+ 
++    public Optional<String> findGroupId(String parentId, String name) {
++        return findGroup(configured(), hasText(parentId) ? parentId : null, name);
++    }
++
+     public void setGroupMembership(String userId, String groupId, boolean member) {
+         KeycloakIntegrationConfig config = configured();
+         String endpoint = adminRealmBase(config) + "/users/{userId}/groups/{groupId}";
+         if (member) {
+             authorizedPut(config, endpoint, userId, groupId).retrieve().toBodilessEntity();
+         } else {
+             authorizedDelete(config, endpoint, userId, groupId).retrieve().toBodilessEntity();
+         }
+     }
+ 
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakDirectorySyncService.java b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakDirectorySyncService.java
+index 4aa4c9a..a0f37ed 100644
+--- a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakDirectorySyncService.java
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakDirectorySyncService.java
+@@ -51,101 +51,123 @@ public class KeycloakDirectorySyncService {
+         this.roleRepository = roleRepository;
+         this.userRoleRepository = userRoleRepository;
+     }
+ 
+     @Transactional
+     public User synchronizeUser(KeycloakUserProfile profile, Long tenantId) {
+         requireText(profile.username(), "username");
+         requireLength(profile.username(), USERNAME_MAX_LENGTH, "username");
+         Long effectiveTenantId = effectiveTenantId(tenantId);
+ 
+-        KeycloakUserProfile savedIdentity = adminClient.upsertUser(profile);
+-        KeycloakObjectLink link = linkRepository
+-                .findByObjectTypeAndExternalId(KeycloakObjectLink.USER, savedIdentity.id())
+-                .orElse(null);
+-
+-        User user;
+-        if (link != null) {
+-            user = userRepository.findById(link.getLocalId())
+-                    .orElseThrow(() -> new IllegalStateException("Keycloak user link points to a missing OA user"));
+-            requireSameTenant(user, effectiveTenantId);
+-        } else {
+-            user = userRepository.findByUserNameAndTenantId(savedIdentity.username(), effectiveTenantId);
+-            if (user == null) {
+-                user = new User();
+-                user.setTenantId(effectiveTenantId);
+-            } else {
++        String usernameMatchId = adminClient.findUserIdByUsername(profile.username()).orElse(null);
++        if (StringUtils.hasText(profile.id()) && usernameMatchId != null
++                && !profile.id().equals(usernameMatchId)) {
++            throw new IllegalArgumentException("Keycloak username already belongs to another identity");
++        }
++        String knownExternalId = StringUtils.hasText(profile.id()) ? profile.id() : usernameMatchId;
++        User user = findLinkedUser(knownExternalId, effectiveTenantId);
++        if (user == null) {
++            user = userRepository.findByUserNameAndTenantId(profile.username(), effectiveTenantId);
++            if (user != null) {
+                 requireSameTenant(user, effectiveTenantId);
+-                ensureLocalObjectIsNotLinked(KeycloakObjectLink.USER, savedIdentity.id(), user.getId());
++                ensureLocalObjectIsNotLinked(KeycloakObjectLink.USER, knownExternalId, user.getId());
+             }
+         }
+ 
++        KeycloakUserProfile requestedProfile = knownExternalId != null && !StringUtils.hasText(profile.id())
++                ? new KeycloakUserProfile(knownExternalId, profile.username(), profile.name(), profile.email(),
++                        profile.mobile(), profile.enabled())
++                : profile;
++        KeycloakUserProfile savedIdentity = adminClient.upsertUser(requestedProfile, knownExternalId);
++        if (knownExternalId != null && !knownExternalId.equals(savedIdentity.id())) {
++            throw new IllegalStateException("Keycloak user identity changed during synchronization");
++        }
++
++        if (user == null) {
++            user = new User();
++            user.setTenantId(effectiveTenantId);
++        }
++
+         user.setUserName(savedIdentity.username());
+         user.setName(limit(savedIdentity.name(), NAME_MAX_LENGTH));
+         user.setEmail(limit(savedIdentity.email(), EMAIL_MAX_LENGTH));
+         user.setMobile(limit(savedIdentity.mobile(), MOBILE_MAX_LENGTH));
+         user.setEnable(savedIdentity.enabled());
+         user.setPassword(null);
+         user.setSalt(null);
+         user.setRawPassword(false);
+         user = userRepository.save(user);
+         saveLinkIfMissing(KeycloakObjectLink.USER, savedIdentity.id(), user.getId());
+         return user;
+     }
+ 
+     @Transactional
+     public void disableUser(String keycloakUserId) {
+-        setUserEnabled(keycloakUserId, false);
++        setUserEnabled(keycloakUserId, false, null);
+     }
+ 
+     @Transactional
+     public void setUserEnabled(String keycloakUserId, boolean enabled) {
+-        KeycloakObjectLink link = requireLink(KeycloakObjectLink.USER, keycloakUserId);
+-        User user = userRepository.findById(link.getLocalId())
+-                .orElseThrow(() -> new IllegalStateException("Keycloak user link points to a missing OA user"));
++        setUserEnabled(keycloakUserId, enabled, null);
++    }
++
++    @Transactional
++    public void setUserEnabled(String keycloakUserId, boolean enabled, Long tenantId) {
++        Long effectiveTenantId = effectiveTenantId(tenantId);
++        User user = requireLinkedUser(keycloakUserId, effectiveTenantId);
+         adminClient.setUserEnabled(keycloakUserId, enabled);
+         user.setEnable(enabled);
+         user.setPassword(null);
+         user.setSalt(null);
+         user.setRawPassword(false);
+         userRepository.save(user);
+     }
+ 
+     @Transactional
+     public Department synchronizeGroup(KeycloakGroupProfile profile, Long tenantId) {
+         requireText(profile.name(), "group name");
+         Long effectiveTenantId = effectiveTenantId(tenantId);
+         Long parentLocalId = null;
+         if (StringUtils.hasText(profile.parentId())) {
+-            parentLocalId = requireLink(KeycloakObjectLink.DEPARTMENT, profile.parentId()).getLocalId();
++            Department parent = requireLinkedDepartment(profile.parentId(), effectiveTenantId);
++            parentLocalId = parent.getId();
+         }
+ 
+-        KeycloakGroupProfile savedIdentity = adminClient.upsertGroup(profile);
+-        KeycloakObjectLink link = linkRepository
+-                .findByObjectTypeAndExternalId(KeycloakObjectLink.DEPARTMENT, savedIdentity.id())
+-                .orElse(null);
+-        Department department;
+-        if (link != null) {
+-            department = departmentRepository.findById(link.getLocalId())
+-                    .orElseThrow(() -> new IllegalStateException("Keycloak group link points to a missing OA department"));
+-            requireSameTenant(department, effectiveTenantId);
+-        } else {
++        String parentAndNameMatchId = adminClient.findGroupId(profile.parentId(), profile.name()).orElse(null);
++        if (StringUtils.hasText(profile.id()) && parentAndNameMatchId != null
++                && !profile.id().equals(parentAndNameMatchId)) {
++            throw new IllegalArgumentException("Keycloak group path already belongs to another group");
++        }
++        String knownExternalId = StringUtils.hasText(profile.id()) ? profile.id() : parentAndNameMatchId;
++        Department department = findLinkedDepartment(knownExternalId, effectiveTenantId);
++        if (department == null) {
+             List<Department> matches = departmentRepository.findByNameAndParentIdAndTenantId(
+-                    savedIdentity.name(), parentLocalId, effectiveTenantId);
++                    profile.name(), parentLocalId, effectiveTenantId);
+             department = matches.isEmpty() ? new Department() : matches.get(0);
+             if (department.getId() != null) {
+-                ensureLocalObjectIsNotLinked(KeycloakObjectLink.DEPARTMENT, savedIdentity.id(), department.getId());
+-            } else {
+-                department.setTenantId(effectiveTenantId);
++                requireSameTenant(department, effectiveTenantId);
++                ensureLocalObjectIsNotLinked(KeycloakObjectLink.DEPARTMENT, knownExternalId, department.getId());
+             }
+         }
+ 
++        KeycloakGroupProfile requestedProfile = knownExternalId != null && !StringUtils.hasText(profile.id())
++                ? new KeycloakGroupProfile(knownExternalId, profile.name(), profile.code(), profile.parentId())
++                : profile;
++        KeycloakGroupProfile savedIdentity = adminClient.upsertGroup(requestedProfile, knownExternalId);
++        if (knownExternalId != null && !knownExternalId.equals(savedIdentity.id())) {
++            throw new IllegalStateException("Keycloak group identity changed during synchronization");
++        }
++
++        if (department.getId() == null) {
++            department.setTenantId(effectiveTenantId);
++        }
++
+         department.setName(savedIdentity.name());
+         department.setParentId(parentLocalId);
+         department.setCode(savedIdentity.code());
+         department = departmentRepository.save(department);
+         saveLinkIfMissing(KeycloakObjectLink.DEPARTMENT, savedIdentity.id(), department.getId());
+         return department;
+     }
+ 
+     @Transactional
+     public void synchronizeGroupMembership(String groupId, Collection<String> memberUserIds, Long tenantId) {
+@@ -182,33 +204,42 @@ public class KeycloakDirectorySyncService {
+         }
+     }
+ 
+     @Transactional
+     public void synchronizeGroupMembershipFromKeycloak(String groupId, Long tenantId) {
+         synchronizeGroupMembership(groupId, adminClient.getGroupMemberIds(groupId), tenantId);
+     }
+ 
+     @Transactional
+     public void setGroupMembership(String groupId, String userId, boolean member, Long tenantId) {
++        Long effectiveTenantId = effectiveTenantId(tenantId);
++        requireLinkedDepartment(groupId, effectiveTenantId);
++        requireLinkedUser(userId, effectiveTenantId);
++        for (String currentMemberId : adminClient.getGroupMemberIds(groupId)) {
++            requireLinkedUser(currentMemberId, effectiveTenantId);
++        }
+         adminClient.setGroupMembership(userId, groupId, member);
+-        synchronizeGroupMembershipFromKeycloak(groupId, tenantId);
++        synchronizeGroupMembershipFromKeycloak(groupId, effectiveTenantId);
+     }
+ 
+     @Transactional
+     public void synchronizeUserRoleMappings(String keycloakUserId) {
+         KeycloakObjectLink userLink = requireLink(KeycloakObjectLink.USER, keycloakUserId);
+         User user = userRepository.findById(userLink.getLocalId())
+                 .orElseThrow(() -> new IllegalStateException("Keycloak user link points to a missing OA user"));
+-        Long tenantId = user.getTenantId();
++        Long tenantId = effectiveTenantId(user.getTenantId());
++        requireSameTenant(user, tenantId);
+ 
+         Set<Long> localRoleIds = new LinkedHashSet<>();
+-        for (String externalRoleId : adminClient.getEffectiveUserRoleIds(keycloakUserId)) {
++        List<String> externalRoleIds = adminClient.getEffectiveUserRoleIds(keycloakUserId);
++        validateLinkedRoleTenants(externalRoleIds, tenantId);
++        for (String externalRoleId : externalRoleIds) {
+             KeycloakObjectLink roleLink = linkRepository
+                     .findByObjectTypeAndExternalId(KeycloakObjectLink.ROLE, externalRoleId)
+                     .orElse(null);
+             if (roleLink == null) {
+                 continue;
+             }
+             Role role = roleRepository.findById(roleLink.getLocalId())
+                     .orElseThrow(() -> new IllegalStateException("Keycloak role link points to a missing OA role"));
+             requireSameTenant(role, tenantId);
+             localRoleIds.add(role.getId());
+@@ -219,34 +250,103 @@ public class KeycloakDirectorySyncService {
+             UserRole userRole = new UserRole();
+             userRole.setUserId(user.getId());
+             userRole.setRoleId(roleId);
+             userRole.setTenantId(tenantId);
+             userRoleRepository.save(userRole);
+         }
+     }
+ 
+     @Transactional
+     public void replaceUserClientRoles(String keycloakUserId, Collection<String> roleIds) {
++        Long tenantId = effectiveTenantId(null);
++        requireLinkedUser(keycloakUserId, tenantId);
++        validateLinkedRoleTenants(adminClient.getEffectiveUserRoleIds(keycloakUserId), tenantId);
++        validateLinkedRoleTenants(roleIds, tenantId);
+         adminClient.replaceUserClientRoles(keycloakUserId, roleIds);
+         synchronizeUserRoleMappings(keycloakUserId);
+     }
+ 
+     public Long resolveLocalUserId(String keycloakSubject) {
+         return requireLink(KeycloakObjectLink.USER, keycloakSubject).getLocalId();
+     }
+ 
+     private KeycloakObjectLink requireLink(String objectType, String externalId) {
+         requireText(externalId, "Keycloak external ID");
+         return linkRepository.findByObjectTypeAndExternalId(objectType, externalId)
+                 .orElseThrow(() -> new IllegalStateException("Keycloak object has not been linked to an OA projection"));
+     }
+ 
++    private User requireLinkedUser(String externalId, Long tenantId) {
++        KeycloakObjectLink link = requireLink(KeycloakObjectLink.USER, externalId);
++        User user = userRepository.findById(link.getLocalId())
++                .orElseThrow(() -> new IllegalStateException("Keycloak user link points to a missing OA user"));
++        requireSameTenant(user, tenantId);
++        return user;
++    }
++
++    private User findLinkedUser(String externalId, Long tenantId) {
++        if (!StringUtils.hasText(externalId)) {
++            return null;
++        }
++        KeycloakObjectLink link = linkRepository
++                .findByObjectTypeAndExternalId(KeycloakObjectLink.USER, externalId)
++                .orElse(null);
++        if (link == null) {
++            return null;
++        }
++        User user = userRepository.findById(link.getLocalId())
++                .orElseThrow(() -> new IllegalStateException("Keycloak user link points to a missing OA user"));
++        requireSameTenant(user, tenantId);
++        return user;
++    }
++
++    private Department requireLinkedDepartment(String externalId, Long tenantId) {
++        KeycloakObjectLink link = requireLink(KeycloakObjectLink.DEPARTMENT, externalId);
++        Department department = departmentRepository.findById(link.getLocalId())
++                .orElseThrow(() -> new IllegalStateException("Keycloak group link points to a missing OA department"));
++        requireSameTenant(department, tenantId);
++        return department;
++    }
++
++    private Department findLinkedDepartment(String externalId, Long tenantId) {
++        if (!StringUtils.hasText(externalId)) {
++            return null;
++        }
++        KeycloakObjectLink link = linkRepository
++                .findByObjectTypeAndExternalId(KeycloakObjectLink.DEPARTMENT, externalId)
++                .orElse(null);
++        if (link == null) {
++            return null;
++        }
++        Department department = departmentRepository.findById(link.getLocalId())
++                .orElseThrow(() -> new IllegalStateException("Keycloak group link points to a missing OA department"));
++        requireSameTenant(department, tenantId);
++        return department;
++    }
++
++    private void validateLinkedRoleTenants(Collection<String> roleIds, Long tenantId) {
++        if (roleIds == null) {
++            return;
++        }
++        for (String externalRoleId : roleIds) {
++            requireText(externalRoleId, "Keycloak role ID");
++            KeycloakObjectLink roleLink = linkRepository
++                    .findByObjectTypeAndExternalId(KeycloakObjectLink.ROLE, externalRoleId)
++                    .orElse(null);
++            if (roleLink != null) {
++                Role role = roleRepository.findById(roleLink.getLocalId())
++                        .orElseThrow(() -> new IllegalStateException("Keycloak role link points to a missing OA role"));
++                requireSameTenant(role, tenantId);
++            }
++        }
++    }
++
+     private void saveLinkIfMissing(String objectType, String externalId, Long localId) {
+         KeycloakObjectLink byExternal = linkRepository.findByObjectTypeAndExternalId(objectType, externalId).orElse(null);
+         if (byExternal != null) {
+             if (!byExternal.getLocalId().equals(localId)) {
+                 throw new IllegalStateException("Keycloak external ID is already linked to another OA object");
+             }
+             return;
+         }
+         ensureLocalObjectIsNotLinked(objectType, externalId, localId);
+         KeycloakObjectLink link = new KeycloakObjectLink();

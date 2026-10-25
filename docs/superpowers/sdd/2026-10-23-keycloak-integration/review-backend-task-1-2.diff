@@ -1,0 +1,2309 @@
+# Review package: backend 44b9a52..a5c54be
+
+## Commits
+a5c54be feat: integrate Keycloak OIDC sessions
+
+## Files changed
+ pom.xml                                            |   6 +-
+ .../oa/base/entity/JpaAuditorAware.java            |  23 +-
+ .../oa/base/entity/TenantIdEntityListener.java     |  15 +-
+ .../benxincaomu/oa/base/init/InitController.java   |  27 +-
+ .../benxincaomu/oa/base/init/InitService.java      |  32 ++-
+ .../github/benxincaomu/oa/base/init/vo/InitVo.java |  13 +
+ .../oa/base/init/vo/KeycloakConfigVo.java          | 104 ++++++++
+ .../oa/base/security/KeycloakAdminClient.java      | 247 +++++++++++++++++
+ .../base/security/KeycloakAuthoritiesMapper.java   |  89 +++++++
+ .../base/security/KeycloakBootstrapIdentity.java   |   4 +
+ .../KeycloakClientRegistrationRepository.java      |  58 ++++
+ .../base/security/KeycloakConnectionService.java   | 292 +++++++++++++++++++++
+ .../base/security/KeycloakConnectionStatusVo.java  |  44 ++++
+ .../base/security/KeycloakIntegrationConfig.java   | 111 ++++++++
+ .../KeycloakIntegrationConfigRepository.java       |   6 +
+ .../security/KeycloakLogoutSuccessHandler.java     |  74 ++++++
+ .../oa/base/security/KeycloakObjectLink.java       |  66 +++++
+ .../security/KeycloakObjectLinkRepository.java     |  11 +
+ .../oa/base/security/KeycloakOidcUserService.java  |  43 +++
+ .../oa/base/security/KeycloakSecretCipher.java     |  84 ++++++
+ .../oa/base/security/OaOidcUserPrincipal.java      |  48 ++++
+ .../base/security/ProjectInitializationFilter.java |  52 ++++
+ .../oa/base/security/SecurityConfig.java           |  97 ++++++-
+ .../oa/base/security/SecurityConsts.java           |   6 +-
+ .../oa/base/security/SecurityFilter.java           |   2 -
+ .../oa/bussiness/user/LoginController.java         |   2 +
+ .../oa/bussiness/user/OaLoginController.java       |  44 ++++
+ .../oa/bussiness/user/UserController.java          |   4 +
+ src/main/resources/application.yml                 |   8 +
+ 29 files changed, 1577 insertions(+), 35 deletions(-)
+
+## Diff (application.yml values are redacted)
+diff --git a/pom.xml b/pom.xml
+index f6069e9..7381b05 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -59,20 +59,24 @@
+         <!-- https://mvnrepository.com/artifact/commons-codec/commons-codec -->
+         <dependency>
+             <groupId>commons-codec</groupId>
+             <artifactId>commons-codec</artifactId>
+             <version>1.18.0</version>
+         </dependency>
+         <dependency>
+             <groupId>org.springframework.boot</groupId>
+             <artifactId>spring-boot-starter-security</artifactId>
+         </dependency>
++        <dependency>
++            <groupId>org.springframework.boot</groupId>
++            <artifactId>spring-boot-starter-oauth2-client</artifactId>
++        </dependency>
+         <dependency>
+             <groupId>org.springframework.boot</groupId>
+             <artifactId>spring-boot-starter-data-redis</artifactId>
+         </dependency>
+         <dependency>
+             <groupId>org.springframework.boot</groupId>
+             <artifactId>spring-boot-starter-validation</artifactId>
+         </dependency>
+         <dependency>
+             <groupId>org.springframework.boot</groupId>
+@@ -149,11 +153,11 @@
+                 </configuration>
+             </plugin>
+             <plugin>
+                 <groupId>org.springframework.boot</groupId>
+                 <artifactId>spring-boot-maven-plugin</artifactId>
+             </plugin>
+         </plugins>
+     </build>
+ 
+ 
+-</project>
+\ No newline at end of file
++</project>
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/entity/JpaAuditorAware.java b/src/main/java/io/github/benxincaomu/oa/base/entity/JpaAuditorAware.java
+index dca7c34..ba1b3fb 100644
+--- a/src/main/java/io/github/benxincaomu/oa/base/entity/JpaAuditorAware.java
++++ b/src/main/java/io/github/benxincaomu/oa/base/entity/JpaAuditorAware.java
+@@ -1,55 +1,70 @@
+ package io.github.benxincaomu.oa.base.entity;
+ 
+ import java.util.Optional;
+ 
+ import org.springframework.data.domain.AuditorAware;
+ import org.springframework.security.core.context.SecurityContextHolder;
+ import org.springframework.stereotype.Component;
+ 
++import io.github.benxincaomu.oa.base.security.OaOidcUserPrincipal;
+ import io.github.benxincaomu.oa.base.security.SaltedUser;
+ 
+ 
+ @Component
+ public final class JpaAuditorAware  implements AuditorAware<Long> {
+ 
+     @Override
+     public Optional<Long> getCurrentAuditor() {
+-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
++        Object principal = currentPrincipal();
++        if (principal instanceof OaOidcUserPrincipal user) {
++            return Optional.ofNullable(user.getOaUserId());
++        }
+         if (principal instanceof SaltedUser) {
+             SaltedUser user = (SaltedUser) principal;
+             return Optional.ofNullable(user.getUserId());
+         }
+         
+         return Optional.empty();
+     }
+ 
+     public static Long getCurrentUserId() {
+-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
++        Object principal = currentPrincipal();
++        if (principal instanceof OaOidcUserPrincipal user) {
++            return user.getOaUserId();
++        }
+         if (principal instanceof SaltedUser) {
+             SaltedUser user = (SaltedUser) principal;
+             return user.getUserId();
+         }
+         
+         return null;
+     }
+     public static Long getCurrentTenantId() {
+-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
++        Object principal = currentPrincipal();
++        if (principal instanceof OaOidcUserPrincipal user) {
++            return user.getTenantId();
++        }
+         if (principal instanceof SaltedUser) {
+             SaltedUser user = (SaltedUser) principal;
+             return user.getTenantId();
+         }
+         
+         return null;
+     }
+ 
+     public static String getCurrentRoleId() {
+-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
++        Object principal = currentPrincipal();
+         if (principal instanceof SaltedUser) {
+             SaltedUser user = (SaltedUser) principal;
+             return user.getUsername();
+         }
+         
+         return null;
+     }
+ 
++    private static Object currentPrincipal() {
++        var authentication = SecurityContextHolder.getContext().getAuthentication();
++        return authentication == null ? null : authentication.getPrincipal();
++    }
++
+ }
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/entity/TenantIdEntityListener.java b/src/main/java/io/github/benxincaomu/oa/base/entity/TenantIdEntityListener.java
+index 518f4f4..c6077f2 100644
+--- a/src/main/java/io/github/benxincaomu/oa/base/entity/TenantIdEntityListener.java
++++ b/src/main/java/io/github/benxincaomu/oa/base/entity/TenantIdEntityListener.java
+@@ -2,47 +2,54 @@ package io.github.benxincaomu.oa.base.entity;
+ 
+ import java.lang.reflect.Field;
+ import java.lang.reflect.InvocationTargetException;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ import org.springframework.security.core.context.SecurityContextHolder;
+ 
++import io.github.benxincaomu.oa.base.security.OaOidcUserPrincipal;
+ import io.github.benxincaomu.oa.base.security.SaltedUser;
+ import jakarta.persistence.PrePersist;
+ import jakarta.persistence.PreUpdate;
+ 
+ public class TenantIdEntityListener {
+ 
+     private final Logger logger = LoggerFactory.getLogger(TenantIdEntityListener.class);
+ 
+     @PreUpdate
+     @PrePersist
+     public void touchForCreate(Object target) {
+         // 获取所有字段（包括父类）
+         List<Field> allFields = getAllFields(target.getClass());
+         for (Field field : allFields) {
+             if (field.isAnnotationPresent(TenantId.class)) {
+ 
+-                Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+-                if (principal instanceof SaltedUser) {
+-                    SaltedUser user = (SaltedUser) principal;
++                var authentication = SecurityContextHolder.getContext().getAuthentication();
++                Object principal = authentication == null ? null : authentication.getPrincipal();
++                Long tenantId = null;
++                if (principal instanceof OaOidcUserPrincipal user) {
++                    tenantId = user.getTenantId();
++                } else if (principal instanceof SaltedUser user) {
++                    tenantId = user.getTenantId();
++                }
++                if (tenantId != null) {
+                     try {
+                         field.setAccessible(true);
+                         String fieldName = field.getName();
+                         String getterName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
+                         Object value = target.getClass().getMethod(getterName).invoke(target);
+                         if(value == null){
+                             String setterName = "set" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
+-                            target.getClass().getMethod(setterName, field.getType()).invoke(target, user.getTenantId());
++                            target.getClass().getMethod(setterName, field.getType()).invoke(target, tenantId);
+                         }
+                     } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException
+                             | SecurityException e) {
+                         logger.error("设置tenantId失败", e);
+                     }
+                 }
+             }
+         }
+     }
+    
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/init/InitController.java b/src/main/java/io/github/benxincaomu/oa/base/init/InitController.java
+index e93300e..2fd2221 100644
+--- a/src/main/java/io/github/benxincaomu/oa/base/init/InitController.java
++++ b/src/main/java/io/github/benxincaomu/oa/base/init/InitController.java
+@@ -1,48 +1,71 @@
+ package io.github.benxincaomu.oa.base.init;
+ 
+ import org.springframework.web.bind.annotation.GetMapping;
+ import org.springframework.web.bind.annotation.PostMapping;
+ import org.springframework.web.bind.annotation.RequestBody;
+ import org.springframework.web.bind.annotation.RequestMapping;
+ import org.springframework.web.bind.annotation.RestController;
+ 
+ import io.github.benxincaomu.oa.base.init.vo.InitVo;
++import io.github.benxincaomu.oa.base.security.KeycloakAdminClient;
++import io.github.benxincaomu.oa.base.security.KeycloakBootstrapIdentity;
++import io.github.benxincaomu.oa.base.security.KeycloakConnectionService;
++import io.github.benxincaomu.oa.base.security.KeycloakConnectionStatusVo;
+ import io.github.benxincaomu.oa.bussiness.organization.Department;
+ import io.github.benxincaomu.oa.bussiness.user.Role;
+ import io.github.benxincaomu.oa.bussiness.user.User;
+ import jakarta.annotation.Resource;
+ import jakarta.validation.Valid;
+ 
+ /**
+  * 初始化相关
+  */
+ @RestController
+ @RequestMapping("initProject")
+ public class InitController {
+ 
+     @Resource
+     private InitService initService;
+ 
++    @Resource
++    private KeycloakConnectionService keycloakConnectionService;
++
++    @Resource
++    private KeycloakAdminClient keycloakAdminClient;
++
+     @PostMapping()
+     public void init(@RequestBody @Valid InitVo initVo) {
++        if (initService.isInitialized()) {
++            throw new IllegalStateException("项目已初始化，不能重复初始化");
++        }
++
++        keycloakConnectionService.configure(initVo.getKeycloak());
++
+         Department department = new Department();
+         department.setName(initVo.getDepartment().getName());
+         department.setCode(initVo.getDepartment().getCode());
+         User user = new User();
+         user.setUserName(initVo.getUser().getUserName());
+         user.setName(initVo.getUser().getName());
+         user.setEmail(initVo.getUser().getEmail());
+         user.setMobile(initVo.getUser().getMobile());
+-        user.setPassword(initVo.getUser().getPassword());
+         Role role = new Role();
+         role.setName(initVo.getRole().getName());
+-        initService.init(department, user, role);
++
++        KeycloakBootstrapIdentity keycloakIdentity = keycloakAdminClient.bootstrapAdministrator(initVo.getUser(),
++                department.getName(), role.getName());
++        initService.init(department, user, role, keycloakIdentity);
+     }
+ 
+     
+     @GetMapping("isInitialized")
+     public boolean isInitialized() {
+         return initService.isInitialized();
+     }
+ 
++    @GetMapping("keycloakStatus")
++    public KeycloakConnectionStatusVo keycloakStatus() {
++        return keycloakConnectionService.getStatus();
++    }
++
+ }
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/init/InitService.java b/src/main/java/io/github/benxincaomu/oa/base/init/InitService.java
+index 1cfab52..a3208d8 100644
+--- a/src/main/java/io/github/benxincaomu/oa/base/init/InitService.java
++++ b/src/main/java/io/github/benxincaomu/oa/base/init/InitService.java
+@@ -1,37 +1,39 @@
+ package io.github.benxincaomu.oa.base.init;
+ 
+ import java.time.Duration;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+ import org.springframework.data.redis.core.RedisTemplate;
+ import org.springframework.stereotype.Service;
+ 
+ import io.github.benxincaomu.oa.base.entity.JpaAuditorAware;
++import io.github.benxincaomu.oa.base.security.KeycloakBootstrapIdentity;
++import io.github.benxincaomu.oa.base.security.KeycloakObjectLink;
++import io.github.benxincaomu.oa.base.security.KeycloakObjectLinkRepository;
+ import io.github.benxincaomu.oa.bussiness.organization.Department;
+ import io.github.benxincaomu.oa.bussiness.organization.DepartmentRepository;
+ import io.github.benxincaomu.oa.bussiness.organization.DepartmentUser;
+ import io.github.benxincaomu.oa.bussiness.organization.DepartmentUserRepository;
+ import io.github.benxincaomu.oa.bussiness.tenant.Tenant;
+ import io.github.benxincaomu.oa.bussiness.tenant.TenantRepository;
+ import io.github.benxincaomu.oa.bussiness.user.Permission;
+ import io.github.benxincaomu.oa.bussiness.user.PermissionRepository;
+ import io.github.benxincaomu.oa.bussiness.user.Role;
+ import io.github.benxincaomu.oa.bussiness.user.RolePermission;
+ import io.github.benxincaomu.oa.bussiness.user.RolePermissionRepository;
+ import io.github.benxincaomu.oa.bussiness.user.RoleRepository;
+ import io.github.benxincaomu.oa.bussiness.user.User;
+ import io.github.benxincaomu.oa.bussiness.user.UserRepository;
+ import io.github.benxincaomu.oa.bussiness.user.UserRole;
+ import io.github.benxincaomu.oa.bussiness.user.UserRoleRepository;
+-import io.github.benxincaomu.oa.bussiness.user.UserService;
+ import jakarta.annotation.Resource;
+ import jakarta.transaction.Transactional;
+ 
+ @Service
+ public class InitService {
+ 
+     @Resource
+     private DepartmentRepository departmentRepository;
+ 
+     @Resource
+@@ -50,21 +52,21 @@ public class InitService {
+     private RoleRepository roleRepository;
+     @Resource
+     private UserRoleRepository userRoleRepository;
+ 
+     @Resource
+     private RolePermissionRepository rolePermissionRepository;
+     @Resource
+     private DepartmentUserRepository departmentUserRepository;
+ 
+     @Resource
+-    private UserService userService;
++    private KeycloakObjectLinkRepository keycloakObjectLinkRepository;
+ 
+     private final String isInitializedKey = "projectIsInitialized";
+ 
+ 
+     /**
+      * 判断项目是否已经初始化
+      * 
+      * @return
+      */
+     public boolean isInitialized() {
+@@ -75,54 +77,58 @@ public class InitService {
+                 initialized = false;
+             } else {
+                 redisTemplate.opsForValue().set(isInitializedKey, true);
+                 initialized = true;
+             }
+         }
+         return initialized;
+     }
+ 
+     @Transactional
+-    public void init(Department department, User user, Role role) {
++    public void init(Department department, User user, Role role, KeycloakBootstrapIdentity keycloakIdentity) {
+         if (!isInitialized()) {
+             String initializeingKey = "initializeing";
+             if (redisTemplate.opsForValue().setIfAbsent(initializeingKey, true, Duration.ofSeconds(30)) == true && !isInitialized()) {
+ 
+                 Tenant tenant = initTenant();
+                 // 权限
+                 List<Permission> permissions = initPermissions(tenant.getId());
+                 // 用户
+                 user.setTenantId(tenant.getId());
+-                initRootUser(user);
++                user = initRootUser(user);
+                 // 角色
+                 role.setTenantId(tenant.getId());
+-                initRootRole(role);
++                role = initRootRole(role);
+                 // 用户角色关联
+                 UserRole userRole = new UserRole();
+                 userRole.setUserId(user.getId());
+                 userRole.setRoleId(role.getId());
+                 userRole.setTenantId(tenant.getId());
+                 userRoleRepository.save(userRole);
+                 // 分配权限
+                 assignPermissionToRole(role, permissions);
+                 ;
+                 //
+                 department.setTenantId(tenant.getId());
+                 department.setLeaderUserId(user.getId());
+                 department = initRootDepartment(department);
+ 
+                 DepartmentUser departmentUser = new DepartmentUser();
+                 departmentUser.setUserId(user.getId());
+                 departmentUser.setDepartmentId(department.getId());
+                 departmentUser.setTenantId(tenant.getId());
+                 tenant.setTenantId(tenant.getId());
+                 departmentUserRepository.save(departmentUser);
++
++                saveKeycloakLink(KeycloakObjectLink.USER, keycloakIdentity.userId(), user.getId());
++                saveKeycloakLink(KeycloakObjectLink.DEPARTMENT, keycloakIdentity.groupId(), department.getId());
++                saveKeycloakLink(KeycloakObjectLink.ROLE, keycloakIdentity.roleId(), role.getId());
+                 redisTemplate.delete(initializeingKey);
+                 redisTemplate.opsForValue().set(isInitializedKey, true);
+             }
+ 
+         }
+     }
+ 
+     private Tenant initTenant() {
+         Tenant tenant = new Tenant();
+         tenant.setTenantName("default");
+@@ -283,22 +289,36 @@ public class InitService {
+ 
+         return roleRepository.save(role);
+     }
+ 
+     private Department initRootDepartment(Department department) {
+ 
+         return departmentRepository.save(department);
+     }
+ 
+     private User initRootUser(User user) {
++        user.setPassword(null);
++        user.setSalt(null);
++        user.setEnable(true);
++        user.setRawPassword(false);
++        return userRepository.save(user);
++    }
+ 
+-        return userService.insert(user);
++    private void saveKeycloakLink(String objectType, String externalId, Long localId) {
++        if (externalId == null || externalId.isBlank()) {
++            throw new IllegalStateException("Keycloak 初始化未返回有效的" + objectType + " ID");
++        }
++        KeycloakObjectLink link = new KeycloakObjectLink();
++        link.setObjectType(objectType);
++        link.setExternalId(externalId);
++        link.setLocalId(localId);
++        keycloakObjectLinkRepository.save(link);
+     }
+ 
+     private void assignPermissionToRole(Role role, List<Permission> permissions) {
+         for (Permission permission : permissions) {
+             RolePermission rolePermission = new RolePermission();
+             rolePermission.setRoleId(role.getId());
+             rolePermission.setPermissionId(permission.getId());
+             rolePermission.setTenantId(role.getTenantId());
+             rolePermissionRepository.save(rolePermission);
+         }
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/init/vo/InitVo.java b/src/main/java/io/github/benxincaomu/oa/base/init/vo/InitVo.java
+index bd40cf9..f48257e 100644
+--- a/src/main/java/io/github/benxincaomu/oa/base/init/vo/InitVo.java
++++ b/src/main/java/io/github/benxincaomu/oa/base/init/vo/InitVo.java
+@@ -1,12 +1,13 @@
+ package io.github.benxincaomu.oa.base.init.vo;
+ 
++import jakarta.validation.Valid;
+ import jakarta.validation.constraints.NotNull;
+ 
+ public class InitVo {
+     
+     /**
+      * 管理员用户
+      */
+     @NotNull(message = "管理员用户信息不能为空")
+     private UserInitVo user;
+ 
+@@ -15,20 +16,24 @@ public class InitVo {
+      */
+     @NotNull(message = "管理员角色信息不能为空")
+     private RoleInitVo role;
+ 
+     /**
+      * 顶级部门名称
+      */
+     @NotNull(message = "顶级部门名称不能为空")
+     private DepartmentInitVo department;
+ 
++    @Valid
++    @NotNull(message = "Keycloak OAuth2/IAM 配置不能为空")
++    private KeycloakConfigVo keycloak;
++
+     public UserInitVo getUser() {
+         return user;
+     }
+ 
+     public void setUser(UserInitVo user) {
+         this.user = user;
+     }
+ 
+     public RoleInitVo getRole() {
+         return role;
+@@ -39,13 +44,21 @@ public class InitVo {
+     }
+ 
+     public DepartmentInitVo getDepartment() {
+         return department;
+     }
+ 
+     public void setDepartment(DepartmentInitVo department) {
+         this.department = department;
+     }
+ 
++    public KeycloakConfigVo getKeycloak() {
++        return keycloak;
++    }
++
++    public void setKeycloak(KeycloakConfigVo keycloak) {
++        this.keycloak = keycloak;
++    }
++
+ 
+     
+ }
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/init/vo/KeycloakConfigVo.java b/src/main/java/io/github/benxincaomu/oa/base/init/vo/KeycloakConfigVo.java
+new file mode 100644
+index 0000000..829149a
+--- /dev/null
++++ b/src/main/java/io/github/benxincaomu/oa/base/init/vo/KeycloakConfigVo.java
+@@ -0,0 +1,104 @@
++package io.github.benxincaomu.oa.base.init.vo;
++
++import jakarta.validation.constraints.NotBlank;
++
++public class KeycloakConfigVo {
++    @NotBlank(message = "Keycloak issuer URI 不能为空")
++    private String issuerUri;
++
++    @NotBlank(message = "Realm 不能为空")
++    private String realm;
++
++    @NotBlank(message = "OAuth2 客户端 ID 不能为空")
++    private String clientId;
++
++    @NotBlank(message = "OAuth2 客户端密钥不能为空")
++    private String clientSecret;
++
++    @NotBlank(message = "Keycloak 管理客户端 ID 不能为空")
++    private String serviceAccountClientId;
++
++    @NotBlank(message = "Keycloak 管理客户端密钥不能为空")
++    private String serviceAccountClientSecret;
++
++    @NotBlank(message = "OAuth2 回调地址不能为空")
++    private String redirectUri;
++
++    @NotBlank(message = "退出登录回调地址不能为空")
++    private String postLogoutRedirectUri;
++
++    @NotBlank
++    private String setupToken;
++
++    public String getIssuerUri() {
++        return issuerUri;
++    }
++
++    public void setIssuerUri(String issuerUri) {
++        this.issuerUri = issuerUri;
++    }
++
++    public String getRealm() {
++        return realm;
++    }
++
++    public void setRealm(String realm) {
++        this.realm = realm;
++    }
++
++    public String getClientId() {
++        return clientId;
++    }
++
++    public void setClientId(String clientId) {
++        this.clientId = clientId;
++    }
++
++    public String getClientSecret() {
++        return clientSecret;
++    }
++
++    public void setClientSecret(String clientSecret) {
++        this.clientSecret = clientSecret;
++    }
++
++    public String getServiceAccountClientId() {
++        return serviceAccountClientId;
++    }
++
++    public void setServiceAccountClientId(String serviceAccountClientId) {
++        this.serviceAccountClientId = serviceAccountClientId;
++    }
++
++    public String getServiceAccountClientSecret() {
++        return serviceAccountClientSecret;
++    }
++
++    public void setServiceAccountClientSecret(String serviceAccountClientSecret) {
++        this.serviceAccountClientSecret = serviceAccountClientSecret;
++    }
++
++    public String getRedirectUri() {
++        return redirectUri;
++    }
++
++    public void setRedirectUri(String redirectUri) {
++        this.redirectUri = redirectUri;
++    }
++
++    public String getPostLogoutRedirectUri() {
++        return postLogoutRedirectUri;
++    }
++
++    public void setPostLogoutRedirectUri(String postLogoutRedirectUri) {
++        this.postLogoutRedirectUri = postLogoutRedirectUri;
++    }
++
++    public String getSetupToken() {
++        return setupToken;
++    }
++
++    public void setSetupToken(String setupToken) {
++        this.setupToken = setupToken;
++    }
++}
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakAdminClient.java b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakAdminClient.java
+new file mode 100644
+index 0000000..e4eb64b
+--- /dev/null
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakAdminClient.java
+@@ -0,0 +1,247 @@
++package io.github.benxincaomu.oa.base.security;
++
++import java.net.URI;
++import java.net.URLEncoder;
++import java.nio.charset.StandardCharsets;
++import java.time.Instant;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Map;
++import java.util.Optional;
++
++import org.springframework.http.HttpHeaders;
++import org.springframework.http.MediaType;
++import org.springframework.stereotype.Service;
++import org.springframework.util.LinkedMultiValueMap;
++import org.springframework.util.MultiValueMap;
++import org.springframework.web.client.RestClient;
++import org.springframework.web.client.RestClientException;
++import org.springframework.web.client.RestClientResponseException;
++import org.springframework.web.util.UriComponentsBuilder;
++
++import com.fasterxml.jackson.databind.JsonNode;
++
++import io.github.benxincaomu.oa.base.init.vo.UserInitVo;
++
++@Service
++public class KeycloakAdminClient {
++    private final KeycloakConnectionService connectionService;
++    private final RestClient restClient;
++    private volatile CachedToken cachedToken;
++
++    public KeycloakAdminClient(KeycloakConnectionService connectionService, RestClient.Builder restClientBuilder) {
++        this.connectionService = connectionService;
++        this.restClient = restClientBuilder.build();
++    }
++
++    public KeycloakBootstrapIdentity bootstrapAdministrator(UserInitVo user, String rootGroupName,
++            String administratorRoleName) {
++        KeycloakIntegrationConfig config = connectionService.getConfiguration()
++                .orElseThrow(() -> new IllegalStateException("Keycloak 尚未配置"));
++        String adminBase = adminRealmBase(config);
++
++        String userId = findUser(config, user.getUserName())
++                .orElseGet(() -> createUser(config, user));
++        String groupId = findGroup(config, rootGroupName)
++                .orElseGet(() -> createGroup(config, rootGroupName));
++        JsonNode role = findRole(config, administratorRoleName)
++                .orElseGet(() -> createRole(config, administratorRoleName));
++
++        authorizedPut(config, adminBase + "/users/{userId}/groups/{groupId}", userId, groupId)
++                .retrieve()
++                .toBodilessEntity();
++
++        authorizedPost(config, adminBase + "/users/{userId}/role-mappings/realm", userId)
++                .contentType(MediaType.APPLICATION_JSON)
++                .body(List.of(role))
++                .retrieve()
++                .toBodilessEntity();
++
++        return new KeycloakBootstrapIdentity(userId, groupId, role.path("id").asText());
++    }
++
++    private Optional<String> findUser(KeycloakIntegrationConfig config, String username) {
++        String uri = UriComponentsBuilder.fromUriString(adminRealmBase(config) + "/users")
++                .queryParam("username", username)
++                .queryParam("exact", true)
++                .build()
++                .encode()
++                .toUriString();
++        JsonNode users = authorizedGet(config, uri).retrieve().body(JsonNode.class);
++        if (users != null && users.isArray()) {
++            for (JsonNode user : users) {
++                if (username.equals(user.path("username").asText())) {
++                    return Optional.of(user.path("id").asText());
++                }
++            }
++        }
++        return Optional.empty();
++    }
++
++    private String createUser(KeycloakIntegrationConfig config, UserInitVo user) {
++        Map<String, Object> payload = Map.of(
++                "username", user.getUserName(),
++                "enabled", true,
++                "email", user.getEmail(),
++                "emailVerified", false,
++                "firstName", user.getName(),
++                "credentials", List.of(Map.of(
++                        "type", "password",
++                        "value", user.getPassword(),
++                        "temporary", true)));
++        var response = authorizedPost(config, adminRealmBase(config) + "/users")
++                .contentType(MediaType.APPLICATION_JSON)
++                .body(payload)
++                .retrieve()
++                .toBodilessEntity();
++        String id = locationId(response.getHeaders());
++        if (id == null) {
++            return findUser(config, user.getUserName())
++                    .orElseThrow(() -> new IllegalStateException("Keycloak 已创建管理员但未返回用户 ID"));
++        }
++        return id;
++    }
++
++    private Optional<String> findGroup(KeycloakIntegrationConfig config, String name) {
++        String uri = UriComponentsBuilder.fromUriString(adminRealmBase(config) + "/groups")
++                .queryParam("search", name)
++                .build()
++                .encode()
++                .toUriString();
++        JsonNode groups = authorizedGet(config, uri).retrieve().body(JsonNode.class);
++        if (groups != null && groups.isArray()) {
++            for (JsonNode group : groups) {
++                if (name.equals(group.path("name").asText())) {
++                    return Optional.of(group.path("id").asText());
++                }
++            }
++        }
++        return Optional.empty();
++    }
++
++    private String createGroup(KeycloakIntegrationConfig config, String name) {
++        var response = authorizedPost(config, adminRealmBase(config) + "/groups")
++                .contentType(MediaType.APPLICATION_JSON)
++                .body(Map.of("name", name))
++                .retrieve()
++                .toBodilessEntity();
++        String id = locationId(response.getHeaders());
++        if (id == null) {
++            return findGroup(config, name)
++                    .orElseThrow(() -> new IllegalStateException("Keycloak 已创建组织但未返回组织 ID"));
++        }
++        return id;
++    }
++
++    private Optional<JsonNode> findRole(KeycloakIntegrationConfig config, String name) {
++        try {
++            return Optional.ofNullable(authorizedGet(config,
++                    adminRealmBase(config) + "/roles/{roleName}", name)
++                    .retrieve()
++                    .body(JsonNode.class));
++        } catch (RestClientResponseException exception) {
++            if (exception.getStatusCode().value() == 404) {
++                return Optional.empty();
++            }
++            throw new IllegalStateException("无法读取 Keycloak 管理角色", exception);
++        }
++    }
++
++    private JsonNode createRole(KeycloakIntegrationConfig config, String name) {
++        authorizedPost(config, adminRealmBase(config) + "/roles")
++                .contentType(MediaType.APPLICATION_JSON)
++                .body(Map.of("name", name, "description", "OA initial administrator role"))
++                .retrieve()
++                .toBodilessEntity();
++        return findRole(config, name)
++                .orElseThrow(() -> new IllegalStateException("Keycloak 已创建管理员角色但无法读取"));
++    }
++
++    private RestClient.RequestHeadersSpec<?> authorizedGet(KeycloakIntegrationConfig config, String uri,
++            Object... uriVariables) {
++        return restClient.get().uri(uri, uriVariables)
++                .headers(headers -> headers.setBearerAuth(accessToken(config)));
++    }
++
++    private RestClient.RequestBodySpec authorizedPost(KeycloakIntegrationConfig config, String uri,
++            Object... uriVariables) {
++        return restClient.post().uri(uri, uriVariables)
++                .headers(headers -> headers.setBearerAuth(accessToken(config)));
++    }
++
++    private RestClient.RequestBodySpec authorizedPut(KeycloakIntegrationConfig config, String uri,
++            Object... uriVariables) {
++        return restClient.put().uri(uri, uriVariables)
++                .headers(headers -> headers.setBearerAuth(accessToken(config)));
++    }
++
++    private String accessToken(KeycloakIntegrationConfig config) {
++        CachedToken current = cachedToken;
++        String configurationKey = tokenCacheKey(config);
++        if (current != null && current.configurationKey().equals(configurationKey)
++                && current.expiresAt().isAfter(Instant.now().plusSeconds(15))) {
++            return current.value();
++        }
++        synchronized (this) {
++            current = cachedToken;
++            if (current != null && current.configurationKey().equals(configurationKey)
++                    && current.expiresAt().isAfter(Instant.now().plusSeconds(15))) {
++                return current.value();
++            }
++            String tokenEndpoint = connectionService.getTokenEndpoint(config);
++            MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
++            form.add("grant_type", "client_credentials");
++            form.add("client_id", config.getServiceAccountClientId());
++            form.add("client_secret", connectionService.decryptServiceAccountClientSecret(config));
++            JsonNode response;
++            try {
++                response = restClient.post()
++                        .uri(tokenEndpoint)
++                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
++                        .body(form)
++                        .retrieve()
++                        .body(JsonNode.class);
++            } catch (RestClientException exception) {
++                throw new IllegalStateException("无法取得 Keycloak 管理客户端访问令牌", exception);
++            }
++            String value = response == null ? "" : response.path("access_token").asText();
++            long lifetime = response == null ? 0 : response.path("expires_in").asLong();
++            if (value.isBlank() || lifetime <= 0) {
++                throw new IllegalStateException("Keycloak 管理客户端返回的访问令牌无效");
++            }
++            cachedToken = new CachedToken(value, Instant.now().plusSeconds(lifetime), configurationKey);
++            return value;
++        }
++    }
++
++    private String adminRealmBase(KeycloakIntegrationConfig config) {
++        URI issuer = URI.create(config.getIssuerUri());
++        String realmSuffix = "/realms/" + config.getRealm();
++        String path = issuer.getPath();
++        String serverPath = path.substring(0, path.length() - realmSuffix.length());
++        return issuer.getScheme() + "://" + issuer.getRawAuthority() + serverPath + "/admin/realms/"
++                + URLEncoder.encode(config.getRealm(), StandardCharsets.UTF_8);
++    }
++
++    private String locationId(HttpHeaders headers) {
++        URI location = headers.getLocation();
++        if (location == null || location.getPath() == null) {
++            return null;
++        }
++        String path = location.getPath();
++        int lastSlash = path.lastIndexOf('/');
++        return lastSlash < 0 ? null : path.substring(lastSlash + 1);
++    }
++
++    private String encodePath(String value) {
++        return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
++    }
++
++    private String tokenCacheKey(KeycloakIntegrationConfig config) {
++        return config.getIssuerUri() + "|" + config.getServiceAccountClientId() + "|"
++                + config.getEncryptedServiceAccountClientSecret();
++    }
++
++    private record CachedToken(String value, Instant expiresAt, String configurationKey) {
++    }
++}
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakAuthoritiesMapper.java b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakAuthoritiesMapper.java
+new file mode 100644
+index 0000000..49271f4
+--- /dev/null
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakAuthoritiesMapper.java
+@@ -0,0 +1,89 @@
++package io.github.benxincaomu.oa.base.security;
++
++import java.util.Collection;
++import java.util.LinkedHashSet;
++import java.util.Map;
++import java.util.Set;
++
++import org.springframework.security.core.GrantedAuthority;
++import org.springframework.security.core.authority.SimpleGrantedAuthority;
++import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
++import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
++import org.springframework.stereotype.Component;
++
++import com.fasterxml.jackson.core.type.TypeReference;
++import com.fasterxml.jackson.databind.ObjectMapper;
++
++@Component
++public class KeycloakAuthoritiesMapper implements GrantedAuthoritiesMapper {
++    private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
++
++    private final KeycloakConnectionService connectionService;
++    private final ObjectMapper objectMapper;
++
++    public KeycloakAuthoritiesMapper(KeycloakConnectionService connectionService, ObjectMapper objectMapper) {
++        this.connectionService = connectionService;
++        this.objectMapper = objectMapper;
++    }
++
++    @Override
++    public Collection<? extends GrantedAuthority> mapAuthorities(Collection<? extends GrantedAuthority> authorities) {
++        Set<GrantedAuthority> mapped = new LinkedHashSet<>(authorities);
++        String clientId = connectionService.getConfiguration().map(KeycloakIntegrationConfig::getClientId).orElse(null);
++        for (GrantedAuthority authority : authorities) {
++            if (authority instanceof OidcUserAuthority oidcAuthority) {
++                Map<String, Object> claims = oidcAuthority.getAttributes();
++                addRoles(mapped, claims.get("realm_access"));
++                addClientRoles(mapped, claims.get("resource_access"), clientId);
++                addGroups(mapped, claims.get("groups"));
++                if (oidcAuthority.getUserInfo() != null) {
++                    var userInfo = oidcAuthority.getUserInfo();
++                    addRoles(mapped, userInfo.getClaims().get("realm_access"));
++                    addClientRoles(mapped, userInfo.getClaims().get("resource_access"), clientId);
++                    addGroups(mapped, userInfo.getClaims().get("groups"));
++                }
++            }
++        }
++        return mapped;
++    }
++
++    private void addRoles(Set<GrantedAuthority> authorities, Object accessValue) {
++        Map<String, Object> access = asMap(accessValue);
++        addNames(authorities, access.get("roles"), "ROLE_");
++    }
++
++    private void addClientRoles(Set<GrantedAuthority> authorities, Object accessValue, String clientId) {
++        if (clientId == null) {
++            return;
++        }
++        Map<String, Object> resourceAccess = asMap(accessValue);
++        addRoles(authorities, resourceAccess.get(clientId));
++    }
++
++    private void addGroups(Set<GrantedAuthority> authorities, Object groupsValue) {
++        if (groupsValue instanceof Iterable<?> groups) {
++            for (Object group : groups) {
++                if (group instanceof String name && !name.isBlank()) {
++                    authorities.add(new SimpleGrantedAuthority("GROUP_" + name.replace('/', '_')));
++                }
++            }
++        }
++    }
++
++    private void addNames(Set<GrantedAuthority> authorities, Object namesValue, String prefix) {
++        if (namesValue instanceof Iterable<?> names) {
++            for (Object name : names) {
++                if (name instanceof String value && !value.isBlank()) {
++                    authorities.add(new SimpleGrantedAuthority(prefix + value));
++                }
++            }
++        }
++    }
++
++    private Map<String, Object> asMap(Object value) {
++        if (value instanceof Map<?, ?> map) {
++            return objectMapper.convertValue(map, MAP_TYPE);
++        }
++        return Map.of();
++    }
++}
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakBootstrapIdentity.java b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakBootstrapIdentity.java
+new file mode 100644
+index 0000000..2678b7f
+--- /dev/null
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakBootstrapIdentity.java
+@@ -0,0 +1,4 @@
++package io.github.benxincaomu.oa.base.security;
++
++public record KeycloakBootstrapIdentity(String userId, String groupId, String roleId) {
++}
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakClientRegistrationRepository.java b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakClientRegistrationRepository.java
+new file mode 100644
+index 0000000..23688a7
+--- /dev/null
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakClientRegistrationRepository.java
+@@ -0,0 +1,58 @@
++package io.github.benxincaomu.oa.base.security;
++
++import org.springframework.security.oauth2.client.registration.ClientRegistration;
++import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
++import org.springframework.security.oauth2.client.registration.ClientRegistrations;
++import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
++import org.springframework.security.oauth2.core.AuthorizationGrantType;
++import org.springframework.stereotype.Component;
++
++@Component
++public class KeycloakClientRegistrationRepository implements ClientRegistrationRepository {
++    public static final String REGISTRATION_ID = "keycloak";
++
++    private final KeycloakConnectionService connectionService;
++    private volatile String cacheKey;
++    private volatile ClientRegistration cachedRegistration;
++
++    public KeycloakClientRegistrationRepository(KeycloakConnectionService connectionService) {
++        this.connectionService = connectionService;
++    }
++
++    @Override
++    public ClientRegistration findByRegistrationId(String registrationId) {
++        if (!REGISTRATION_ID.equals(registrationId)) {
++            return null;
++        }
++
++        KeycloakIntegrationConfig config = connectionService.getConfiguration().orElse(null);
++        if (config == null) {
++            return null;
++        }
++
++        String currentCacheKey = config.getIssuerUri() + "|" + config.getClientId() + "|"
++                + config.getEncryptedClientSecret() + "|" + config.getRedirectUri();
++        ClientRegistration registration = cachedRegistration;
++        if (registration != null && currentCacheKey.equals(cacheKey)) {
++            return registration;
++        }
++
++        synchronized (this) {
++            if (cachedRegistration != null && currentCacheKey.equals(cacheKey)) {
++                return cachedRegistration;
++            }
++            ClientRegistration.Builder builder = ClientRegistrations.fromIssuerLocation(config.getIssuerUri())
++                    .registrationId(REGISTRATION_ID)
++                    .clientId(config.getClientId())
++                    .clientSecret(connectionService.decryptClientSecret(config))
++                    .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
++                    .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
++                    .redirectUri(config.getRedirectUri())
++                    .scope("openid", "profile", "email")
++                    .clientName("OA");
++            cachedRegistration = builder.build();
++            cacheKey = currentCacheKey;
++            return cachedRegistration;
++        }
++    }
++}
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakConnectionService.java b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakConnectionService.java
+new file mode 100644
+index 0000000..8fdde27
+--- /dev/null
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakConnectionService.java
+@@ -0,0 +1,292 @@
++package io.github.benxincaomu.oa.base.security;
++
++import java.io.IOException;
++import java.net.URI;
++import java.net.URLEncoder;
++import java.nio.charset.StandardCharsets;
++import java.security.MessageDigest;
++import java.util.Base64;
++import java.util.Optional;
++
++import org.springframework.beans.factory.annotation.Value;
++import org.springframework.http.MediaType;
++import org.springframework.stereotype.Service;
++import org.springframework.util.LinkedMultiValueMap;
++import org.springframework.util.MultiValueMap;
++import org.springframework.web.client.RestClient;
++import org.springframework.web.client.RestClientException;
++
++import com.fasterxml.jackson.databind.JsonNode;
++import com.fasterxml.jackson.databind.ObjectMapper;
++
++import io.github.benxincaomu.oa.base.init.vo.KeycloakConfigVo;
++
++@Service
++public class KeycloakConnectionService {
++    private final KeycloakIntegrationConfigRepository configRepository;
++    private final KeycloakSecretCipher secretCipher;
++    private final RestClient restClient;
++    private final ObjectMapper objectMapper;
++    private final String setupToken;
++
++    public KeycloakConnectionService(KeycloakIntegrationConfigRepository configRepository,
++            KeycloakSecretCipher secretCipher, RestClient.Builder restClientBuilder, ObjectMapper objectMapper,
++            @Value("${KEYCLOAK_SETUP_TOKEN:}") String setupToken) {
++        this.configRepository = configRepository;
++        this.secretCipher = secretCipher;
++        this.restClient = restClientBuilder.build();
++        this.objectMapper = objectMapper;
++        this.setupToken = setupToken;
++    }
++
++    public KeycloakConnectionStatusVo configure(KeycloakConfigVo input) {
++        validateSetupToken(input);
++        if (input == null || isBlank(input.getClientId()) || isBlank(input.getClientSecret())
++                || isBlank(input.getServiceAccountClientId()) || isBlank(input.getServiceAccountClientSecret())
++                || isBlank(input.getRedirectUri()) || isBlank(input.getPostLogoutRedirectUri())) {
++            throw new IllegalArgumentException("Keycloak OAuth2、管理客户端和回调信息必须填写");
++        }
++
++        String encryptedClientSecret = secretCipher.encrypt(input.getClientSecret());
++        String encryptedServiceAccountSecret = secretCipher.encrypt(input.getServiceAccountClientSecret());
++        URI issuer = validateIssuer(input.getIssuerUri(), input.getRealm());
++        URI discoveryUri = URI.create(trimTrailingSlash(issuer.toString()) + "/.well-known/openid-configuration");
++
++        JsonNode metadata;
++        try {
++            metadata = restClient.get().uri(discoveryUri).retrieve().body(JsonNode.class);
++        } catch (RestClientException exception) {
++            throw new IllegalArgumentException("无法读取 Keycloak OIDC Discovery 配置", exception);
++        }
++        if (metadata == null || !sameIssuer(issuer.toString(), metadata.path("issuer").asText())) {
++            throw new IllegalArgumentException("Keycloak Discovery 返回的 issuer 与配置不匹配");
++        }
++
++        String tokenEndpoint = requiredMetadata(metadata, "token_endpoint");
++        String authorizationEndpoint = requiredMetadata(metadata, "authorization_endpoint");
++        requireSameOrigin(issuer, tokenEndpoint, "token_endpoint");
++        requireSameOrigin(issuer, authorizationEndpoint, "authorization_endpoint");
++        validateCallbackUri(input.getRedirectUri(), "OAuth2 回调地址");
++        validateCallbackUri(input.getPostLogoutRedirectUri(), "退出登录回调地址");
++        validateClientCredentials(tokenEndpoint, input);
++
++        KeycloakIntegrationConfig config = configRepository.findById(KeycloakIntegrationConfig.CONFIG_ID)
++                .orElseGet(KeycloakIntegrationConfig::new);
++        config.setId(KeycloakIntegrationConfig.CONFIG_ID);
++        config.setIssuerUri(trimTrailingSlash(issuer.toString()));
++        config.setRealm(input.getRealm().trim());
++        config.setClientId(input.getClientId().trim());
++        config.setEncryptedClientSecret(encryptedClientSecret);
++        config.setServiceAccountClientId(input.getServiceAccountClientId().trim());
++        config.setEncryptedServiceAccountClientSecret(encryptedServiceAccountSecret);
++        config.setRedirectUri(input.getRedirectUri().trim());
++        config.setPostLogoutRedirectUri(input.getPostLogoutRedirectUri().trim());
++        configRepository.save(config);
++        return toStatus(Optional.of(config));
++    }
++
++    public KeycloakConnectionStatusVo getStatus() {
++        return toStatus(configRepository.findById(KeycloakIntegrationConfig.CONFIG_ID));
++    }
++
++    public Optional<KeycloakIntegrationConfig> getConfiguration() {
++        return configRepository.findById(KeycloakIntegrationConfig.CONFIG_ID);
++    }
++
++    public String decryptClientSecret(KeycloakIntegrationConfig config) {
++        return secretCipher.decrypt(config.getEncryptedClientSecret());
++    }
++
++    public String decryptServiceAccountClientSecret(KeycloakIntegrationConfig config) {
++        return secretCipher.decrypt(config.getEncryptedServiceAccountClientSecret());
++    }
++
++    public String getTokenEndpoint(KeycloakIntegrationConfig config) {
++        URI issuer = URI.create(config.getIssuerUri());
++        URI discoveryUri = URI.create(trimTrailingSlash(config.getIssuerUri()) + "/.well-known/openid-configuration");
++        JsonNode metadata;
++        try {
++            metadata = restClient.get().uri(discoveryUri).retrieve().body(JsonNode.class);
++        } catch (RestClientException exception) {
++            throw new IllegalStateException("无法读取 Keycloak OIDC Discovery 配置", exception);
++        }
++        String tokenEndpoint = requiredMetadata(metadata, "token_endpoint");
++        requireSameOrigin(issuer, tokenEndpoint, "token_endpoint");
++        return tokenEndpoint;
++    }
++
++    private void validateClientCredentials(String tokenEndpoint, KeycloakConfigVo input) {
++        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
++        form.add("grant_type", "client_credentials");
++        form.add("client_id", input.getServiceAccountClientId().trim());
++        form.add("client_secret", input.getServiceAccountClientSecret());
++
++        JsonNode token;
++        try {
++            token = restClient.post()
++                    .uri(tokenEndpoint)
++                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
++                    .body(form)
++                    .retrieve()
++                    .body(JsonNode.class);
++        } catch (RestClientException exception) {
++            throw new IllegalArgumentException("Keycloak 管理客户端凭证无效或无法连接", exception);
++        }
++        String accessToken = token == null ? "" : token.path("access_token").asText();
++        if (accessToken.isBlank()) {
++            throw new IllegalArgumentException("Keycloak 管理客户端没有获得 access token");
++        }
++        validateAdminRoles(accessToken);
++
++        URI adminRealmUri = adminRealmUri(input.getIssuerUri(), input.getRealm());
++        try {
++            restClient.get()
++                    .uri(adminRealmUri)
++                    .headers(headers -> headers.setBearerAuth(accessToken))
++                    .retrieve()
++                    .toBodilessEntity();
++        } catch (RestClientException exception) {
++            throw new IllegalArgumentException("Keycloak 管理客户端缺少访问 Realm 的权限", exception);
++        }
++    }
++
++    private void validateSetupToken(KeycloakConfigVo input) {
++        if (setupToken == null || setupToken.isBlank()) {
++            throw new IllegalStateException("KEYCLOAK_SETUP_TOKEN must be configured before Keycloak setup");
++        }
++        String submitted = input == null ? null : input.getSetupToken();
++        if (submitted == null || !MessageDigest.isEqual(setupToken.getBytes(StandardCharsets.UTF_8),
++                submitted.getBytes(StandardCharsets.UTF_8))) {
++            throw new IllegalArgumentException("Keycloak setup token is invalid");
++        }
++    }
++
++    private void validateAdminRoles(String accessToken) {
++        String[] segments = accessToken.split("\\.");
++        if (segments.length != 3) {
++            throw new IllegalArgumentException("Keycloak service-account token is not a JWT");
++        }
++        try {
++            JsonNode claims = objectMapper.readTree(Base64.getUrlDecoder().decode(segments[1]));
++            JsonNode roles = claims.path("resource_access").path("realm-management").path("roles");
++            boolean fullAdmin = false;
++            boolean manageUsers = false;
++            boolean manageClients = false;
++            boolean manageAuthorization = false;
++            if (roles.isArray()) {
++                for (JsonNode role : roles) {
++                    String name = role.asText();
++                    fullAdmin |= "realm-admin".equals(name);
++                    manageUsers |= "manage-users".equals(name);
++                    manageClients |= "manage-clients".equals(name);
++                    manageAuthorization |= "manage-authorization".equals(name);
++                }
++            }
++            if (!fullAdmin && !(manageUsers && manageClients && manageAuthorization)) {
++                throw new IllegalArgumentException(
++                        "Keycloak service account requires realm-admin or manage-users, manage-clients, and manage-authorization roles");
++            }
++        } catch (IllegalArgumentException exception) {
++            throw exception;
++        } catch (IOException exception) {
++            throw new IllegalArgumentException("Keycloak service-account token claims could not be read", exception);
++        }
++    }
++
++    private URI validateIssuer(String issuerValue, String realmValue) {
++        if (issuerValue == null || realmValue == null || realmValue.isBlank()) {
++            throw new IllegalArgumentException("Keycloak issuer 和 Realm 必须填写");
++        }
++        URI issuer;
++        try {
++            issuer = URI.create(trimTrailingSlash(issuerValue.trim()));
++        } catch (IllegalArgumentException exception) {
++            throw new IllegalArgumentException("Keycloak issuer URI 格式无效", exception);
++        }
++        if (!"https".equalsIgnoreCase(issuer.getScheme()) && !"http".equalsIgnoreCase(issuer.getScheme())) {
++            throw new IllegalArgumentException("Keycloak issuer URI 必须使用 HTTP 或 HTTPS");
++        }
++        if (issuer.getHost() == null || issuer.getRawUserInfo() != null || issuer.getQuery() != null
++                || issuer.getFragment() != null) {
++            throw new IllegalArgumentException("Keycloak issuer URI 格式无效");
++        }
++        String expectedRealmPath = "/realms/" + realmValue.trim();
++        if (!trimTrailingSlash(Optional.ofNullable(issuer.getPath()).orElse("")).endsWith(expectedRealmPath)) {
++            throw new IllegalArgumentException("Keycloak issuer URI 应指向填写的 Realm");
++        }
++        return issuer;
++    }
++
++    private void requireSameOrigin(URI issuer, String endpoint, String metadataName) {
++        URI endpointUri;
++        try {
++            endpointUri = URI.create(endpoint);
++        } catch (IllegalArgumentException exception) {
++            throw new IllegalArgumentException("Keycloak Discovery 中的 " + metadataName + " 无效", exception);
++        }
++        if (endpointUri.getHost() == null || !issuer.getScheme().equalsIgnoreCase(endpointUri.getScheme())
++                || !issuer.getHost().equalsIgnoreCase(endpointUri.getHost())
++                || effectivePort(issuer) != effectivePort(endpointUri)) {
++            throw new IllegalArgumentException("Keycloak Discovery 中的 " + metadataName + " 必须与 issuer 同源");
++        }
++    }
++
++    private int effectivePort(URI uri) {
++        if (uri.getPort() >= 0) {
++            return uri.getPort();
++        }
++        return "https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
++    }
++
++    private void validateCallbackUri(String value, String fieldName) {
++        try {
++            URI uri = URI.create(value.trim());
++            boolean validScheme = "https".equalsIgnoreCase(uri.getScheme()) || "http".equalsIgnoreCase(uri.getScheme());
++            if (!validScheme || uri.getHost() == null || uri.getRawUserInfo() != null || uri.getFragment() != null) {
++                throw new IllegalArgumentException();
++            }
++        } catch (IllegalArgumentException exception) {
++            throw new IllegalArgumentException(fieldName + "格式无效");
++        }
++    }
++
++    private boolean isBlank(String value) {
++        return value == null || value.isBlank();
++    }
++
++    private URI adminRealmUri(String issuerValue, String realm) {
++        URI issuer = URI.create(trimTrailingSlash(issuerValue.trim()));
++        String realmSuffix = "/realms/" + realm;
++        String path = Optional.ofNullable(issuer.getPath()).orElse("");
++        String serverPath = path.substring(0, path.length() - realmSuffix.length());
++        String url = issuer.getScheme() + "://" + issuer.getRawAuthority() + serverPath
++                + "/admin/realms/" + URLEncoder.encode(realm, StandardCharsets.UTF_8);
++        return URI.create(url);
++    }
++
++    private String requiredMetadata(JsonNode metadata, String key) {
++        String value = metadata.path(key).asText();
++        if (value.isBlank()) {
++            throw new IllegalArgumentException("Keycloak Discovery 未提供 " + key);
++        }
++        return value;
++    }
++
++    private boolean sameIssuer(String expected, String actual) {
++        return trimTrailingSlash(expected).equals(trimTrailingSlash(actual));
++    }
++
++    private String trimTrailingSlash(String value) {
++        String normalized = value;
++        while (normalized.endsWith("/")) {
++            normalized = normalized.substring(0, normalized.length() - 1);
++        }
++        return normalized;
++    }
++
++    private KeycloakConnectionStatusVo toStatus(Optional<KeycloakIntegrationConfig> optionalConfig) {
++        return optionalConfig.map(config -> new KeycloakConnectionStatusVo(true, config.getIssuerUri(),
++                config.getRealm(), config.getClientId(), config.getRedirectUri(), config.getPostLogoutRedirectUri()))
++                .orElseGet(() -> new KeycloakConnectionStatusVo(false, null, null, null, null, null));
++    }
++}
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakConnectionStatusVo.java b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakConnectionStatusVo.java
+new file mode 100644
+index 0000000..2869c58
+--- /dev/null
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakConnectionStatusVo.java
+@@ -0,0 +1,44 @@
++package io.github.benxincaomu.oa.base.security;
++
++public class KeycloakConnectionStatusVo {
++    private final boolean configured;
++    private final String issuerUri;
++    private final String realm;
++    private final String clientId;
++    private final String redirectUri;
++    private final String postLogoutRedirectUri;
++
++    public KeycloakConnectionStatusVo(boolean configured, String issuerUri, String realm, String clientId,
++            String redirectUri, String postLogoutRedirectUri) {
++        this.configured = configured;
++        this.issuerUri = issuerUri;
++        this.realm = realm;
++        this.clientId = clientId;
++        this.redirectUri = redirectUri;
++        this.postLogoutRedirectUri = postLogoutRedirectUri;
++    }
++
++    public boolean isConfigured() {
++        return configured;
++    }
++
++    public String getIssuerUri() {
++        return issuerUri;
++    }
++
++    public String getRealm() {
++        return realm;
++    }
++
++    public String getClientId() {
++        return clientId;
++    }
++
++    public String getRedirectUri() {
++        return redirectUri;
++    }
++
++    public String getPostLogoutRedirectUri() {
++        return postLogoutRedirectUri;
++    }
++}
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakIntegrationConfig.java b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakIntegrationConfig.java
+new file mode 100644
+index 0000000..b893624
+--- /dev/null
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakIntegrationConfig.java
+@@ -0,0 +1,111 @@
++package io.github.benxincaomu.oa.base.security;
++
++import jakarta.persistence.Column;
++import jakarta.persistence.Entity;
++import jakarta.persistence.Id;
++import jakarta.persistence.Table;
++
++@Entity
++@Table(name = "keycloak_integration_config")
++public class KeycloakIntegrationConfig {
++    public static final long CONFIG_ID = 1L;
++
++    @Id
++    private Long id = CONFIG_ID;
++
++    @Column(nullable = false, length = 512)
++    private String issuerUri;
++
++    @Column(nullable = false, length = 128)
++    private String realm;
++
++    @Column(nullable = false, length = 256)
++    private String clientId;
++
++    @Column(nullable = false, length = 1024)
++    private String encryptedClientSecret;
++
++    @Column(nullable = false, length = 256)
++    private String serviceAccountClientId;
++
++    @Column(nullable = false, length = 1024)
++    private String encryptedServiceAccountClientSecret;
++
++    @Column(nullable = false, length = 512)
++    private String redirectUri;
++
++    @Column(nullable = false, length = 512)
++    private String postLogoutRedirectUri;
++
++    public Long getId() {
++        return id;
++    }
++
++    public void setId(Long id) {
++        this.id = id;
++    }
++
++    public String getIssuerUri() {
++        return issuerUri;
++    }
++
++    public void setIssuerUri(String issuerUri) {
++        this.issuerUri = issuerUri;
++    }
++
++    public String getRealm() {
++        return realm;
++    }
++
++    public void setRealm(String realm) {
++        this.realm = realm;
++    }
++
++    public String getClientId() {
++        return clientId;
++    }
++
++    public void setClientId(String clientId) {
++        this.clientId = clientId;
++    }
++
++    public String getEncryptedClientSecret() {
++        return encryptedClientSecret;
++    }
++
++    public void setEncryptedClientSecret(String encryptedClientSecret) {
++        this.encryptedClientSecret = encryptedClientSecret;
++    }
++
++    public String getServiceAccountClientId() {
++        return serviceAccountClientId;
++    }
++
++    public void setServiceAccountClientId(String serviceAccountClientId) {
++        this.serviceAccountClientId = serviceAccountClientId;
++    }
++
++    public String getEncryptedServiceAccountClientSecret() {
++        return encryptedServiceAccountClientSecret;
++    }
++
++    public void setEncryptedServiceAccountClientSecret(String encryptedServiceAccountClientSecret) {
++        this.encryptedServiceAccountClientSecret = encryptedServiceAccountClientSecret;
++    }
++
++    public String getRedirectUri() {
++        return redirectUri;
++    }
++
++    public void setRedirectUri(String redirectUri) {
++        this.redirectUri = redirectUri;
++    }
++
++    public String getPostLogoutRedirectUri() {
++        return postLogoutRedirectUri;
++    }
++
++    public void setPostLogoutRedirectUri(String postLogoutRedirectUri) {
++        this.postLogoutRedirectUri = postLogoutRedirectUri;
++    }
++}
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakIntegrationConfigRepository.java b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakIntegrationConfigRepository.java
+new file mode 100644
+index 0000000..d2f281a
+--- /dev/null
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakIntegrationConfigRepository.java
+@@ -0,0 +1,6 @@
++package io.github.benxincaomu.oa.base.security;
++
++import org.springframework.data.jpa.repository.JpaRepository;
++
++public interface KeycloakIntegrationConfigRepository extends JpaRepository<KeycloakIntegrationConfig, Long> {
++}
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakLogoutSuccessHandler.java b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakLogoutSuccessHandler.java
+new file mode 100644
+index 0000000..4865850
+--- /dev/null
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakLogoutSuccessHandler.java
+@@ -0,0 +1,74 @@
++package io.github.benxincaomu.oa.base.security;
++
++import java.io.IOException;
++import java.util.Map;
++
++import org.springframework.security.core.Authentication;
++import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
++import org.springframework.security.oauth2.client.registration.ClientRegistration;
++import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
++import org.springframework.security.oauth2.core.oidc.user.OidcUser;
++import org.springframework.stereotype.Component;
++import org.springframework.web.util.UriComponentsBuilder;
++
++import com.fasterxml.jackson.databind.ObjectMapper;
++
++import jakarta.servlet.ServletException;
++import jakarta.servlet.http.HttpServletRequest;
++import jakarta.servlet.http.HttpServletResponse;
++
++@Component
++public class KeycloakLogoutSuccessHandler implements LogoutSuccessHandler {
++    private final KeycloakClientRegistrationRepository registrationRepository;
++    private final KeycloakConnectionService connectionService;
++    private final ObjectMapper objectMapper;
++
++    public KeycloakLogoutSuccessHandler(KeycloakClientRegistrationRepository registrationRepository,
++            KeycloakConnectionService connectionService, ObjectMapper objectMapper) {
++        this.registrationRepository = registrationRepository;
++        this.connectionService = connectionService;
++        this.objectMapper = objectMapper;
++    }
++
++    @Override
++    public void onLogoutSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication)
++            throws IOException, ServletException {
++        String redirectUri = connectionService.getConfiguration()
++                .map(KeycloakIntegrationConfig::getPostLogoutRedirectUri)
++                .orElse("/");
++
++        if (authentication instanceof OAuth2AuthenticationToken oauthAuthentication
++                && authentication.getPrincipal() instanceof OidcUser oidcUser) {
++            ClientRegistration registration = registrationRepository
++                    .findByRegistrationId(oauthAuthentication.getAuthorizedClientRegistrationId());
++            if (registration != null) {
++                Object logoutEndpoint = registration.getProviderDetails().getConfigurationMetadata()
++                        .get("end_session_endpoint");
++                if (logoutEndpoint instanceof String endpoint && !endpoint.isBlank()) {
++                    String logoutUrl = UriComponentsBuilder.fromUriString(endpoint)
++                            .queryParam("id_token_hint", oidcUser.getIdToken().getTokenValue())
++                            .queryParam("post_logout_redirect_uri", redirectUri)
++                            .build()
++                            .encode()
++                            .toUriString();
++                    completeLogout(request, response, logoutUrl);
++                    return;
++                }
++            }
++        }
++        completeLogout(request, response, redirectUri);
++    }
++
++    private void completeLogout(HttpServletRequest request, HttpServletResponse response, String redirectUri)
++            throws IOException {
++        if ("XMLHttpRequest".equalsIgnoreCase(request.getHeader("X-Requested-With"))) {
++            response.setStatus(HttpServletResponse.SC_OK);
++            response.setContentType("application/json;charset=UTF-8");
++            objectMapper.writeValue(response.getWriter(), Map.of(
++                    "code", 200,
++                    "data", Map.of("redirectUrl", redirectUri)));
++            return;
++        }
++        response.sendRedirect(redirectUri);
++    }
++}
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakObjectLink.java b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakObjectLink.java
+new file mode 100644
+index 0000000..b41ed24
+--- /dev/null
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakObjectLink.java
+@@ -0,0 +1,66 @@
++package io.github.benxincaomu.oa.base.security;
++
++import jakarta.persistence.Column;
++import jakarta.persistence.Entity;
++import jakarta.persistence.GeneratedValue;
++import jakarta.persistence.GenerationType;
++import jakarta.persistence.Id;
++import jakarta.persistence.Table;
++import jakarta.persistence.UniqueConstraint;
++
++@Entity
++@Table(name = "keycloak_object_links", uniqueConstraints = {
++        @UniqueConstraint(name = "keycloak_link_external_unique", columnNames = { "object_type", "external_id" }),
++        @UniqueConstraint(name = "keycloak_link_local_unique", columnNames = { "object_type", "local_id" })
++})
++public class KeycloakObjectLink {
++    public static final String USER = "USER";
++    public static final String DEPARTMENT = "DEPARTMENT";
++    public static final String ROLE = "ROLE";
++    public static final String PERMISSION = "PERMISSION";
++
++    @Id
++    @GeneratedValue(strategy = GenerationType.IDENTITY)
++    private Long id;
++
++    @Column(name = "object_type", nullable = false, length = 32)
++    private String objectType;
++
++    @Column(name = "external_id", nullable = false, length = 128)
++    private String externalId;
++
++    @Column(name = "local_id", nullable = false)
++    private Long localId;
++
++    public Long getId() {
++        return id;
++    }
++
++    public void setId(Long id) {
++        this.id = id;
++    }
++
++    public String getObjectType() {
++        return objectType;
++    }
++
++    public void setObjectType(String objectType) {
++        this.objectType = objectType;
++    }
++
++    public String getExternalId() {
++        return externalId;
++    }
++
++    public void setExternalId(String externalId) {
++        this.externalId = externalId;
++    }
++
++    public Long getLocalId() {
++        return localId;
++    }
++
++    public void setLocalId(Long localId) {
++        this.localId = localId;
++    }
++}
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakObjectLinkRepository.java b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakObjectLinkRepository.java
+new file mode 100644
+index 0000000..bad675d
+--- /dev/null
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakObjectLinkRepository.java
+@@ -0,0 +1,11 @@
++package io.github.benxincaomu.oa.base.security;
++
++import java.util.Optional;
++
++import org.springframework.data.jpa.repository.JpaRepository;
++
++public interface KeycloakObjectLinkRepository extends JpaRepository<KeycloakObjectLink, Long> {
++    Optional<KeycloakObjectLink> findByObjectTypeAndExternalId(String objectType, String externalId);
++
++    Optional<KeycloakObjectLink> findByObjectTypeAndLocalId(String objectType, Long localId);
++}
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakOidcUserService.java b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakOidcUserService.java
+new file mode 100644
+index 0000000..db988b6
+--- /dev/null
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakOidcUserService.java
+@@ -0,0 +1,43 @@
++package io.github.benxincaomu.oa.base.security;
++
++import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
++import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
++import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
++import org.springframework.security.oauth2.core.OAuth2Error;
++import org.springframework.security.oauth2.core.oidc.user.OidcUser;
++import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
++import org.springframework.stereotype.Service;
++
++import io.github.benxincaomu.oa.bussiness.user.User;
++import io.github.benxincaomu.oa.bussiness.user.UserRepository;
++
++@Service
++public class KeycloakOidcUserService implements OAuth2UserService<OidcUserRequest, OidcUser> {
++    private final OidcUserService delegate = new OidcUserService();
++    private final KeycloakObjectLinkRepository objectLinkRepository;
++    private final UserRepository userRepository;
++
++    public KeycloakOidcUserService(KeycloakObjectLinkRepository objectLinkRepository, UserRepository userRepository) {
++        this.objectLinkRepository = objectLinkRepository;
++        this.userRepository = userRepository;
++    }
++
++    @Override
++    public OidcUser loadUser(OidcUserRequest userRequest) throws OAuth2AuthenticationException {
++        OidcUser oidcUser = delegate.loadUser(userRequest);
++        KeycloakObjectLink link = objectLinkRepository
++                .findByObjectTypeAndExternalId(KeycloakObjectLink.USER, oidcUser.getSubject())
++                .orElseThrow(() -> denied("Keycloak 用户尚未关联到 OA 用户"));
++
++        User localUser = userRepository.findById(link.getLocalId())
++                .orElseThrow(() -> denied("关联的 OA 用户不存在"));
++        if (Boolean.FALSE.equals(localUser.getEnable())) {
++            throw denied("OA 用户已停用");
++        }
++        return new OaOidcUserPrincipal(oidcUser, localUser);
++    }
++
++    private OAuth2AuthenticationException denied(String message) {
++        return new OAuth2AuthenticationException(new OAuth2Error("access_denied", message, null));
++    }
++}
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakSecretCipher.java b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakSecretCipher.java
+new file mode 100644
+index 0000000..7f13c13
+--- /dev/null
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/KeycloakSecretCipher.java
+@@ -0,0 +1,84 @@
++package io.github.benxincaomu.oa.base.security;
++
++import java.nio.ByteBuffer;
++import java.nio.charset.StandardCharsets;
++import java.security.GeneralSecurityException;
++import java.security.SecureRandom;
++import java.util.Base64;
++
++import javax.crypto.Cipher;
++import javax.crypto.spec.GCMParameterSpec;
++import javax.crypto.spec.SecretKeySpec;
++
++import org.springframework.beans.factory.annotation.Value;
++import org.springframework.stereotype.Component;
++
++@Component
++public class KeycloakSecretCipher {
++    private static final int NONCE_BYTES = 12;
++    private static final int TAG_BITS = 128;
++
++    private final String configuredKey;
++    private final SecureRandom secureRandom = new SecureRandom();
++
++    public KeycloakSecretCipher(@Value("${app.keycloak.config-encryption-key:}") String configuredKey) {
++        this.configuredKey = configuredKey;
++    }
++
++    public String encrypt(String plainText) {
++        try {
++            byte[] nonce = new byte[NONCE_BYTES];
++            secureRandom.nextBytes(nonce);
++
++            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
++            cipher.init(Cipher.ENCRYPT_MODE, key(), new GCMParameterSpec(TAG_BITS, nonce));
++            byte[] encrypted = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
++
++            ByteBuffer payload = ByteBuffer.allocate(nonce.length + encrypted.length);
++            payload.put(nonce);
++            payload.put(encrypted);
++            return "v1:" + Base64.getEncoder().encodeToString(payload.array());
++        } catch (GeneralSecurityException exception) {
++            throw new IllegalStateException("Unable to encrypt Keycloak credentials", exception);
++        }
++    }
++
++    public String decrypt(String cipherText) {
++        try {
++            if (cipherText == null || !cipherText.startsWith("v1:")) {
++                throw new IllegalArgumentException("Unsupported encrypted Keycloak credential format");
++            }
++            byte[] payload = Base64.getDecoder().decode(cipherText.substring(3));
++            if (payload.length <= NONCE_BYTES) {
++                throw new IllegalArgumentException("Invalid encrypted Keycloak credential");
++            }
++
++            ByteBuffer buffer = ByteBuffer.wrap(payload);
++            byte[] nonce = new byte[NONCE_BYTES];
++            buffer.get(nonce);
++            byte[] encrypted = new byte[buffer.remaining()];
++            buffer.get(encrypted);
++
++            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
++            cipher.init(Cipher.DECRYPT_MODE, key(), new GCMParameterSpec(TAG_BITS, nonce));
++            return new String(cipher.doFinal(encrypted), StandardCharsets.UTF_8);
++        } catch (GeneralSecurityException | IllegalArgumentException exception) {
++            throw new IllegalStateException("Unable to decrypt Keycloak credentials", exception);
++        }
++    }
++
++    private SecretKeySpec key() {
++        if (configuredKey == null || configuredKey.isBlank()) {
++            throw new IllegalStateException("KEYCLOAK_CONFIG_ENCRYPTION_KEY must be configured before Keycloak setup");
++        }
++        try {
++            byte[] key = Base64.getDecoder().decode(configuredKey);
++            if (key.length != 32) {
++                throw new IllegalStateException("KEYCLOAK_CONFIG_ENCRYPTION_KEY must decode to exactly 32 bytes");
++            }
++            return new SecretKeySpec(key, "AES");
++        } catch (IllegalArgumentException exception) {
++            throw new IllegalStateException("KEYCLOAK_CONFIG_ENCRYPTION_KEY must be a Base64 encoded 32-byte key", exception);
++        }
++    }
++}
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/OaOidcUserPrincipal.java b/src/main/java/io/github/benxincaomu/oa/base/security/OaOidcUserPrincipal.java
+new file mode 100644
+index 0000000..5749cf8
+--- /dev/null
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/OaOidcUserPrincipal.java
+@@ -0,0 +1,48 @@
++package io.github.benxincaomu.oa.base.security;
++
++import java.io.Serial;
++
++import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
++import org.springframework.security.oauth2.core.oidc.user.OidcUser;
++
++import io.github.benxincaomu.oa.bussiness.user.User;
++
++public class OaOidcUserPrincipal extends DefaultOidcUser {
++    @Serial
++    private static final long serialVersionUID = 1L;
++
++    private final Long oaUserId;
++    private final Long tenantId;
++    private final String userName;
++    private final String displayName;
++    private final String email;
++
++    public OaOidcUserPrincipal(OidcUser oidcUser, User localUser) {
++        super(oidcUser.getAuthorities(), oidcUser.getIdToken(), oidcUser.getUserInfo(), "sub");
++        this.oaUserId = localUser.getId();
++        this.tenantId = localUser.getTenantId();
++        this.userName = localUser.getUserName();
++        this.displayName = localUser.getName();
++        this.email = localUser.getEmail();
++    }
++
++    public Long getOaUserId() {
++        return oaUserId;
++    }
++
++    public Long getTenantId() {
++        return tenantId;
++    }
++
++    public String getUserName() {
++        return userName;
++    }
++
++    public String getDisplayName() {
++        return displayName;
++    }
++
++    public String getEmail() {
++        return email;
++    }
++}
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/ProjectInitializationFilter.java b/src/main/java/io/github/benxincaomu/oa/base/security/ProjectInitializationFilter.java
+new file mode 100644
+index 0000000..cc83c48
+--- /dev/null
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/ProjectInitializationFilter.java
+@@ -0,0 +1,52 @@
++package io.github.benxincaomu.oa.base.security;
++
++import java.io.IOException;
++
++import org.springframework.util.AntPathMatcher;
++import org.springframework.web.filter.OncePerRequestFilter;
++
++import com.fasterxml.jackson.databind.ObjectMapper;
++
++import io.github.benxincaomu.notry.exception.handler.ResponseMessage;
++import io.github.benxincaomu.oa.base.init.InitService;
++import io.github.benxincaomu.oa.base.web.OaResponseCode;
++import jakarta.servlet.FilterChain;
++import jakarta.servlet.ServletException;
++import jakarta.servlet.http.HttpServletRequest;
++import jakarta.servlet.http.HttpServletResponse;
++
++public class ProjectInitializationFilter extends OncePerRequestFilter {
++    private static final String[] INITIALIZATION_URLS = { "/initProject/**", "/actuator/health", "/actuator/beans" };
++
++    private final InitService initService;
++    private final ObjectMapper objectMapper;
++    private final AntPathMatcher pathMatcher = new AntPathMatcher();
++
++    public ProjectInitializationFilter(InitService initService, ObjectMapper objectMapper) {
++        this.initService = initService;
++        this.objectMapper = objectMapper;
++    }
++
++    @Override
++    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
++            throws ServletException, IOException {
++        if (initService.isInitialized() || isInitializationUrl(request.getServletPath())) {
++            filterChain.doFilter(request, response);
++            return;
++        }
++
++        response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
++        response.setContentType("application/json;charset=UTF-8");
++        response.getWriter().write(objectMapper.writeValueAsString(
++                new ResponseMessage<>(OaResponseCode.PROJECT_NOT_INITIALIZED, null)));
++    }
++
++    private boolean isInitializationUrl(String servletPath) {
++        for (String pattern : INITIALIZATION_URLS) {
++            if (pathMatcher.match(pattern, servletPath)) {
++                return true;
++            }
++        }
++        return false;
++    }
++}
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/SecurityConfig.java b/src/main/java/io/github/benxincaomu/oa/base/security/SecurityConfig.java
+index b49c94f..f15fa0b 100644
+--- a/src/main/java/io/github/benxincaomu/oa/base/security/SecurityConfig.java
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/SecurityConfig.java
+@@ -1,32 +1,105 @@
+ package io.github.benxincaomu.oa.base.security;
+ 
+ import org.springframework.context.annotation.Bean;
+ import org.springframework.context.annotation.Configuration;
+ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
++import org.springframework.security.config.http.SessionCreationPolicy;
++import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
++import org.springframework.security.web.csrf.CsrfToken;
++import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
++import org.springframework.security.web.csrf.CsrfTokenRequestHandler;
+ import org.springframework.security.web.SecurityFilterChain;
+-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
++import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
++import org.springframework.security.web.authentication.logout.LogoutFilter;
++import org.springframework.util.StringUtils;
++
++import java.util.function.Supplier;
++
++import org.springframework.beans.factory.annotation.Value;
++import org.springframework.boot.web.servlet.ServletContextInitializer;
++
++import io.github.benxincaomu.oa.base.init.InitService;
++import jakarta.servlet.http.HttpServletRequest;
++import jakarta.servlet.http.HttpServletResponse;
++import jakarta.servlet.SessionCookieConfig;
+ 
+-import jakarta.annotation.Resource;
+ 
+ @Configuration
+ public class SecurityConfig {
+ 
+-    @Resource
+-    private SecurityFilter securityFilter;
++    @Bean
++    public ServletContextInitializer sessionCookieInitializer(
++            @Value("${APP_SESSION_COOKIE_SECURE:true}") boolean secureCookie) {
++        return servletContext -> {
++            SessionCookieConfig cookie = servletContext.getSessionCookieConfig();
++            cookie.setHttpOnly(true);
++            cookie.setSecure(secureCookie);
++            cookie.setPath("/");
++            cookie.setAttribute("SameSite", "Lax");
++        };
++    }
+ 
+     @Bean
+-    public SecurityFilterChain securityFilterChain(final HttpSecurity httpSecurity) throws Exception {
++    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity,
++            KeycloakClientRegistrationRepository clientRegistrationRepository,
++            KeycloakOidcUserService oidcUserService,
++            KeycloakAuthoritiesMapper authoritiesMapper,
++            KeycloakLogoutSuccessHandler logoutSuccessHandler,
++            ProjectInitializationFilter initializationFilter) throws Exception {
++        CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
++        csrfTokenRepository.setCookiePath("/");
++
+         httpSecurity
+-                .authorizeHttpRequests(ahr -> ahr.requestMatchers(SecurityConsts.PUBLIC_URLS).permitAll()
++                .authorizeHttpRequests(authorize -> authorize
++                        .requestMatchers(SecurityConsts.PUBLIC_URLS).permitAll()
++                        .requestMatchers("/oauth2/**", "/login/oauth2/**", "/error").permitAll()
+                         .anyRequest().authenticated())
+-                .csrf(http -> http.disable())
+-                .formLogin(hs -> hs.disable())
+-                .httpBasic(hbc -> hbc.disable())
+-                .sessionManagement(ss -> ss.disable())
+-                .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
++                .csrf(csrf -> csrf
++                        .csrfTokenRepository(csrfTokenRepository)
++                        .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()))
++                .formLogin(form -> form.disable())
++                .httpBasic(basic -> basic.disable())
++                .oauth2Login(oauth2 -> oauth2
++                        .clientRegistrationRepository(clientRegistrationRepository)
++                        .userInfoEndpoint(userInfo -> userInfo
++                                .oidcUserService(oidcUserService)
++                                .userAuthoritiesMapper(authoritiesMapper))
++                        .defaultSuccessUrl("/app", true))
++                .logout(logout -> logout
++                        .logoutUrl("/login/logout")
++                        .logoutSuccessHandler(logoutSuccessHandler)
++                        .invalidateHttpSession(true)
++                        .clearAuthentication(true)
++                        .deleteCookies("JSESSIONID", "XSRF-TOKEN"))
++                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
++                .addFilterBefore(initializationFilter, LogoutFilter.class);
+ 
+-        ;
+         return httpSecurity.build();
+     }
+ 
++    @Bean
++    public ProjectInitializationFilter projectInitializationFilter(InitService initService,
++            com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
++        return new ProjectInitializationFilter(initService, objectMapper);
++    }
++
++    private static final class SpaCsrfTokenRequestHandler implements CsrfTokenRequestHandler {
++        private final CsrfTokenRequestAttributeHandler plain = new CsrfTokenRequestAttributeHandler();
++        private final XorCsrfTokenRequestAttributeHandler xor = new XorCsrfTokenRequestAttributeHandler();
++
++        @Override
++        public void handle(HttpServletRequest request, HttpServletResponse response,
++                Supplier<CsrfToken> deferredCsrfToken) {
++            deferredCsrfToken.get();
++            xor.handle(request, response, deferredCsrfToken);
++        }
++
++        @Override
++        public String resolveCsrfTokenValue(HttpServletRequest request, CsrfToken csrfToken) {
++            String headerValue = request.getHeader(csrfToken.getHeaderName());
++            return StringUtils.hasText(headerValue)
++                    ? plain.resolveCsrfTokenValue(request, csrfToken)
++                    : xor.resolveCsrfTokenValue(request, csrfToken);
++        }
++    }
+ }
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/SecurityConsts.java b/src/main/java/io/github/benxincaomu/oa/base/security/SecurityConsts.java
+index cf2d71d..96f6751 100644
+--- a/src/main/java/io/github/benxincaomu/oa/base/security/SecurityConsts.java
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/SecurityConsts.java
+@@ -1,15 +1,13 @@
+ package io.github.benxincaomu.oa.base.security;
+ 
+ public final class SecurityConsts {
+     private SecurityConsts(){}
+ 
+     public static final String[] PUBLIC_URLS = {
+-            "/login/login",
+-            "/login/logout",
++            "/error",
+             "/actuator/beans",
+-            "/user/setPassword",
++            "/actuator/health",
+             "/initProject/**"
+-            
+     };
+     
+ }
+diff --git a/src/main/java/io/github/benxincaomu/oa/base/security/SecurityFilter.java b/src/main/java/io/github/benxincaomu/oa/base/security/SecurityFilter.java
+index 4310af3..fea60e5 100644
+--- a/src/main/java/io/github/benxincaomu/oa/base/security/SecurityFilter.java
++++ b/src/main/java/io/github/benxincaomu/oa/base/security/SecurityFilter.java
+@@ -3,39 +3,37 @@ package io.github.benxincaomu.oa.base.security;
+ import java.io.IOException;
+ import java.util.ArrayList;
+ import java.util.HashSet;
+ import java.util.List;
+ import java.util.Optional;
+ import java.util.Set;
+ 
+ import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+ import org.springframework.security.core.authority.SimpleGrantedAuthority;
+ import org.springframework.security.core.context.SecurityContextHolder;
+-import org.springframework.stereotype.Component;
+ import org.springframework.util.AntPathMatcher;
+ import org.springframework.web.filter.OncePerRequestFilter;
+ 
+ import com.fasterxml.jackson.databind.ObjectMapper;
+ 
+ import io.github.benxincaomu.notry.exception.handler.ResponseMessage;
+ import io.github.benxincaomu.oa.base.init.InitService;
+ import io.github.benxincaomu.oa.base.web.OaResponseCode;
+ import io.github.benxincaomu.oa.bussiness.user.Role;
+ import jakarta.annotation.PostConstruct;
+ import jakarta.annotation.Resource;
+ import jakarta.servlet.FilterChain;
+ import jakarta.servlet.ServletException;
+ import jakarta.servlet.http.Cookie;
+ import jakarta.servlet.http.HttpServletRequest;
+ import jakarta.servlet.http.HttpServletResponse;
+ 
+-@Component
+ public class SecurityFilter extends OncePerRequestFilter {
+ 
+     @Resource
+     private TokenValueRepository tokenValueRepository;
+ 
+     private Set<String> excludeUrls = new HashSet<>();
+ 
+     @Resource
+     private InitService initService;
+ 
+diff --git a/src/main/java/io/github/benxincaomu/oa/bussiness/user/LoginController.java b/src/main/java/io/github/benxincaomu/oa/bussiness/user/LoginController.java
+index 5a37ad2..a0d0c78 100644
+--- a/src/main/java/io/github/benxincaomu/oa/bussiness/user/LoginController.java
++++ b/src/main/java/io/github/benxincaomu/oa/bussiness/user/LoginController.java
+@@ -5,20 +5,21 @@ import java.util.ArrayList;
+ import java.util.Base64;
+ import java.util.HashSet;
+ import java.util.Iterator;
+ import java.util.List;
+ import java.util.Set;
+ import java.util.Stack;
+ 
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ import org.springframework.data.redis.core.RedisTemplate;
++import org.springframework.context.annotation.Profile;
+ import org.springframework.security.core.context.SecurityContextHolder;
+ import org.springframework.security.crypto.password.PasswordEncoder;
+ import org.springframework.web.bind.annotation.CookieValue;
+ import org.springframework.web.bind.annotation.GetMapping;
+ import org.springframework.web.bind.annotation.PostMapping;
+ import org.springframework.web.bind.annotation.RequestBody;
+ import org.springframework.web.bind.annotation.RequestMapping;
+ import org.springframework.web.bind.annotation.RestController;
+ 
+ import io.github.benxincaomu.oa.base.consts.Const;
+@@ -28,20 +29,21 @@ import io.github.benxincaomu.oa.base.security.TokenValueRepository;
+ import io.github.benxincaomu.oa.base.utils.StringGenerator;
+ import io.github.benxincaomu.oa.bussiness.user.vo.PermissionIdName;
+ import io.github.benxincaomu.oa.bussiness.user.vo.SimpleUserInfo;
+ import jakarta.annotation.Resource;
+ import jakarta.servlet.http.Cookie;
+ import jakarta.servlet.http.HttpServletRequest;
+ import jakarta.servlet.http.HttpServletResponse;
+ 
+ @RestController
+ @RequestMapping("login")
++@Profile("legacy-auth")
+ public class LoginController {
+      @Resource
+     private UserService userService;
+ 
+     @Resource
+     private RoleRepository roleRepository;
+ 
+     
+     @Resource
+     private PermissionRepository permissionRepository;
+diff --git a/src/main/java/io/github/benxincaomu/oa/bussiness/user/OaLoginController.java b/src/main/java/io/github/benxincaomu/oa/bussiness/user/OaLoginController.java
+new file mode 100644
+index 0000000..4723bcb
+--- /dev/null
++++ b/src/main/java/io/github/benxincaomu/oa/bussiness/user/OaLoginController.java
+@@ -0,0 +1,44 @@
++package io.github.benxincaomu.oa.bussiness.user;
++
++import java.util.List;
++
++import org.springframework.security.core.annotation.AuthenticationPrincipal;
++import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RestController;
++
++import io.github.benxincaomu.oa.base.security.OaOidcUserPrincipal;
++import io.github.benxincaomu.oa.bussiness.user.vo.PermissionIdName;
++import io.github.benxincaomu.oa.bussiness.user.vo.SimpleUserInfo;
++
++@RestController
++@RequestMapping("login")
++public class OaLoginController {
++    private final RoleRepository roleRepository;
++    private final PermissionService permissionService;
++
++    public OaLoginController(RoleRepository roleRepository, PermissionService permissionService) {
++        this.roleRepository = roleRepository;
++        this.permissionService = permissionService;
++    }
++
++    @GetMapping("myInfo")
++    public SimpleUserInfo myInfo(@AuthenticationPrincipal OaOidcUserPrincipal principal) {
++        if (principal == null) {
++            return null;
++        }
++        SimpleUserInfo info = new SimpleUserInfo();
++        info.setName(principal.getDisplayName());
++        info.setUserName(principal.getUserName());
++        return info;
++    }
++
++    @GetMapping("getMyMenus")
++    public List<PermissionIdName> getMyMenus(@AuthenticationPrincipal OaOidcUserPrincipal principal) {
++        if (principal == null) {
++            return List.of();
++        }
++        Role role = roleRepository.findByUserId(principal.getOaUserId());
++        return role == null ? List.of() : permissionService.getMenuTreeByRoleId(role.getId());
++    }
++}
+diff --git a/src/main/java/io/github/benxincaomu/oa/bussiness/user/UserController.java b/src/main/java/io/github/benxincaomu/oa/bussiness/user/UserController.java
+index f3de0d1..446c43a 100644
+--- a/src/main/java/io/github/benxincaomu/oa/bussiness/user/UserController.java
++++ b/src/main/java/io/github/benxincaomu/oa/bussiness/user/UserController.java
+@@ -12,20 +12,21 @@ import org.springframework.web.bind.annotation.DeleteMapping;
+ import org.springframework.web.bind.annotation.GetMapping;
+ import org.springframework.web.bind.annotation.PathVariable;
+ import org.springframework.web.bind.annotation.PostMapping;
+ import org.springframework.web.bind.annotation.PutMapping;
+ import org.springframework.web.bind.annotation.RequestBody;
+ import org.springframework.web.bind.annotation.RequestMapping;
+ import org.springframework.web.bind.annotation.RestController;
+ 
+ import io.github.benxincaomu.notry.utils.Asserts;
+ import io.github.benxincaomu.oa.base.security.SaltedUser;
++import io.github.benxincaomu.oa.base.security.OaOidcUserPrincipal;
+ import io.github.benxincaomu.oa.base.web.OaResponseCode;
+ import io.github.benxincaomu.oa.bussiness.organization.DepartmentUser;
+ import io.github.benxincaomu.oa.bussiness.user.vo.SetPasswordVo;
+ import io.github.benxincaomu.oa.bussiness.user.vo.UserIdNameVo;
+ import jakarta.annotation.Resource;
+ 
+ @RestController
+ @RequestMapping("user")
+ public class UserController {
+ 
+@@ -95,20 +96,23 @@ public class UserController {
+         return userService.getUserById(id);
+     }
+ 
+     
+ 
+ 
+ 
+     @GetMapping("currUser")
+     public User getCurrUser(){
+         Object details = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
++        if (details instanceof OaOidcUserPrincipal user) {
++            return userService.getFullInfoUser(user.getOaUserId(), null);
++        }
+         if(details instanceof SaltedUser){ 
+             SaltedUser user = (SaltedUser) details;
+             return userService.getFullInfoUser(user.getUserId(), null);
+         }
+         return null;
+     }
+ 
+     
+ 
+    
+
+## application.yml: added keys only; values redacted
++keycloak: <redacted>
++config-encryption-key: <redacted>
++servlet: <redacted>
++session: <redacted>
++cookie: <redacted>
++http-only: <redacted>
++same-site: <redacted>
++secure: <redacted>
