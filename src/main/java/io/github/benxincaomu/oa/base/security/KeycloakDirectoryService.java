@@ -107,7 +107,8 @@ public class KeycloakDirectoryService {
             }
             User user = numericIdService.resolveUser(profile, tenantId);
             String groupName = firstGroupNames.get(profile.id());
-            String displayName = groupName == null ? user.getName() : user.getName() + "-" + groupName;
+            String name = StringUtils.hasText(profile.name()) ? profile.name() : user.getName();
+            String displayName = groupName == null ? name : name + "-" + groupName;
             result.add(new UserIdNameVo(user.getId(), displayName));
         }
         return result;
@@ -177,7 +178,8 @@ public class KeycloakDirectoryService {
                 continue;
             }
             User user = numericIdService.resolveUser(profile, tenantId);
-            result.add(new UserIdNameVo(user.getId(), user.getName()));
+            String name = StringUtils.hasText(profile.name()) ? profile.name() : user.getName();
+            result.add(new UserIdNameVo(user.getId(), name));
         }
         return result;
     }

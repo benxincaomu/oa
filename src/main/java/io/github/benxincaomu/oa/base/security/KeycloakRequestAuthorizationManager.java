@@ -79,15 +79,15 @@ public class KeycloakRequestAuthorizationManager
             RequestAuthorizationContext context) {
         HttpServletRequest request = context.getRequest();
         String path = request.getServletPath();
-        for (String pattern : EXEMPT_PATTERNS) {
-            if (matcher.match(pattern, path)) {
-                return new AuthorizationDecision(true);
-            }
-        }
         Authentication authentication = authenticationSupplier.get();
         if (authentication == null || !authentication.isAuthenticated()
                 || authentication instanceof AnonymousAuthenticationToken) {
             return new AuthorizationDecision(false);
+        }
+        for (String pattern : EXEMPT_PATTERNS) {
+            if (matcher.match(pattern, path)) {
+                return new AuthorizationDecision(true);
+            }
         }
         if (!(authentication instanceof OAuth2AuthenticationToken oauthAuthentication)) {
             return new AuthorizationDecision(false);

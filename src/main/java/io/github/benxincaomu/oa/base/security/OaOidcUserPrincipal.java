@@ -17,13 +17,14 @@ public class OaOidcUserPrincipal extends DefaultOidcUser {
     private final String displayName;
     private final String email;
 
-    public OaOidcUserPrincipal(OidcUser oidcUser, User localUser) {
+    public OaOidcUserPrincipal(OidcUser oidcUser, User localUser, String userName, String displayName,
+            String email) {
         super(oidcUser.getAuthorities(), oidcUser.getIdToken(), oidcUser.getUserInfo(), "sub");
         this.oaUserId = localUser.getId();
         this.tenantId = localUser.getTenantId();
-        this.userName = localUser.getUserName();
-        this.displayName = localUser.getName();
-        this.email = localUser.getEmail();
+        this.userName = userName;
+        this.displayName = displayName;
+        this.email = email;
     }
 
     public Long getOaUserId() {

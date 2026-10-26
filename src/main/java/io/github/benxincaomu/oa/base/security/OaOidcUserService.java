@@ -51,7 +51,8 @@ public class OaOidcUserService implements OAuth2UserService<OidcUserRequest, Oid
         if (Boolean.FALSE.equals(localUser.getEnable())) {
             throw denied("OA 用户已停用");
         }
-        return new OaOidcUserPrincipal(oidcUser, localUser);
+        return new OaOidcUserPrincipal(oidcUser, localUser, username(oidcUser), displayName(oidcUser),
+                oidcUser.getEmail());
     }
 
     private String username(OidcUser oidcUser) {

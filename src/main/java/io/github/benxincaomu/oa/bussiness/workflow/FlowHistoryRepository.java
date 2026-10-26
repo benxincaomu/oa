@@ -44,6 +44,10 @@ public class FlowHistoryRepository {
         if (!StringUtils.hasText(operatorName)) {
             operatorName = directoryService.displayNameForUser(currentUserId);
         }
+        // operator_name 列是 varchar(20)，Keycloak 姓名可能更长，写入前截断避免审批失败
+        if (operatorName != null && operatorName.length() > 20) {
+            operatorName = operatorName.substring(0, 20);
+        }
         entityManager.createNativeQuery(MessageFormat.format(sql, tableName))
                 .setParameter("flowFormId", flowHistory.getFlowFormId())
                 .setParameter("approvalOpinion", flowHistory.getApprovalOpinion())

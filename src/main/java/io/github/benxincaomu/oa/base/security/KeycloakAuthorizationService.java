@@ -256,7 +256,9 @@ public class KeycloakAuthorizationService {
     private List<OaStoredResource> listResourcesByType(String type) {
         List<OaStoredResource> resources = new ArrayList<>();
         for (JsonNode node : listItems(RESOURCE_PATH, Map.of("type", type))) {
-            resources.add(toStoredResource(node));
+            if (type.equals(node.path("type").asText())) {
+                resources.add(toStoredResource(node));
+            }
         }
         return resources;
     }
