@@ -48,7 +48,6 @@ public class KeycloakRequestAuthorizationManager
             "/login/getMyMenus",
             "/login/logout",
             "/file/**",
-            "/user/currUser",
             "/user/getAllUsers",
             "/user/findUsersByNameLike/**",
             "/organize/listTree",

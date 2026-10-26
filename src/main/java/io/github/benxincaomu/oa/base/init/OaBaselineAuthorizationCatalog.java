@@ -33,10 +33,8 @@ public final class OaBaselineAuthorizationCatalog {
                     new MenuPage("/app/workbenches", "设计工作台"))));
 
     public static final List<ApiResource> API_RESOURCES = List.of(
-            new ApiResource("/permission/**", "权限管理接口"),
-            new ApiResource("/user/**", "用户管理接口"),
-            new ApiResource("/role/**", "角色管理接口"),
-            new ApiResource("/organize/**", "组织管理接口"),
+            new ApiResource("/user/**", "用户选择接口"),
+            new ApiResource("/organize/**", "组织选择接口"),
             new ApiResource("/identity/**", "身份管理接口"),
             new ApiResource("/workbench/**", "工作台接口"),
             new ApiResource("/entityDefinition/**", "实体设计接口"),
