@@ -14,4 +14,6 @@ public interface EntityDefinitionRepository  extends JpaRepository<EntityDefinit
 
     Optional<EntityDefinition> findOneByWorkbenchId(Long workbenchId);
 
+    void deleteByWorkbenchId(Long workbenchId);
+
 }

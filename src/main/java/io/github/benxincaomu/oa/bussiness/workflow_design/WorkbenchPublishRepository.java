@@ -23,7 +23,7 @@ public interface WorkbenchPublishRepository extends JpaRepository<WorkbenchPubli
 
     Optional<WorkbenchPublish> findByWorkflowDeployId(String workflowDeployId);
 
-    
+    void deleteByWorkbenchId(Long workbenchId);
 
-    
+
 }

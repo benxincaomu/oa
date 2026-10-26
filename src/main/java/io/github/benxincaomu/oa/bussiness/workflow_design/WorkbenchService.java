@@ -36,6 +36,12 @@ public class WorkbenchService {
     private WorkflowDefinitionService workflowDefinitionService;
 
     @Resource
+    private WorkflowDefinitionRepository workflowDefinitionRepository;
+
+    @Resource
+    private EntityDefinitionRepository entityDefinitionRepository;
+
+    @Resource
     private KeycloakAuthorizationService authorizationService;
 
     @Resource
@@ -65,28 +71,26 @@ public class WorkbenchService {
 
     @Transactional
     public void publish(PublishVo vo) {
-        workbenchRepository.findById(vo.getWorkbenchId()).ifPresent(workbench -> {
+        Workbench workbench = workbenchRepository.findById(vo.getWorkbenchId())
+                .orElseThrow(() -> new IllegalArgumentException("工作台不存在: " + vo.getWorkbenchId()));
 
-            // 保存beand定义
-            EntityDefinition entityDefinition = entityDefinitionService.insert(vo.getEntityDefinition());
-            // 保存流程定义
-            workflowDefinitionService.save(vo.getWorkflowDefinition());
-            if (workbench.getWorkbenchKey() == null) {
-                String workbenchKey = UUID.randomUUID().toString();
-                workbench.setWorkbenchKey(workbenchKey);
-                workbenchRepository.save(workbench);
-            }
-            // 发布流程
-            Deployment deploy = repositoryService.createDeployment()
-                    .name(workbench.getWorkbenchKey())
-                    .addString(workbench.getWorkbenchKey() + ".bpmn", vo.getWorkflowDefinition().getFlowDefinition())
-                    .deploy();
-            // entityManager.flush();
+        // 保存beand定义
+        EntityDefinition entityDefinition = entityDefinitionService.insert(vo.getEntityDefinition());
+        // 保存流程定义
+        workflowDefinitionService.save(vo.getWorkflowDefinition());
+        if (workbench.getWorkbenchKey() == null) {
+            String workbenchKey = UUID.randomUUID().toString();
+            workbench.setWorkbenchKey(workbenchKey);
+            workbenchRepository.save(workbench);
+        }
+        // 发布流程
+        Deployment deploy = repositoryService.createDeployment()
+                .name(workbench.getWorkbenchKey())
+                .addString(workbench.getWorkbenchKey() + ".bpmn", vo.getWorkflowDefinition().getFlowDefinition())
+                .deploy();
+        try {
             ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
                     .deploymentId(deploy.getId())
-                    // .processDefinitionName(workbench.getWorkbenchKey())
-
-                    // .processDefinitionKey(workbench.getWorkbenchKey())
                     .singleResult();
             WorkbenchPublish publish = workbenchPublishRepository.findLatestByWorkbenchId(workbench.getId())
                     .orElseGet(() -> {
@@ -101,7 +105,6 @@ public class WorkbenchService {
                         return publishNew;
                     });
             entityManager.detach(publish);
-            ;
             WorkbenchPublish publishNew = new WorkbenchPublish();
 
             publishNew.setWorkbenchId(workbench.getId());
@@ -116,13 +119,22 @@ public class WorkbenchService {
 
             // 菜单/接口资源在 Keycloak 中注册，默认授权 oa-admin；失败则发布失败
             registerAuthorizationResources(workbench);
-        });
-        ;
+        } catch (RuntimeException exception) {
+            // 本地事务会回滚，但 Camunda 部署不在同一事务里，需要显式补偿删除
+            try {
+                repositoryService.deleteDeployment(deploy.getId(), true);
+                logger.warn("Removed Camunda deployment {} after a failed workbench publication", deploy.getId());
+            } catch (RuntimeException cleanupException) {
+                logger.error("Failed to remove Camunda deployment " + deploy.getId()
+                        + " after a failed workbench publication", cleanupException);
+            }
+            throw exception;
+        }
     }
 
     /**
-     * 删除工作台：先回收其 Keycloak 菜单/接口资源，再删除本地工作台记录。
-     * 已发布的流程数据与历史保留。
+     * 删除工作台：回收其 Keycloak 菜单/接口资源，并清理设计/发布元数据。
+     * 已产生的流程实例、动态表单数据与历史保留。
      */
     @Transactional
     public void delete(Long workbenchId) {
@@ -131,6 +143,9 @@ public class WorkbenchService {
                 authorizationService.deleteWorkbenchResources(JpaAuditorAware.getCurrentTenantId(),
                         workbench.getWorkbenchKey());
             }
+            workflowDefinitionRepository.deleteByWorkbenchId(workbenchId);
+            entityDefinitionRepository.deleteByWorkbenchId(workbenchId);
+            workbenchPublishRepository.deleteByWorkbenchId(workbenchId);
             workbenchRepository.delete(workbench);
         });
     }

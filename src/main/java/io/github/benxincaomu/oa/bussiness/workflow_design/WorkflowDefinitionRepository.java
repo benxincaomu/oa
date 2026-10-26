@@ -22,4 +22,6 @@ public interface WorkflowDefinitionRepository extends JpaRepository<WorkflowDefi
     @Modifying
     @Query("update WorkflowDefinition set flowDefinition = ?1 where workbenchId = ?2")
     void updateByWorkbenchId(WorkflowDefinition workflowDefinition);
+
+    void deleteByWorkbenchId(Long workbenchId);
 }
