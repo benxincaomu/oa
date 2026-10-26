@@ -85,41 +85,58 @@ public class InitService {
 
     @Transactional
     public void init(Department department, User user, Role role, KeycloakBootstrapIdentity keycloakIdentity) {
-        if (!isInitialized()) {
-            String initializeingKey = "initializeing";
-            if (redisTemplate.opsForValue().setIfAbsent(initializeingKey, true, Duration.ofSeconds(30)) == true
-                    && !isInitialized()) {
-
-                Tenant tenant = initTenant();
-                // 本地只保留数字 ID 投影与历史快照，不再创建本地权限/授权种子
-                user.setTenantId(tenant.getId());
-                user = initRootUser(user);
-                role.setTenantId(tenant.getId());
-                role = initRootRole(role);
-                department.setTenantId(tenant.getId());
-                department.setLeaderUserId(user.getId());
-                department = initRootDepartment(department);
-
-                DepartmentUser departmentUser = new DepartmentUser();
-                departmentUser.setUserId(user.getId());
-                departmentUser.setDepartmentId(department.getId());
-                departmentUser.setTenantId(tenant.getId());
-                departmentUserRepository.save(departmentUser);
-
-                saveKeycloakLink(KeycloakObjectLink.USER, keycloakIdentity.userId(), user.getId());
-                saveKeycloakLink(KeycloakObjectLink.DEPARTMENT, keycloakIdentity.groupId(), department.getId());
-                saveKeycloakLink(KeycloakObjectLink.ROLE, keycloakIdentity.roleId(), role.getId());
-
-                // Keycloak 侧：租户标记 + 基线菜单/接口资源 + oa-admin 默认授权
-                keycloakAdminClient.setGroupAttribute(keycloakIdentity.groupId(), "tenant_id",
-                        String.valueOf(tenant.getId()));
-                baselineAuthorizationProvisioner.provision(tenant.getId());
-
-                redisTemplate.delete(initializeingKey);
-                redisTemplate.opsForValue().set(isInitializedKey, true);
+        if (isInitialized()) {
+            return;
+        }
+        String initializingKey = "initializeing";
+        Boolean acquired = redisTemplate.opsForValue().setIfAbsent(initializingKey, true, Duration.ofSeconds(30));
+        if (!Boolean.TRUE.equals(acquired)) {
+            if (isInitialized()) {
+                return;
+            }
+            throw new IllegalStateException("项目正在初始化，请稍后重试");
+        }
+        try {
+            if (isInitialized()) {
+                return;
             }
 
+            Tenant tenant = initTenant();
+            // 本地只保留数字 ID 投影与历史快照，不再创建本地权限/授权种子
+            user.setTenantId(tenant.getId());
+            user = initRootUser(user);
+            role.setTenantId(tenant.getId());
+            role = initRootRole(role);
+            department.setTenantId(tenant.getId());
+            department.setLeaderUserId(user.getId());
+            department = initRootDepartment(department);
+
+            DepartmentUser departmentUser = new DepartmentUser();
+            departmentUser.setUserId(user.getId());
+            departmentUser.setDepartmentId(department.getId());
+            departmentUser.setTenantId(tenant.getId());
+            departmentUserRepository.save(departmentUser);
+
+            saveKeycloakLink(KeycloakObjectLink.USER, keycloakIdentity.userId(), user.getId());
+            saveKeycloakLink(KeycloakObjectLink.DEPARTMENT, keycloakIdentity.groupId(), department.getId());
+            saveKeycloakLink(KeycloakObjectLink.ROLE, keycloakIdentity.roleId(), role.getId());
+
+            // Keycloak 侧：租户标记 + 基线菜单/接口资源 + oa-admin 默认授权
+            keycloakAdminClient.setGroupAttribute(keycloakIdentity.groupId(), "tenant_id",
+                    String.valueOf(tenant.getId()));
+            baselineAuthorizationProvisioner.provision(tenant.getId());
+            // 这里不写 isInitializedKey：事务提交后由 InitController 调用 markInitialized，
+            // 避免事务回滚后 Redis 已经标记为“已初始化”。
+        } finally {
+            redisTemplate.delete(initializingKey);
         }
+    }
+
+    /**
+     * 初始化事务成功提交后再标记为已完成，供 InitController 在 init() 返回后调用。
+     */
+    public void markInitialized() {
+        redisTemplate.opsForValue().set(isInitializedKey, true);
     }
 
     private Tenant initTenant() {

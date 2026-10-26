@@ -55,6 +55,8 @@ public class InitController {
         KeycloakBootstrapIdentity keycloakIdentity = keycloakAdminClient.bootstrapAdministrator(initVo.getUser(),
                 department.getName());
         initService.init(department, user, role, keycloakIdentity);
+        // 本地事务已提交，再标记初始化完成，避免失败时留下“已完成”标记
+        initService.markInitialized();
     }
 
 
