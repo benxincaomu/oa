@@ -215,4 +215,3 @@ offline compile/build checks are marked as unverified assumptions.
 7. Rollback
    - Follow the rollback section above and confirm the previous build can read the
      local tables again.
-

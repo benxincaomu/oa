@@ -275,9 +275,3 @@ Verification for this round: backend `mvn -q -DskipTests compile` after each
 backend change and one production `next build` after the frontend changes, all
 exit 0; every commit passed `git diff --cached --check` (exit 0) before it was
 pushed to `origin/feature/keycloak-integration`.
-
-
-
-
-
-
