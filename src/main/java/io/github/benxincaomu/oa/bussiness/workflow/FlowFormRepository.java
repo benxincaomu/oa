@@ -36,7 +36,7 @@ public class FlowFormRepository {
 
     /**
      * 获取下一个自增ID
-     * 
+     *
      * @param tableName 表名
      * @return
      */
@@ -49,7 +49,7 @@ public class FlowFormRepository {
 
     /**
      * 保存表单数据
-     * 
+     *
      * @param flowForm    表单数据
      * @param workbenchId 工作台id
      * @param tableName   表名
@@ -135,7 +135,7 @@ public class FlowFormRepository {
 
     /**
      * 查询我的发起
-     * 
+     *
      * @param tableName  表单表名
      * @param deployName 流程定义名称
      * @param userId     用户id
@@ -172,41 +172,41 @@ public class FlowFormRepository {
 
     /**
      * 查询我的待办
-     * 
+     *
      * @param tableName     表单表名
      * @param todoTableName 待办表名
      * @param workbenchId   工作流id
      * @param userId        用户id
-     * @param deptId        部门id ，用于候选组筛选
+     * @param deptIds       部门id列表，用于候选组筛选
      * @param starterId     发起人id 用于过滤待办
      * @param currPage      当前页
      * @param pageSize      每页数量
      * @param starterId     发起人id
      * @return
      */
-    public Page<FlowForm> myToDo(String flowTableName, String todoTableName, Long workbenchId, Long userId, Long deptId,
-            Long starterId, Integer currPage,
+    public Page<FlowForm> myToDo(String flowTableName, String todoTableName, Long workbenchId, Long userId,
+            List<Long> deptIds, Long starterId, Integer currPage,
             Integer pageSize) {
         PageRequest page = PageRequest.of(currPage == null ? 0 : currPage - 1, pageSize == null ? 20 : pageSize,
                 Sort.by("tt.create_at desc"));
+        List<Long> candidateDeptIds = deptIds == null ? List.of() : deptIds;
         // 查询总数
-
-        String whereSql = "where tt.workbench_id = :workbenchId and tt.flow_form_id = ff.id and ( tt.assignee = :userId";
-        if (deptId != null) {
-            whereSql += " or tt.candidate_groups @> cast(:deptId as jsonb)";
+        StringBuilder where = new StringBuilder(
+                "where tt.workbench_id = :workbenchId and tt.flow_form_id = ff.id and ( tt.assignee = :userId");
+        for (int i = 0; i < candidateDeptIds.size(); i++) {
+            where.append(" or tt.candidate_groups @> cast(:deptId").append(i).append(" as jsonb)");
         }
-        whereSql += ")";
+        where.append(")");
         if (starterId != null) {
-            whereSql += " and ff.create_by = :starterId";
+            where.append(" and ff.create_by = :starterId");
         }
+        String whereSql = where.toString();
         String countSql = "select count(*) from {0} ff,{1} tt " + whereSql;
         Query countQuery = entityManager
                 .createNativeQuery(MessageFormat.format(countSql, flowTableName, todoTableName), Long.class)
                 .setParameter("userId", userId)
                 .setParameter("workbenchId", workbenchId);
-        if (deptId != null) {
-            countQuery.setParameter("deptId", "[" + deptId + "]");
-        }
+        bindDeptIds(countQuery, candidateDeptIds);
         if (starterId != null) {
             countQuery.setParameter("starterId", starterId);
         }
@@ -224,9 +224,7 @@ public class FlowFormRepository {
                     .setFirstResult((int) page.getOffset())
                     .setMaxResults(page.getPageSize())
                     ;
-            if (deptId != null) {
-                formListQuery.setParameter("deptId", "[" + deptId + "]");
-            }
+            bindDeptIds(formListQuery, candidateDeptIds);
             if (starterId != null) {
                 formListQuery.setParameter("starterId", starterId);
             }
@@ -235,9 +233,15 @@ public class FlowFormRepository {
         return new PageImpl<>(formList, page, total);
     }
 
+    private void bindDeptIds(Query query, List<Long> deptIds) {
+        for (int i = 0; i < deptIds.size(); i++) {
+            query.setParameter("deptId" + i, "[" + deptIds.get(i) + "]");
+        }
+    }
+
     /**
      * w查询我的已办
-     * 
+     *
      * @param flowTableName    表单表名
      * @param historyTableName 历史表名
      * @param workbenchId      工作流id
@@ -266,7 +270,7 @@ public class FlowFormRepository {
         }
         Long total = (Long) countQuery.getSingleResult();
         List<FlowForm> formList = new ArrayList<>();
-        if (total > page.getOffset()) { 
+        if (total > page.getOffset()) {
             String sql = "select distinct on (ff.id) ff.* from {0} ff,{1} fh " + whereSql +" order by ff.id desc,ff.create_at desc";
             Query formListQuery = entityManager
                     .createNativeQuery(MessageFormat.format(sql, flowTableName, historyTableName), FlowForm.class)

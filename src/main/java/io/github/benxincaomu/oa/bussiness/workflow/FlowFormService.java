@@ -202,10 +202,8 @@ public class FlowFormService {
 
     public Page<FlowForm> listTodo(Integer currPage, Integer pageSize, Long workbenchId, Long starterId) {
         Long currentUserId = JpaAuditorAware.getCurrentUserId();
-        Long deptId = directoryService
-                .findDepartmentNumericIdsForUser(currentUserId, JpaAuditorAware.getCurrentTenantId()).stream()
-                .findFirst()
-                .orElse(0L);
+        List<Long> deptIds = directoryService
+                .findDepartmentNumericIdsForUser(currentUserId, JpaAuditorAware.getCurrentTenantId());
 
         return workbenchPublishRepository.findLatestByWorkbenchId(workbenchId)
                 .map(wp -> flowFormRepository.myToDo(
@@ -213,7 +211,7 @@ public class FlowFormService {
                         wp.getFlowFormAssigneeTable(),
                         workbenchId,
                         currentUserId,
-                        deptId,
+                        deptIds,
                         starterId,
                         currPage,
                         pageSize))
