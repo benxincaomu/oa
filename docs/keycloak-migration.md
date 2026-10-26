@@ -136,9 +136,11 @@ group UUID, and for a role a client-role UUID.
 
 ## Notes and follow-ups
 
-- `permission`, `role_permission`, `user_role`, and `permission`-related legacy
-  read endpoints are kept read-only for compatibility; they can be dropped after
-  the migration is verified.
+- The legacy `role` and `permission` controllers were removed; `permission`,
+  `role_permission`, and `user_role` rows are no longer read or written by the
+  application and can be dropped after the migration is verified. The `users`,
+  `department`, and `role` tables remain as numeric-ID projections/snapshots with
+  no management endpoints.
 - Legacy classes `LoginController` (`legacy-auth` profile), `SecurityFilter`,
   `OaAuthManager`, `SaltedUser`, and `TokenValue*` are inactive but still present;
   they can be removed in a later cleanup.
@@ -146,3 +148,71 @@ group UUID, and for a role a client-role UUID.
 - Keycloak availability is required for management writes and for authorization
   decisions; the failure mode is an explicit error / denied request, never a
   silent fallback to local grants.
+
+## First live-Keycloak verification checklist
+
+Run this once against a real realm before production. Items not covered by the
+offline compile/build checks are marked as unverified assumptions.
+
+1. Startup and prerequisites
+   - `KEYCLOAK_SETUP_TOKEN`, `KEYCLOAK_CONFIG_ENCRYPTION_KEY`, and
+     `SESSION_COOKIE_SECURE` are set; the application starts.
+   - If startup fails on `OAuth2AuthorizedClientManager`, the Security 6.5
+     auto-configured bean is missing in this deployment; define one explicitly
+     (authorization code + refresh token providers).
+2. Initialization
+   - `/init` succeeds; Keycloak contains the administrator user, the tenant root
+     group with a `tenant_id` attribute, client role `oa-admin`, the baseline
+     resources (`oa:<tenant>:menu:*`, `oaapi:<tenant>:*`), the role policy
+     `oa-policy-role-oa-admin`, and the `oa-perm:*` permissions.
+   - Local DB contains the tenant, the administrator snapshot rows, and three
+     `keycloak_object_links`; `permission` / `role_permission` / `user_role` stay
+     empty.
+   - Re-submitting `/init` returns "already initialized" without duplicating
+     Keycloak objects.
+3. Authentication and sessions
+   - Anonymous `GET /server/file/baseUrl` and `/server/user/getAllUsers` return
+     401/302, never 200.
+   - OIDC login works; a Keycloak user created outside a tenant group is rejected
+     with a clear error; adding the user to a tenant group allows login and
+     allocates a numeric OA ID.
+   - After the session expires, a page action redirects to the Keycloak login page
+     instead of showing a generic network error.
+4. Authorization and menus
+   - `GET /server/login/getMyMenus` returns the baseline menu for `oa-admin`;
+     a non-admin role sees only what was granted on the role page.
+   - Directly calling a registered URL without the role grant returns 403.
+   - A URL with no registered `oa-api` resource returns 403 (fail closed).
+   - UMA assumptions: `POST {issuer}/protocol/openid-connect/token` with
+     `grant_type=uma-ticket`, `audience=<clientId>`, `permission=<resource name>`,
+     `response_mode=decision` returns `{"result":true}` or 403. Resource
+     permissions were created with resource/policy **IDs**; verify a granted
+     decision and a denied one.
+   - Stopping Keycloak makes protected requests fail closed (403), not fall back.
+5. Directory management
+   - The organization page lists the Keycloak group tree; a group created in the
+     Keycloak console appears after refresh (proves live reads).
+   - Create department / user / role, assign membership and roles, set a group
+     leader, reset a password; all changes are visible in the Keycloak console.
+   - With Keycloak stopped, management writes fail with a clear error.
+   - Group `leader_user_id` attributes are updated through the group attribute
+     write; confirm Keycloak accepts the whole-group PUT.
+6. Workflow
+   - Publish a workbench: menu entries appear for `oa-admin`; resources
+     `oa:<tenant>:mengroup:wb:*`, three menu pages, and the two `/flowForm|workflow
+     /{id}/**` API resources exist in Keycloak.
+   - Start a flow with an explicit assignee, a department candidate group, and the
+     "starter's department leader" assignment; each task reaches the right user
+     (numeric IDs remain in BPMN / form-assignee rows).
+   - A user in two Keycloak groups sees candidate tasks of both groups under "my
+     todo".
+   - Approve, check "my done"; history rows show the Keycloak display name
+     (truncated to the column limit) and survive a later Keycloak rename.
+   - Re-publish and delete a workbench: resources are updated/removed and workflow
+     data/history remain.
+   - Force a publication failure (e.g. revoke `manage-authorization`): the
+     publication fails, its Camunda deployment is removed, and a retry succeeds.
+7. Rollback
+   - Follow the rollback section above and confirm the previous build can read the
+     local tables again.
+

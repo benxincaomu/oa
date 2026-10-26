@@ -221,6 +221,63 @@ per the approved constraint).
   Round 5 can only be confirmed against a live realm; no automated tests were
   added or run.
 
+### Round 7 (2026-10-26): post-review defect fixes
+
+Review of the cutover found and fixed one high-severity security defect and
+several functional defects, then started working through the remaining list.
+
+- `fix: harden request authorization and workflow identity display` (00b95b5):
+  - authorization exemptions were applied before the authentication check, so
+    anonymous requests could reach `/file/**`, `/user/getAllUsers`,
+    `/organize/listTree`; authentication is now checked first;
+  - `operator_name` (varchar(20)) is truncated before the history insert so long
+    Keycloak names cannot break approval;
+  - principal and picker display names come from OIDC claims / Keycloak profiles
+    instead of the truncated local snapshot;
+  - authorization resource types are filtered on the client side.
+- `fix: match todo candidate groups across all Keycloak groups of a user`
+  (1edcf36): `myToDo` now receives the full department-ID list and builds one
+  JSONB candidate-group condition per department.
+- `refactor: remove legacy local-read identity endpoints` (8410740): deleted the
+  role/permission controllers and reduced the user/department controllers to the
+  Keycloak-backed picker reads; removed the class-level `oa-admin` guard on the
+  department picker so non-admin initiators can load candidate departments again;
+  baseline authorization no longer registers `/role` and `/permission`.
+- `perf: cache Keycloak directory reads and adopt existing groups` (26c015b):
+  20-second caches for group tree/user index/group members with invalidation on
+  every write; O(n) tenant ownership pre-computation; numeric-ID snapshot rows
+  only saved when changed; group creation reuses an existing same-path Keycloak
+  group instead of failing.
+
+The remaining review items were also fixed:
+
+- `fix: make initialization completion marker transaction-safe` (a48479c):
+  explicit initialization lock with a retry error for concurrent calls; the
+  initialized marker is only written after the initialization transaction
+  commits.
+- `fix: compensate failed workbench publications and clean design metadata on
+  delete` (79d29e1): a failed publication removes its Camunda deployment; deleting
+  a workbench also removes its publish/entity/workflow design rows while keeping
+  business data and history.
+- `fix: scope authorization resource matching to the caller tenant` (16b30ae):
+  `oa-api` resources are matched only for the principal's tenant (resources
+  carrying a `tenantId` attribute).
+- `fix: handle expired sessions and tidy admin page interactions` (2bb3dff):
+  XHR responses that come back as an HTML login page or 401 redirect to the
+  Keycloak authorization endpoint; the duplicate enable/disable popconfirm was
+  removed and the disabled admin-grant button keeps a working tooltip.
+- `docs: add the first live-Keycloak verification checklist` records every
+  assumption that needs a real realm (UMA decision payload, resource/policy IDs,
+  `OAuth2AuthorizedClientManager`, group attribute PUT) in
+  `docs/keycloak-migration.md`.
+
+Verification for this round: backend `mvn -q -DskipTests compile` after each
+backend change and one production `next build` after the frontend changes, all
+exit 0; every commit passed `git diff --cached --check` (exit 0) before it was
+pushed to `origin/feature/keycloak-integration`.
+
+
+
 
 
 
