@@ -91,7 +91,7 @@ public class KeycloakRequestAuthorizationManager
         if (!(authentication instanceof OAuth2AuthenticationToken oauthAuthentication)) {
             return new AuthorizationDecision(false);
         }
-        OaStoredResource resource = findResource(path);
+        OaStoredResource resource = findResource(path, tenantIdOf(authentication));
         if (resource == null) {
             logger.warn("No Keycloak authorization resource registered for {}", path);
             return new AuthorizationDecision(false);
@@ -108,13 +108,41 @@ public class KeycloakRequestAuthorizationManager
         }
     }
 
-    private OaStoredResource findResource(String path) {
+    /**
+     * Finds the API resource for a path, ignoring resources that belong to another
+     * OA tenant when the resource carries a tenant attribute. This prevents two
+     * tenants that register the same URL pattern from being matched to each other.
+     */
+    private OaStoredResource findResource(String path, Long tenantId) {
         for (OaStoredResource resource : apiResources()) {
+            Long resourceTenantId = tenantIdOf(resource);
+            if (tenantId != null && resourceTenantId != null && !tenantId.equals(resourceTenantId)) {
+                continue;
+            }
             if (resource.value() != null && matcher.match(resource.value(), path)) {
                 return resource;
             }
         }
         return null;
+    }
+
+    private Long tenantIdOf(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof OaOidcUserPrincipal principal) {
+            return principal.getTenantId();
+        }
+        return null;
+    }
+
+    private Long tenantIdOf(OaStoredResource resource) {
+        String value = resource.attributes().get("tenantId");
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        try {
+            return Long.valueOf(value.trim());
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 
     private List<OaStoredResource> apiResources() {
