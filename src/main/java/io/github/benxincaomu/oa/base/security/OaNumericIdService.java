@@ -1,6 +1,7 @@
 package io.github.benxincaomu.oa.base.security;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
@@ -68,15 +69,28 @@ public class OaNumericIdService {
         if (!tenantId.equals(user.getTenantId())) {
             throw new IllegalArgumentException("Keycloak user belongs to another OA tenant");
         }
-        user.setUserName(limit(profile.username(), USERNAME_MAX_LENGTH));
-        user.setName(limit(profile.name(), NAME_MAX_LENGTH));
-        user.setEmail(limit(profile.email(), EMAIL_MAX_LENGTH));
-        user.setMobile(limit(profile.mobile(), MOBILE_MAX_LENGTH));
+        String userName = limit(profile.username(), USERNAME_MAX_LENGTH);
+        String name = limit(profile.name(), NAME_MAX_LENGTH);
+        String email = limit(profile.email(), EMAIL_MAX_LENGTH);
+        String mobile = limit(profile.mobile(), MOBILE_MAX_LENGTH);
+        boolean changed = user.getId() == null
+                || !Objects.equals(user.getUserName(), userName)
+                || !Objects.equals(user.getName(), name)
+                || !Objects.equals(user.getEmail(), email)
+                || !Objects.equals(user.getMobile(), mobile)
+                || !Objects.equals(user.getEnable(), profile.enabled())
+                || user.getPassword() != null
+                || user.getSalt() != null
+                || !Boolean.FALSE.equals(user.getRawPassword());
+        user.setUserName(userName);
+        user.setName(name);
+        user.setEmail(email);
+        user.setMobile(mobile);
         user.setEnable(profile.enabled());
         user.setPassword(null);
         user.setSalt(null);
         user.setRawPassword(false);
-        User saved = userRepository.save(user);
+        User saved = changed ? userRepository.save(user) : user;
         saveLinkIfMissing(KeycloakObjectLink.USER, profile.id(), saved.getId());
         return saved;
     }
@@ -99,13 +113,17 @@ public class OaNumericIdService {
         if (!tenantId.equals(department.getTenantId())) {
             throw new IllegalArgumentException("Keycloak group belongs to another OA tenant");
         }
+        Long leaderUserId = group.leaderUserId() != null ? group.leaderUserId() : department.getLeaderUserId();
+        boolean changed = department.getId() == null
+                || !Objects.equals(department.getName(), group.name())
+                || !Objects.equals(department.getParentId(), parentLocalId)
+                || !Objects.equals(department.getCode(), group.code())
+                || !Objects.equals(department.getLeaderUserId(), leaderUserId);
         department.setName(group.name());
         department.setParentId(parentLocalId);
         department.setCode(group.code());
-        if (group.leaderUserId() != null) {
-            department.setLeaderUserId(group.leaderUserId());
-        }
-        Department saved = departmentRepository.save(department);
+        department.setLeaderUserId(leaderUserId);
+        Department saved = changed ? departmentRepository.save(department) : department;
         saveLinkIfMissing(KeycloakObjectLink.DEPARTMENT, group.id(), saved.getId());
         return saved;
     }

@@ -1,5 +1,6 @@
 package io.github.benxincaomu.oa.base.security;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -24,9 +25,11 @@ import io.github.benxincaomu.oa.bussiness.user.vo.UserIdNameVo;
  * Read/write facade over the Keycloak directory.
  *
  * <p>
- * Reads always come from the Keycloak Admin API: there is no directory cache and
- * no local projection write on a read path. Numeric OA IDs are resolved only
- * where legacy workflow data needs them, through {@link OaNumericIdService}.
+ * Reads come from the Keycloak Admin API with a short-lived in-memory cache to
+ * avoid one full directory fetch per request; every write invalidates the cache.
+ * No local directory row is read as a data source. Numeric OA IDs are resolved
+ * only where legacy workflow data needs them, through
+ * {@link OaNumericIdService}.
  * </p>
  *
  * <p>
@@ -37,8 +40,14 @@ import io.github.benxincaomu.oa.bussiness.user.vo.UserIdNameVo;
  */
 @Service
 public class KeycloakDirectoryService {
+    private static final long CACHE_TTL_SECONDS = 20;
+
     private final KeycloakAdminClient adminClient;
     private final OaNumericIdService numericIdService;
+
+    private volatile CachedGroups cachedGroups;
+    private volatile CachedUsers cachedUsers;
+    private volatile CachedMembers cachedMembers;
 
     public KeycloakDirectoryService(KeycloakAdminClient adminClient,
             OaNumericIdService numericIdService) {
@@ -52,9 +61,9 @@ public class KeycloakDirectoryService {
         if (!StringUtils.hasText(externalUserId)) {
             return null;
         }
-        List<OaKeycloakGroup> allGroups = adminClient.listGroupsWithAttributes();
+        Map<String, Long> tenantByPath = tenantByPath(groups());
         for (OaKeycloakGroup group : adminClient.listUserGroups(externalUserId)) {
-            Long tenantId = tenantIdOf(group, allGroups);
+            Long tenantId = tenantIdOfPath(group.path(), tenantByPath);
             if (tenantId != null) {
                 return tenantId;
             }
@@ -63,16 +72,17 @@ public class KeycloakDirectoryService {
     }
 
     public Optional<OaKeycloakGroup> findTenantRootGroup(Long tenantId) {
-        return adminClient.listGroupsWithAttributes().stream()
+        return groups().stream()
                 .filter(group -> tenantId.equals(group.tenantId()))
                 .min(Comparator.comparingInt(group -> group.path().split("/").length));
     }
 
     public List<OaKeycloakGroup> listTenantGroups(Long tenantId) {
-        List<OaKeycloakGroup> allGroups = adminClient.listGroupsWithAttributes();
+        List<OaKeycloakGroup> allGroups = groups();
+        Map<String, Long> tenantByPath = tenantByPath(allGroups);
         List<OaKeycloakGroup> tenantGroups = new ArrayList<>();
         for (OaKeycloakGroup group : allGroups) {
-            if (tenantId.equals(tenantIdOf(group, allGroups))) {
+            if (tenantId.equals(tenantIdOfPath(group.path(), tenantByPath))) {
                 tenantGroups.add(group);
             }
         }
@@ -83,10 +93,11 @@ public class KeycloakDirectoryService {
 
     public List<KeycloakUserProfile> listTenantUsers(Long tenantId, String search) {
         Set<String> memberIds = new LinkedHashSet<>();
+        Map<String, List<String>> members = memberIdsByGroup();
         for (OaKeycloakGroup group : listTenantGroups(tenantId)) {
-            memberIds.addAll(adminClient.getGroupMemberIds(group.id()));
+            memberIds.addAll(members.getOrDefault(group.id(), List.of()));
         }
-        Map<String, KeycloakUserProfile> users = indexUsers(adminClient.listUsers(null));
+        Map<String, KeycloakUserProfile> users = usersById();
         String query = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
         return memberIds.stream()
                 .map(users::get)
@@ -116,8 +127,9 @@ public class KeycloakDirectoryService {
 
     private Map<String, String> firstGroupNames(Long tenantId) {
         Map<String, String> result = new LinkedHashMap<>();
+        Map<String, List<String>> members = memberIdsByGroup();
         for (OaKeycloakGroup group : listTenantGroups(tenantId)) {
-            for (String memberId : adminClient.getGroupMemberIds(group.id())) {
+            for (String memberId : members.getOrDefault(group.id(), List.of())) {
                 result.putIfAbsent(memberId, group.name());
             }
         }
@@ -170,9 +182,9 @@ public class KeycloakDirectoryService {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "OA department has no linked Keycloak group: " + departmentLocalId));
         requireTenantGroup(groupId, tenantId);
-        Map<String, KeycloakUserProfile> users = indexUsers(adminClient.listUsers(null));
+        Map<String, KeycloakUserProfile> users = usersById();
         List<UserIdNameVo> result = new ArrayList<>();
-        for (String memberId : adminClient.getGroupMemberIds(groupId)) {
+        for (String memberId : memberIdsByGroup().getOrDefault(groupId, List.of())) {
             KeycloakUserProfile profile = users.get(memberId);
             if (profile == null) {
                 continue;
@@ -199,10 +211,11 @@ public class KeycloakDirectoryService {
 
     public List<KeycloakGroupProfile> listUserGroupProfiles(String externalUserId, Long tenantId) {
         requireTenantUser(externalUserId, tenantId);
-        List<OaKeycloakGroup> allGroups = adminClient.listGroupsWithAttributes();
+        List<OaKeycloakGroup> allGroups = groups();
+        Map<String, Long> tenantByPath = tenantByPath(allGroups);
         List<KeycloakGroupProfile> profiles = new ArrayList<>();
         for (OaKeycloakGroup group : adminClient.listUserGroups(externalUserId)) {
-            if (!tenantId.equals(tenantIdOf(group, allGroups))) {
+            if (!tenantId.equals(tenantIdOfPath(group.path(), tenantByPath))) {
                 continue;
             }
             profiles.add(new KeycloakGroupProfile(group.id(), group.name(), group.code(),
@@ -257,13 +270,14 @@ public class KeycloakDirectoryService {
         if (externalUserId == null) {
             return List.of();
         }
-        List<OaKeycloakGroup> allGroups = adminClient.listGroupsWithAttributes();
+        List<OaKeycloakGroup> allGroups = groups();
+        Map<String, Long> tenantByPath = tenantByPath(allGroups);
         List<Long> departmentIds = new ArrayList<>();
         for (OaKeycloakGroup userGroup : adminClient.listUserGroups(externalUserId)) {
-            if (!tenantId.equals(tenantIdOf(userGroup, allGroups))) {
+            if (!tenantId.equals(tenantIdOfPath(userGroup.path(), tenantByPath))) {
                 continue;
             }
-            Long departmentId = resolveGroupAncestry(userGroup, allGroups, tenantId);
+            Long departmentId = resolveGroupAncestry(userGroup, allGroups, tenantByPath, tenantId);
             if (departmentId != null && !departmentIds.contains(departmentId)) {
                 departmentIds.add(departmentId);
             }
@@ -283,13 +297,12 @@ public class KeycloakDirectoryService {
         if (externalUserId == null) {
             return Optional.empty();
         }
-        List<OaKeycloakGroup> allGroups = adminClient.listGroupsWithAttributes();
+        List<OaKeycloakGroup> allGroups = groups();
+        Map<String, Long> tenantByPath = tenantByPath(allGroups);
+        Map<String, OaKeycloakGroup> groupById = indexGroupsById(allGroups);
         for (OaKeycloakGroup userGroup : adminClient.listUserGroups(externalUserId)) {
-            OaKeycloakGroup fullGroup = allGroups.stream()
-                    .filter(candidate -> candidate.id().equals(userGroup.id()))
-                    .findFirst()
-                    .orElse(null);
-            if (fullGroup == null || !tenantId.equals(tenantIdOf(fullGroup, allGroups))) {
+            OaKeycloakGroup fullGroup = groupById.get(userGroup.id());
+            if (fullGroup == null || !tenantId.equals(tenantIdOfPath(fullGroup.path(), tenantByPath))) {
                 continue;
             }
             if (fullGroup.leaderUserId() != null) {
@@ -299,10 +312,11 @@ public class KeycloakDirectoryService {
         return Optional.empty();
     }
 
-    private Long resolveGroupAncestry(OaKeycloakGroup userGroup, List<OaKeycloakGroup> allGroups, Long tenantId) {
+    private Long resolveGroupAncestry(OaKeycloakGroup userGroup, List<OaKeycloakGroup> allGroups,
+            Map<String, Long> tenantByPath, Long tenantId) {
         List<OaKeycloakGroup> chain = new ArrayList<>();
         for (OaKeycloakGroup candidate : allGroups) {
-            if (!tenantId.equals(tenantIdOf(candidate, allGroups))) {
+            if (!tenantId.equals(tenantIdOfPath(candidate.path(), tenantByPath))) {
                 continue;
             }
             if (candidate.path().equals(userGroup.path())
@@ -355,12 +369,14 @@ public class KeycloakDirectoryService {
         if (StringUtils.hasText(password)) {
             adminClient.resetUserPassword(saved.id(), password, temporary);
         }
+        invalidateCaches();
         return saved;
     }
 
     public void setUserEnabled(String userId, boolean enabled, Long tenantId) {
         requireTenantUser(userId, tenantId);
         adminClient.setUserEnabled(userId, enabled);
+        invalidateCaches();
     }
 
     public void resetUserPassword(String userId, String password, boolean temporary, Long tenantId) {
@@ -373,6 +389,11 @@ public class KeycloakDirectoryService {
         adminClient.replaceUserClientRoles(userId, roleIds);
     }
 
+    /**
+     * Creates or updates one Keycloak group. When a group with the same name under
+     * the same parent already exists in Keycloak it is adopted (its ID is reused)
+     * instead of failing with a "changed after tenant validation" error.
+     */
     public KeycloakGroupProfile upsertGroup(KeycloakGroupProfile requested, Long tenantId) {
         if (!StringUtils.hasText(requested.name())) {
             throw new IllegalArgumentException("group name cannot be blank");
@@ -382,17 +403,23 @@ public class KeycloakDirectoryService {
                 : findTenantRootGroup(tenantId)
                         .orElseThrow(() -> new IllegalStateException("The tenant root group is not provisioned")).id();
         requireTenantGroup(parentId, tenantId);
-        if (StringUtils.hasText(requested.id())) {
-            requireTenantGroup(requested.id(), tenantId);
+        String groupId = requested.id();
+        if (StringUtils.hasText(groupId)) {
+            requireTenantGroup(groupId, tenantId);
+        } else {
+            groupId = adminClient.findGroupId(parentId, requested.name()).orElse(null);
         }
-        return adminClient.upsertGroup(new KeycloakGroupProfile(requested.id(), requested.name(),
+        KeycloakGroupProfile saved = adminClient.upsertGroup(new KeycloakGroupProfile(groupId, requested.name(),
                 requested.code(), parentId));
+        invalidateCaches();
+        return saved;
     }
 
     public void setGroupMembership(String groupId, String userId, boolean member, Long tenantId) {
         requireTenantGroup(groupId, tenantId);
         requireTenantUser(userId, tenantId);
         adminClient.setGroupMembership(userId, groupId, member);
+        invalidateCaches();
     }
 
     /**
@@ -408,6 +435,7 @@ public class KeycloakDirectoryService {
                         "Keycloak user does not exist: " + externalUserId));
         User leader = numericIdService.resolveUser(profile, tenantId);
         adminClient.setGroupAttribute(groupId, "leader_user_id", String.valueOf(leader.getId()));
+        invalidateCaches();
     }
 
     public KeycloakRoleProfile upsertClientRole(KeycloakRoleProfile requested, Long tenantId) {
@@ -417,6 +445,47 @@ public class KeycloakDirectoryService {
     public void replaceGroupClientRoles(String groupId, List<String> roleIds, Long tenantId) {
         requireTenantGroup(groupId, tenantId);
         adminClient.replaceGroupClientRoles(groupId, roleIds);
+    }
+
+    // ---------------------------------------------------------------- caches
+
+    private List<OaKeycloakGroup> groups() {
+        CachedGroups current = cachedGroups;
+        if (current != null && current.expiresAt().isAfter(Instant.now())) {
+            return current.groups();
+        }
+        List<OaKeycloakGroup> groups = adminClient.listGroupsWithAttributes();
+        cachedGroups = new CachedGroups(groups, Instant.now().plusSeconds(CACHE_TTL_SECONDS));
+        return groups;
+    }
+
+    private Map<String, KeycloakUserProfile> usersById() {
+        CachedUsers current = cachedUsers;
+        if (current != null && current.expiresAt().isAfter(Instant.now())) {
+            return current.users();
+        }
+        Map<String, KeycloakUserProfile> users = indexUsers(adminClient.listUsers(null));
+        cachedUsers = new CachedUsers(users, Instant.now().plusSeconds(CACHE_TTL_SECONDS));
+        return users;
+    }
+
+    private Map<String, List<String>> memberIdsByGroup() {
+        CachedMembers current = cachedMembers;
+        if (current != null && current.expiresAt().isAfter(Instant.now())) {
+            return current.members();
+        }
+        Map<String, List<String>> members = new LinkedHashMap<>();
+        for (OaKeycloakGroup group : groups()) {
+            members.put(group.id(), adminClient.getGroupMemberIds(group.id()));
+        }
+        cachedMembers = new CachedMembers(members, Instant.now().plusSeconds(CACHE_TTL_SECONDS));
+        return members;
+    }
+
+    private void invalidateCaches() {
+        cachedGroups = null;
+        cachedUsers = null;
+        cachedMembers = null;
     }
 
     // --------------------------------------------------------------- utilities
@@ -429,35 +498,70 @@ public class KeycloakDirectoryService {
     }
 
     private void requireTenantGroup(String groupId, Long tenantId) {
-        List<OaKeycloakGroup> allGroups = adminClient.listGroupsWithAttributes();
+        List<OaKeycloakGroup> allGroups = groups();
+        Map<String, Long> tenantByPath = tenantByPath(allGroups);
         OaKeycloakGroup group = allGroups.stream()
                 .filter(candidate -> candidate.id().equals(groupId))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Keycloak group does not exist: " + groupId));
-        if (!tenantId.equals(tenantIdOf(group, allGroups))) {
+        if (!tenantId.equals(tenantIdOfPath(group.path(), tenantByPath))) {
             throw new IllegalArgumentException("Keycloak group is not part of the current OA tenant");
         }
     }
 
-    private Long tenantIdOf(OaKeycloakGroup group, List<OaKeycloakGroup> allGroups) {
+    /**
+     * Pre-computes the owning tenant for every group path in one pass, so tenant
+     * filtering no longer compares every group against every other group.
+     */
+    private Map<String, Long> tenantByPath(List<OaKeycloakGroup> allGroups) {
+        Map<String, OaKeycloakGroup> byPath = new HashMap<>();
+        for (OaKeycloakGroup group : allGroups) {
+            byPath.put(group.path(), group);
+        }
+        Map<String, Long> tenantByPath = new HashMap<>();
+        for (OaKeycloakGroup group : allGroups) {
+            resolveTenant(group, byPath, tenantByPath);
+        }
+        return tenantByPath;
+    }
+
+    private Long resolveTenant(OaKeycloakGroup group, Map<String, OaKeycloakGroup> byPath,
+            Map<String, Long> computed) {
         if (group.tenantId() != null) {
             return group.tenantId();
         }
-        OaKeycloakGroup owner = null;
-        for (OaKeycloakGroup candidate : allGroups) {
-            if (candidate.tenantId() == null || !group.path().startsWith(candidate.path() + "/")) {
-                continue;
-            }
-            if (owner == null || candidate.path().length() > owner.path().length()) {
-                owner = candidate;
-            }
+        if (computed.containsKey(group.path())) {
+            return computed.get(group.path());
         }
-        return owner == null ? null : owner.tenantId();
+        String parent = parentPath(group.path());
+        OaKeycloakGroup parentGroup = parent == null ? null : byPath.get(parent);
+        Long tenantId = parentGroup == null ? null : resolveTenant(parentGroup, byPath, computed);
+        computed.put(group.path(), tenantId);
+        return tenantId;
+    }
+
+    private Long tenantIdOfPath(String path, Map<String, Long> tenantByPath) {
+        String current = path;
+        while (current != null) {
+            if (tenantByPath.containsKey(current)) {
+                return tenantByPath.get(current);
+            }
+            current = parentPath(current);
+        }
+        return null;
     }
 
     private String parentPath(String path) {
         int lastSlash = path.lastIndexOf('/');
         return lastSlash <= 0 ? null : path.substring(0, lastSlash);
+    }
+
+    private Map<String, OaKeycloakGroup> indexGroupsById(List<OaKeycloakGroup> groups) {
+        Map<String, OaKeycloakGroup> byId = new HashMap<>();
+        for (OaKeycloakGroup group : groups) {
+            byId.put(group.id(), group);
+        }
+        return byId;
     }
 
     private Map<String, KeycloakUserProfile> indexUsers(List<KeycloakUserProfile> profiles) {
@@ -470,5 +574,14 @@ public class KeycloakDirectoryService {
 
     private boolean contains(String value, String query) {
         return value != null && value.toLowerCase(Locale.ROOT).contains(query);
+    }
+
+    private record CachedGroups(List<OaKeycloakGroup> groups, Instant expiresAt) {
+    }
+
+    private record CachedUsers(Map<String, KeycloakUserProfile> users, Instant expiresAt) {
+    }
+
+    private record CachedMembers(Map<String, List<String>> members, Instant expiresAt) {
     }
 }
