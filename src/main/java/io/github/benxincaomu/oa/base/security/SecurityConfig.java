@@ -84,8 +84,9 @@ public class SecurityConfig {
 
     @Bean
     public ProjectInitializationFilter projectInitializationFilter(InitService initService,
+            KeycloakConnectionService keycloakConnectionService,
             com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
-        return new ProjectInitializationFilter(initService, objectMapper);
+        return new ProjectInitializationFilter(initService, keycloakConnectionService, objectMapper);
     }
 
     private static final class SpaCsrfTokenRequestHandler implements CsrfTokenRequestHandler {

@@ -19,18 +19,24 @@ public class ProjectInitializationFilter extends OncePerRequestFilter {
     private static final String[] INITIALIZATION_URLS = { "/initProject/**", "/actuator/health" };
 
     private final InitService initService;
+    private final KeycloakConnectionService keycloakConnectionService;
     private final ObjectMapper objectMapper;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
-    public ProjectInitializationFilter(InitService initService, ObjectMapper objectMapper) {
+    public ProjectInitializationFilter(InitService initService,
+            KeycloakConnectionService keycloakConnectionService, ObjectMapper objectMapper) {
         this.initService = initService;
+        this.keycloakConnectionService = keycloakConnectionService;
         this.objectMapper = objectMapper;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        if (initService.isInitialized() || isInitializationUrl(request.getServletPath())) {
+        // 需要同时满足“已有租户数据”和“已保存 Keycloak 配置”才认为可以对外服务
+        boolean ready = initService.isInitialized()
+                && keycloakConnectionService.getConfiguration().isPresent();
+        if (ready || isInitializationUrl(request.getServletPath())) {
             filterChain.doFilter(request, response);
             return;
         }

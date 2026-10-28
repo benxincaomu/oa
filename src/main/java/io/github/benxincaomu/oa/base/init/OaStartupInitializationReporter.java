@@ -47,7 +47,10 @@ public class OaStartupInitializationReporter implements ApplicationRunner {
             String initUrl = initializationUrl();
 
             if (config == null) {
-                logInitializationRequired(initUrl, "未检测到 Keycloak 配置（数据库表 keycloak_integration_config 为空）");
+                String reason = tenantCount > 0
+                        ? "未检测到 Keycloak 配置（数据库已有 " + tenantCount + " 个租户，将按存量安装初始化）"
+                        : "未检测到 Keycloak 配置（数据库表 keycloak_integration_config 为空）";
+                logInitializationRequired(initUrl, reason);
             } else if (tenantCount == 0) {
                 logInitializationRequired(initUrl, "已存在 Keycloak 配置，但租户/管理员尚未初始化");
             } else {

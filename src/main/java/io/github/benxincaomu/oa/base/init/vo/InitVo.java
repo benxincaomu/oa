@@ -12,9 +12,8 @@ public class InitVo {
     private UserInitVo user;
 
     /**
-     * 顶级部门名称
+     * 顶级部门名称。全新安装时必填；存量安装（已有租户、只补 Keycloak 配置）时忽略。
      */
-    @NotNull(message = "顶级部门名称不能为空")
     private DepartmentInitVo department;
 
     @Valid

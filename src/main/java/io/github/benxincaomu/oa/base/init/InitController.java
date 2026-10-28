@@ -18,7 +18,16 @@ import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
 
 /**
- * 初始化相关
+ * 初始化相关。
+ *
+ * <p>
+ * 支持两种模式：
+ * <ul>
+ * <li>全新安装：数据库没有租户，创建租户/根部门/管理员数字 ID 并配置 Keycloak；</li>
+ * <li>存量安装：数据库已有租户但 {@code keycloak_integration_config} 为空，
+ * 只补充 Keycloak 配置并复用现有租户、根部门和管理员数字 ID。</li>
+ * </ul>
+ * </p>
  */
 @RestController
 @RequestMapping("initProject")
@@ -35,11 +44,26 @@ public class InitController {
 
     @PostMapping()
     public void init(@RequestBody @Valid InitVo initVo) {
-        if (initService.isInitialized()) {
+        boolean projectInitialized = initService.isInitialized();
+        boolean keycloakConfigured = keycloakConnectionService.getConfiguration().isPresent();
+        if (projectInitialized && keycloakConfigured) {
             throw new IllegalStateException("项目已初始化，不能重复初始化");
+        }
+        if (!projectInitialized && initVo.getDepartment() == null) {
+            throw new IllegalArgumentException("首次初始化必须填写顶级部门");
         }
 
         keycloakConnectionService.configure(initVo.getKeycloak());
+
+        if (projectInitialized) {
+            // 存量安装：只配置 Keycloak，复用已有租户/根部门/管理员数字 ID
+            String rootGroupName = initService.findRootDepartmentName()
+                    .orElseThrow(() -> new IllegalStateException("未找到租户根部门，无法完成 Keycloak 初始化"));
+            KeycloakBootstrapIdentity keycloakIdentity = keycloakAdminClient.bootstrapAdministrator(
+                    initVo.getUser(), rootGroupName);
+            initService.completeExistingInstallation(initVo.getUser(), keycloakIdentity);
+            return;
+        }
 
         Department department = new Department();
         department.setName(initVo.getDepartment().getName());
@@ -55,8 +79,6 @@ public class InitController {
         KeycloakBootstrapIdentity keycloakIdentity = keycloakAdminClient.bootstrapAdministrator(initVo.getUser(),
                 department.getName());
         initService.init(department, user, role, keycloakIdentity);
-        // 本地事务已提交，再标记初始化完成，避免失败时留下“已完成”标记
-        initService.markInitialized();
     }
 
 

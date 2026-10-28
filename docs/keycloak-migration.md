@@ -81,26 +81,35 @@ IDs already stored in workflow tables must be reused. `keycloak_object_links` is
 the bridge; a user or group that is created in Keycloak without a link gets a new
 numeric ID on first use.
 
-1. **Create the tenant root group** in Keycloak (name = existing root department),
-   then set its `tenant_id` attribute to the numeric OA tenant ID (one-time SQL
-   template below, or use the Admin API).
-2. **Create groups for the department tree** mirroring `department` rows, with
-   `code` attributes (see the `KeycloakObjectLink` mapping below).
-3. **Create users** for existing `users` rows: username, first/last name, email,
+0. **Run the built-in existing-installation setup.** Start the backend. Because
+   `keycloak_integration_config` is empty, the startup log prints
+   `OA INITIALIZATION REQUIRED` with the initialization URL
+   (`{app.base-url}/init`), and business APIs stay unavailable until Keycloak is
+   configured. Open that URL: the wizard detects the existing tenant and runs in
+   "existing installation" mode instead of creating a new tenant. It validates
+   the Keycloak settings, creates/finds the administrator user, the tenant root
+   group, and the `oa-admin` application role, links those to the existing numeric
+   administrator / root-department / admin-role IDs, sets `tenant_id` and
+   `leader_user_id` on the root group, and provisions the baseline menu/API
+   resources (an already-existing Keycloak user is not given a new password).
+1. **Create groups for the department tree** mirroring the remaining `department`
+   rows, with `code` attributes (see the `KeycloakObjectLink` mapping below). The
+   tenant root group already exists from step 0.
+2. **Create users** for existing `users` rows: username, first/last name, email,
    enabled state. Password hashes are not portable; create users with a temporary
    password or send Keycloak's "update password" action. Place each user in the
    group(s) that match `department_user`.
-4. **Create application client roles** for existing OA roles and assign them to
+3. **Create application client roles** for existing OA roles and assign them to
    the corresponding users.
-5. **Backfill links** so old numeric IDs are reused (see SQL below).
-6. **Set group leaders** for "starter's department leader" approval:
+4. **Backfill links** so old numeric IDs are reused (see SQL below). The
+   administrator, tenant root department, and `oa-admin` role are already linked
+   by step 0; link the remaining users/groups/roles.
+5. **Set group leaders** for "starter's department leader" approval:
    `PUT /identity/groups/{groupId}/leader` with `{"userId": "<keycloak user id>"}`.
-7. **Provision baseline resources**: call `PUT /identity/authorization-baseline`
-   once as an administrator.
-8. **Republish workbenches** (publish each existing workbench once) so its menu and
+6. **Republish workbenches** (publish each existing workbench once) so its menu and
    API resources are registered in Keycloak and granted to `oa-admin`. Grant other
    roles through the role page.
-9. Verify: login, menus, start a flow, todo/done lists, approval, history names.
+7. Verify: login, menus, start a flow, todo/done lists, approval, history names.
 
 ### Object link backfill
 
