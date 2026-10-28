@@ -12,4 +12,6 @@ public interface KeycloakObjectLinkRepository extends JpaRepository<KeycloakObje
     Optional<KeycloakObjectLink> findByObjectTypeAndLocalId(String objectType, Long localId);
 
     List<KeycloakObjectLink> findByObjectTypeAndLocalIdIn(String objectType, Collection<Long> localIds);
+
+    boolean existsByObjectType(String objectType);
 }

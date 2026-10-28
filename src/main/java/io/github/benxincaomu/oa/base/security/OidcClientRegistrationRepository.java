@@ -31,7 +31,7 @@ public class OidcClientRegistrationRepository implements ClientRegistrationRepos
         }
 
         String currentCacheKey = config.getIssuerUri() + "|" + config.getClientId() + "|"
-                + config.getEncryptedClientSecret() + "|" + config.getRedirectUri();
+                + config.getClientSecret() + "|" + config.getRedirectUri();
         ClientRegistration registration = cachedRegistration;
         if (registration != null && currentCacheKey.equals(cacheKey)) {
             return registration;
@@ -44,7 +44,7 @@ public class OidcClientRegistrationRepository implements ClientRegistrationRepos
             ClientRegistration.Builder builder = ClientRegistrations.fromIssuerLocation(config.getIssuerUri())
                     .registrationId(REGISTRATION_ID)
                     .clientId(config.getClientId())
-                    .clientSecret(connectionService.decryptClientSecret(config))
+                    .clientSecret(connectionService.getClientSecret(config))
                     .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                     .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                     .redirectUri(config.getRedirectUri())

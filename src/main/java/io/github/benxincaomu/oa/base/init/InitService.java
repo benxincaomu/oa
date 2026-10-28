@@ -84,6 +84,16 @@ public class InitService {
     }
 
     /**
+     * 管理员、根部门、管理员角色是否都已建立 Keycloak 链接。
+     * 有租户数据但链接缺失时，仍需要走一次“存量安装”初始化来补齐 Keycloak 侧信息。
+     */
+    public boolean hasKeycloakLinks() {
+        return keycloakObjectLinkRepository.existsByObjectType(KeycloakObjectLink.USER)
+                && keycloakObjectLinkRepository.existsByObjectType(KeycloakObjectLink.DEPARTMENT)
+                && keycloakObjectLinkRepository.existsByObjectType(KeycloakObjectLink.ROLE);
+    }
+
+    /**
      * 全新安装：创建租户、管理员数字 ID 快照、根部门，并把 Keycloak 对象链接到这些数字 ID，
      * 最后写入租户标记与基线授权资源。
      */

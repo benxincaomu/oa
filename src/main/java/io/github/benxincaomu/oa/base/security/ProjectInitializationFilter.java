@@ -33,9 +33,10 @@ public class ProjectInitializationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        // 需要同时满足“已有租户数据”和“已保存 Keycloak 配置”才认为可以对外服务
+        // 需要同时满足“已有租户数据”“已配置 Keycloak”“管理员/根部门/角色已建立 Keycloak 链接”才认为可以对外服务
         boolean ready = initService.isInitialized()
-                && keycloakConnectionService.getConfiguration().isPresent();
+                && keycloakConnectionService.getConfiguration().isPresent()
+                && initService.hasKeycloakLinks();
         if (ready || isInitializationUrl(request.getServletPath())) {
             filterChain.doFilter(request, response);
             return;

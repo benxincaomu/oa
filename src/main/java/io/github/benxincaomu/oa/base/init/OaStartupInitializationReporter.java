@@ -13,9 +13,9 @@ import io.github.benxincaomu.oa.base.security.KeycloakIntegrationConfig;
 import io.github.benxincaomu.oa.bussiness.tenant.TenantRepository;
 
 /**
- * Checks the persisted Keycloak configuration and the local tenant at startup and
- * writes the initialization URL to the log when the application still needs to
- * be initialized.
+ * Checks the file-based Keycloak configuration, the local tenant data and the
+ * Keycloak links at startup, and writes the initialization URL to the log when the
+ * application still needs initialization.
  *
  * <p>
  * The check reads the database directly (not the Redis "projectIsInitialized"
@@ -29,14 +29,16 @@ public class OaStartupInitializationReporter implements ApplicationRunner {
 
     private final KeycloakConnectionService connectionService;
     private final TenantRepository tenantRepository;
+    private final InitService initService;
 
     @Value("${app.base-url:}")
     private String appBaseUrl;
 
     public OaStartupInitializationReporter(KeycloakConnectionService connectionService,
-            TenantRepository tenantRepository) {
+            TenantRepository tenantRepository, InitService initService) {
         this.connectionService = connectionService;
         this.tenantRepository = tenantRepository;
+        this.initService = initService;
     }
 
     @Override
@@ -44,17 +46,18 @@ public class OaStartupInitializationReporter implements ApplicationRunner {
         try {
             KeycloakIntegrationConfig config = connectionService.getConfiguration().orElse(null);
             long tenantCount = tenantRepository.count();
+            boolean keycloakLinked = initService.hasKeycloakLinks();
             String initUrl = initializationUrl();
 
             if (config == null) {
-                String reason = tenantCount > 0
-                        ? "未检测到 Keycloak 配置（数据库已有 " + tenantCount + " 个租户，将按存量安装初始化）"
-                        : "未检测到 Keycloak 配置（数据库表 keycloak_integration_config 为空）";
-                logInitializationRequired(initUrl, reason);
+                logKeycloakNotConfigured(initUrl);
             } else if (tenantCount == 0) {
-                logInitializationRequired(initUrl, "已存在 Keycloak 配置，但租户/管理员尚未初始化");
+                logInitializationRequired(initUrl, "尚未创建租户数据，Keycloak 配置已从配置文件读取");
+            } else if (!keycloakLinked) {
+                logInitializationRequired(initUrl,
+                        "检测到已有租户数据，但管理员/根部门/管理员角色的 Keycloak 链接缺失（存量安装初始化）");
             } else {
-                logger.info("OA 已初始化：Keycloak issuer={}, realm={}, tenants={}",
+                logger.info("OA 已就绪：Keycloak issuer={}, realm={}, tenants={}",
                         config.getIssuerUri(), config.getRealm(), tenantCount);
             }
         } catch (RuntimeException exception) {
@@ -63,16 +66,33 @@ public class OaStartupInitializationReporter implements ApplicationRunner {
         }
     }
 
+    private void logKeycloakNotConfigured(String initUrl) {
+        logger.error("""
+                =========================== KEYCLOAK NOT CONFIGURED ===========================
+                未检测到完整的 Keycloak 配置。请在 application.yml（或对应环境变量）中配置：
+                    app.keycloak.issuer-uri                    KEYCLOAK_ISSUER_URI
+                    app.keycloak.realm                         KEYCLOAK_REALM
+                    app.keycloak.client-id                     KEYCLOAK_CLIENT_ID
+                    app.keycloak.client-secret                 KEYCLOAK_CLIENT_SECRET
+                    app.keycloak.service-account-client-id     KEYCLOAK_SERVICE_ACCOUNT_CLIENT_ID
+                    app.keycloak.service-account-client-secret KEYCLOAK_SERVICE_ACCOUNT_CLIENT_SECRET
+                    app.keycloak.redirect-uri                  KEYCLOAK_REDIRECT_URI
+                    app.keycloak.post-logout-redirect-uri      KEYCLOAK_POST_LOGOUT_REDIRECT_URI
+                修改配置并重启应用后，打开初始化页面完成租户/管理员初始化：
+                    {}
+                注意：Keycloak 客户端密钥只从配置文件/环境变量读取，不会写入数据库或日志。
+                =============================================================================
+                """, initUrl);
+    }
+
     private void logInitializationRequired(String initUrl, String reason) {
         logger.warn("""
                 ========================= OA INITIALIZATION REQUIRED =========================
                 {}
                 请使用浏览器打开初始化页面：
                     {}
-                初始化需要以下环境变量：
-                    KEYCLOAK_SETUP_TOKEN              一次性 setup token（初始化请求校验用）
-                    KEYCLOAK_CONFIG_ENCRYPTION_KEY    Base64 编码的 32 字节密钥（加密 Keycloak 客户端密钥）
-                说明：Keycloak 配置保存在数据库表 keycloak_integration_config，初始化完成后该页面不再可用。
+                说明：Keycloak 连接配置来自 application.yml / 环境变量（app.keycloak.*）；
+                     初始化只创建本地租户/管理员快照并补齐 Keycloak 链接，不会修改已存在的工作流数据。
                 =============================================================================
                 """, reason, initUrl);
     }

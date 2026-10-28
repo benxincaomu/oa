@@ -999,7 +999,7 @@ public class KeycloakAdminClient {
             MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
             form.add("grant_type", "client_credentials");
             form.add("client_id", config.getServiceAccountClientId());
-            form.add("client_secret", connectionService.decryptServiceAccountClientSecret(config));
+            form.add("client_secret", config.getServiceAccountClientSecret());
             JsonNode response;
             try {
                 response = restClient.post()
@@ -1046,7 +1046,7 @@ public class KeycloakAdminClient {
 
     private String tokenCacheKey(KeycloakIntegrationConfig config) {
         return config.getIssuerUri() + "|" + config.getServiceAccountClientId() + "|"
-                + config.getEncryptedServiceAccountClientSecret();
+                + config.getServiceAccountClientSecret();
     }
 
     private record CachedToken(String value, Instant expiresAt, String configurationKey) {

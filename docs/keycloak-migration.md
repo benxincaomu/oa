@@ -9,6 +9,7 @@ installation over, and how to roll back.
 | Concern | Source of truth | OA local storage |
 |---|---|---|
 | Authentication, credentials, SSO session | Keycloak (OIDC authorization code) | Spring Security session only |
+| Keycloak connection settings (issuer, clients, secrets) | application configuration / environment variables (`app.keycloak.*`) | none (never persisted in the database) |
 | Users, user attributes | Keycloak Users | numeric-ID projection + display snapshot (`users`) |
 | Departments / organization tree | Keycloak Groups (`code`, `leader_user_id` attributes) | numeric-ID projection + snapshot (`department`, `department_user`) |
 | Roles | Keycloak application client roles | numeric-ID projection (`role`) |
@@ -32,10 +33,40 @@ go to Keycloak. The old legacy routes (`/user`, `/organize`, `/role`,
   **Fail closed**: no registered resource or a Keycloak error denies the request.
 - Menus: built from the `oa-menu` resources granted to the user's client roles.
 - Exempt from UMA (authenticated only): `/login/myInfo`, `/login/getMyMenus`,
-  `/login/logout`, `/file/**`, `/user/currUser`, `/user/getAllUsers`,
+  `/login/logout`, `/file/**`, `/user/getAllUsers`,
   `/user/findUsersByNameLike/**`, `/organize/listTree`, `/organize/listAll`,
   `/organize/getUsersByDeptId/**` (read-only directory pickers used by workflow
   forms).
+
+## Configuration
+
+Keycloak connection settings are **not** stored in the database. They are read from
+`app.keycloak.*` in `application.yml` (or a profile-specific file) and can be
+overridden by the matching environment variables:
+
+```yaml
+app:
+  keycloak:
+    issuer-uri: ${KEYCLOAK_ISSUER_URI:}
+    realm: ${KEYCLOAK_REALM:}
+    client-id: ${KEYCLOAK_CLIENT_ID:}
+    client-secret: ${KEYCLOAK_CLIENT_SECRET:}
+    service-account-client-id: ${KEYCLOAK_SERVICE_ACCOUNT_CLIENT_ID:}
+    service-account-client-secret: ${KEYCLOAK_SERVICE_ACCOUNT_CLIENT_SECRET:}
+    redirect-uri: ${KEYCLOAK_REDIRECT_URI:}
+    post-logout-redirect-uri: ${KEYCLOAK_POST_LOGOUT_REDIRECT_URI:}
+```
+
+- `issuer-uri` must point at the realm (`https://<host>/realms/<realm>`).
+- `client-id` / `client-secret` are the OAuth2 confidential client used by the
+  browser login; `redirect-uri` is usually
+  `https://<oa-web-host>/server/login/oauth2/code/keycloak`.
+- `service-account-client-id` / `service-account-client-secret` are used for Admin
+  REST calls and authorization-resource management.
+- Secrets are read into memory only and are never returned by status endpoints or
+  written to logs. Prefer environment variables for production instead of
+  committing secrets to `application.yml`.
+- `SESSION_COOKIE_SECURE=true` when served over HTTPS.
 
 ## Prerequisites
 
@@ -47,27 +78,25 @@ go to Keycloak. The old legacy routes (`/user`, `/organize`, `/role`,
    initialization enables it automatically; for an existing deployment call
    `PUT /identity/authorization-baseline` once as an administrator, or enable
    "Authorization" in the Keycloak client settings.
-5. Environment variables:
-   - `KEYCLOAK_SETUP_TOKEN` — one-time setup token required by the init endpoint.
-   - `KEYCLOAK_CONFIG_ENCRYPTION_KEY` — master key used to encrypt client secrets
-     at rest (required; setup fails without it).
-   - `SESSION_COOKIE_SECURE` — `true` behind HTTPS.
-   - `KEYCLOAK_SETUP_TOKEN` must never be exposed in browser logs or the UI.
+5. The `app.keycloak.*` settings above are configured (and `SESSION_COOKIE_SECURE`
+   when behind HTTPS).
 
 ## Fresh installation
 
-1. Start the backend with the environment variables above and the frontend with
-   `API_BASE_URL` pointing at the backend.
-2. The backend checks the database at startup. When
-   `keycloak_integration_config` is empty (or the tenant is missing), the log prints
-   an `OA INITIALIZATION REQUIRED` block with the initialization URL computed from
-   `app.base-url` (`{app.base-url}/init`). Open that URL and fill the Keycloak
-   settings (issuer, realm, OAuth2 client, service-account client, callback URLs,
-   setup token), the root department, and the administrator user.
-3. Submit. The backend validates OIDC discovery and Admin API access, creates the
-   administrator in Keycloak (client role `oa-admin`), creates the tenant root
-   group with the `tenant_id` attribute, provisions the baseline menu/API
-   resources, and grants them to `oa-admin`.
+1. Fill `app.keycloak.*` in `application.yml`, or export the matching environment
+   variables, then start the backend. Start the frontend with `API_BASE_URL`
+   pointing at the backend.
+2. The backend checks the configuration and the database at startup. When Keycloak
+   is not fully configured it logs a `KEYCLOAK NOT CONFIGURED` block; when it is
+   configured but no tenant exists it logs `OA INITIALIZATION REQUIRED` with the
+   initialization URL computed from `app.base-url` (`{app.base-url}/init`).
+3. Open that URL. The database has no tenant yet, so the page runs in fresh mode and
+   only asks for the root department and the administrator user; the Keycloak
+   connection values come from the configuration file. Submit: the backend
+   validates OIDC discovery and Admin API access, creates the administrator in
+   Keycloak (client role `oa-admin`), creates the tenant root group with the
+   `tenant_id` attribute, provisions the baseline menu/API resources, and grants
+   them to `oa-admin`.
 4. Log in through Keycloak. Additional users are created in the admin UI (or
    directly in Keycloak) and must be members of a tenant group.
 
@@ -81,14 +110,17 @@ IDs already stored in workflow tables must be reused. `keycloak_object_links` is
 the bridge; a user or group that is created in Keycloak without a link gets a new
 numeric ID on first use.
 
-0. **Run the built-in existing-installation setup.** Start the backend. Because
-   `keycloak_integration_config` is empty, the startup log prints
-   `OA INITIALIZATION REQUIRED` with the initialization URL
-   (`{app.base-url}/init`), and business APIs stay unavailable until Keycloak is
-   configured. Open that URL: the wizard detects the existing tenant and runs in
-   "existing installation" mode instead of creating a new tenant. It validates
-   the Keycloak settings, creates/finds the administrator user, the tenant root
-   group, and the `oa-admin` application role, links those to the existing numeric
+0. **Configure Keycloak in the application config.** Fill `app.keycloak.*` in
+   `application.yml` / environment variables and restart the backend. Until all
+   required fields are set the startup log prints `KEYCLOAK NOT CONFIGURED`. When
+   the configuration is complete but the database already contains tenants whose
+   administrator / root department / admin role are not yet linked to Keycloak,
+   startup prints `OA INITIALIZATION REQUIRED` with the initialization URL
+   (`{app.base-url}/init`), and business APIs stay unavailable. Open that URL: the
+   wizard detects the existing tenant and runs in "existing installation" mode.
+   It does not ask for Keycloak settings (they come from the configuration file);
+   it validates them, creates/finds the administrator user, the tenant root group,
+   and the `oa-admin` application role, links those to the existing numeric
    administrator / root-department / admin-role IDs, sets `tenant_id` and
    `leader_user_id` on the root group, and provisions the baseline menu/API
    resources (an already-existing Keycloak user is not given a new password).
@@ -141,8 +173,8 @@ group UUID, and for a role a client-role UUID.
 3. Delete the Keycloak objects created for OA if the realm is shared:
    resources with names starting `oa:`, `oaapi:`, `oa-policy-role-`, and
    `oa-perm:`; optionally the imported users/groups/roles.
-4. Deploy the previous backend/frontend build and keep the legacy
-   `KEYCLOAK_*` configuration disabled.
+4. Deploy the previous backend/frontend build and clear the `app.keycloak.*`
+   configuration (the previous build does not use it).
 5. The old local role/permission tables were not modified beyond removing new
    writes, so the pre-cutover build can read them again.
 
@@ -156,7 +188,9 @@ group UUID, and for a role a client-role UUID.
 - Legacy classes `LoginController` (`legacy-auth` profile), `SecurityFilter`,
   `OaAuthManager`, `SaltedUser`, and `TokenValue*` are inactive but still present;
   they can be removed in a later cleanup.
-- Do not expose `KEYCLOAK_SETUP_TOKEN` after initialization.
+- Keycloak client secrets live in `application.yml`/environment variables. Do not
+  commit production secrets; rotate them in the Keycloak console and update the
+  configuration (a restart is required).
 - Keycloak availability is required for management writes and for authorization
   decisions; the failure mode is an explicit error / denied request, never a
   silent fallback to local grants.
@@ -167,21 +201,27 @@ Run this once against a real realm before production. Items not covered by the
 offline compile/build checks are marked as unverified assumptions.
 
 1. Startup and prerequisites
-   - `KEYCLOAK_SETUP_TOKEN`, `KEYCLOAK_CONFIG_ENCRYPTION_KEY`, and
-     `SESSION_COOKIE_SECURE` are set; the application starts.
+   - All `app.keycloak.*` fields are set (via `application.yml` or the matching
+     environment variables); with a field missing, startup logs
+     `KEYCLOAK NOT CONFIGURED` and business APIs stay unavailable.
+   - The database does not need a Keycloak configuration table; the former
+     `keycloak_integration_config` table is no longer read or written.
    - If startup fails on `OAuth2AuthorizedClientManager`, the Security 6.5
      auto-configured bean is missing in this deployment; define one explicitly
      (authorization code + refresh token providers).
 2. Initialization
+   - `GET /initProject/status` reports `keycloakConfigured`, `initialized`, and
+     `keycloakLinked`; `/init` uses it to choose fresh / existing / done mode.
    - `/init` succeeds; Keycloak contains the administrator user, the tenant root
-     group with a `tenant_id` attribute, client role `oa-admin`, the baseline
-     resources (`oa:<tenant>:menu:*`, `oaapi:<tenant>:*`), the role policy
-     `oa-policy-role-oa-admin`, and the `oa-perm:*` permissions.
+     group with `tenant_id` and `leader_user_id` attributes, client role
+     `oa-admin`, the baseline resources (`oa:<tenant>:menu:*`, `oaapi:<tenant>:*`),
+     the role policy `oa-policy-role-oa-admin`, and the `oa-perm:*` permissions.
    - Local DB contains the tenant, the administrator snapshot rows, and three
      `keycloak_object_links`; `permission` / `role_permission` / `user_role` stay
      empty.
    - Re-submitting `/init` returns "already initialized" without duplicating
-     Keycloak objects.
+     Keycloak objects; a tenant-only database with missing links enters existing
+     mode and only fills links/attributes/baseline resources.
 3. Authentication and sessions
    - Anonymous `GET /server/file/baseUrl` and `/server/user/getAllUsers` return
      401/302, never 200.

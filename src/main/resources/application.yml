@@ -92,8 +92,17 @@ management:
 app:
   base-url: @app.base-url@
   data-table-nums: 5
+  # Keycloak 连接配置来自配置文件/环境变量，不再写入数据库。
+  # 生产环境建议通过环境变量覆盖，避免把客户端密钥提交到仓库。
   keycloak:
-    config-encryption-key: ${KEYCLOAK_CONFIG_ENCRYPTION_KEY:}
+    issuer-uri: ${KEYCLOAK_ISSUER_URI:}
+    realm: ${KEYCLOAK_REALM:}
+    client-id: ${KEYCLOAK_CLIENT_ID:}
+    client-secret: ${KEYCLOAK_CLIENT_SECRET:}
+    service-account-client-id: ${KEYCLOAK_SERVICE_ACCOUNT_CLIENT_ID:}
+    service-account-client-secret: ${KEYCLOAK_SERVICE_ACCOUNT_CLIENT_SECRET:}
+    redirect-uri: ${KEYCLOAK_REDIRECT_URI:}
+    post-logout-redirect-uri: ${KEYCLOAK_POST_LOGOUT_REDIRECT_URI:}
 
 camunda:
   bpm:

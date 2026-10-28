@@ -4,11 +4,9 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.Base64;
 import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -19,86 +17,46 @@ import org.springframework.web.client.RestClientException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.github.benxincaomu.oa.base.init.vo.KeycloakConfigVo;
-
+/**
+ * Provides the Keycloak settings loaded from application configuration and the
+ * connection/validation helpers needed by the OIDC login and Admin REST clients.
+ *
+ * <p>
+ * Configuration is not persisted in the database any more. It comes from
+ * {@code app.keycloak.*}; secrets live in memory only and are never returned by
+ * status endpoints or written to logs.
+ * </p>
+ */
 @Service
 public class KeycloakConnectionService {
-    private final KeycloakIntegrationConfigRepository configRepository;
-    private final AesGcmSecretCipher secretCipher;
+    private final KeycloakIntegrationConfig configuration;
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
-    private final String setupToken;
 
-    public KeycloakConnectionService(KeycloakIntegrationConfigRepository configRepository,
-            AesGcmSecretCipher secretCipher, RestClient.Builder restClientBuilder, ObjectMapper objectMapper,
-            @Value("${KEYCLOAK_SETUP_TOKEN:}") String setupToken) {
-        this.configRepository = configRepository;
-        this.secretCipher = secretCipher;
+    public KeycloakConnectionService(KeycloakIntegrationConfig configuration,
+            RestClient.Builder restClientBuilder, ObjectMapper objectMapper) {
+        this.configuration = configuration;
         this.restClient = restClientBuilder.build();
         this.objectMapper = objectMapper;
-        this.setupToken = setupToken;
-    }
-
-    public KeycloakConnectionStatusVo configure(KeycloakConfigVo input) {
-        validateSetupToken(input);
-        if (input == null || isBlank(input.getClientId()) || isBlank(input.getClientSecret())
-                || isBlank(input.getServiceAccountClientId()) || isBlank(input.getServiceAccountClientSecret())
-                || isBlank(input.getRedirectUri()) || isBlank(input.getPostLogoutRedirectUri())) {
-            throw new IllegalArgumentException("Keycloak OAuth2、管理客户端和回调信息必须填写");
-        }
-
-        String encryptedClientSecret = secretCipher.encrypt(input.getClientSecret());
-        String encryptedServiceAccountSecret = secretCipher.encrypt(input.getServiceAccountClientSecret());
-        URI issuer = validateIssuer(input.getIssuerUri(), input.getRealm());
-        URI discoveryUri = URI.create(trimTrailingSlash(issuer.toString()) + "/.well-known/openid-configuration");
-
-        JsonNode metadata;
-        try {
-            metadata = restClient.get().uri(discoveryUri).retrieve().body(JsonNode.class);
-        } catch (RestClientException exception) {
-            throw new IllegalArgumentException("无法读取 Keycloak OIDC Discovery 配置", exception);
-        }
-        if (metadata == null || !sameIssuer(issuer.toString(), metadata.path("issuer").asText())) {
-            throw new IllegalArgumentException("Keycloak Discovery 返回的 issuer 与配置不匹配");
-        }
-
-        String tokenEndpoint = requiredMetadata(metadata, "token_endpoint");
-        String authorizationEndpoint = requiredMetadata(metadata, "authorization_endpoint");
-        requireSameOrigin(issuer, tokenEndpoint, "token_endpoint");
-        requireSameOrigin(issuer, authorizationEndpoint, "authorization_endpoint");
-        validateCallbackUri(input.getRedirectUri(), "OAuth2 回调地址");
-        validateCallbackUri(input.getPostLogoutRedirectUri(), "退出登录回调地址");
-        validateClientCredentials(tokenEndpoint, input);
-
-        KeycloakIntegrationConfig config = configRepository.findById(KeycloakIntegrationConfig.CONFIG_ID)
-                .orElseGet(KeycloakIntegrationConfig::new);
-        config.setId(KeycloakIntegrationConfig.CONFIG_ID);
-        config.setIssuerUri(trimTrailingSlash(issuer.toString()));
-        config.setRealm(input.getRealm().trim());
-        config.setClientId(input.getClientId().trim());
-        config.setEncryptedClientSecret(encryptedClientSecret);
-        config.setServiceAccountClientId(input.getServiceAccountClientId().trim());
-        config.setEncryptedServiceAccountClientSecret(encryptedServiceAccountSecret);
-        config.setRedirectUri(input.getRedirectUri().trim());
-        config.setPostLogoutRedirectUri(input.getPostLogoutRedirectUri().trim());
-        configRepository.save(config);
-        return toStatus(Optional.of(config));
-    }
-
-    public KeycloakConnectionStatusVo getStatus() {
-        return toStatus(configRepository.findById(KeycloakIntegrationConfig.CONFIG_ID));
     }
 
     public Optional<KeycloakIntegrationConfig> getConfiguration() {
-        return configRepository.findById(KeycloakIntegrationConfig.CONFIG_ID);
+        return configuration.isConfigured() ? Optional.of(configuration) : Optional.empty();
     }
 
-    public String decryptClientSecret(KeycloakIntegrationConfig config) {
-        return secretCipher.decrypt(config.getEncryptedClientSecret());
+    public KeycloakConnectionStatusVo getStatus() {
+        return getConfiguration()
+                .map(config -> new KeycloakConnectionStatusVo(true, config.getIssuerUri(), config.getRealm(),
+                        config.getClientId(), config.getRedirectUri(), config.getPostLogoutRedirectUri()))
+                .orElseGet(() -> new KeycloakConnectionStatusVo(false, null, null, null, null, null));
     }
 
-    public String decryptServiceAccountClientSecret(KeycloakIntegrationConfig config) {
-        return secretCipher.decrypt(config.getEncryptedServiceAccountClientSecret());
+    public String getClientSecret(KeycloakIntegrationConfig config) {
+        return config.getClientSecret();
+    }
+
+    public String getServiceAccountClientSecret(KeycloakIntegrationConfig config) {
+        return config.getServiceAccountClientSecret();
     }
 
     public String getTokenEndpoint(KeycloakIntegrationConfig config) {
@@ -115,11 +73,40 @@ public class KeycloakConnectionService {
         return tokenEndpoint;
     }
 
-    private void validateClientCredentials(String tokenEndpoint, KeycloakConfigVo input) {
+    /**
+     * Validates the configured issuer, discovery document, callback URIs and
+     * service-account access before tenant initialization touches Keycloak.
+     */
+    public void validateConfiguration() {
+        KeycloakIntegrationConfig config = getConfiguration()
+                .orElseThrow(() -> new IllegalStateException(
+                        "Keycloak 尚未配置，请在 application.yml 或环境变量中设置 app.keycloak.*"));
+        URI issuer = validateIssuer(config.getIssuerUri(), config.getRealm());
+        URI discoveryUri = URI.create(trimTrailingSlash(issuer.toString()) + "/.well-known/openid-configuration");
+        JsonNode metadata;
+        try {
+            metadata = restClient.get().uri(discoveryUri).retrieve().body(JsonNode.class);
+        } catch (RestClientException exception) {
+            throw new IllegalArgumentException("无法读取 Keycloak OIDC Discovery 配置", exception);
+        }
+        if (metadata == null || !sameIssuer(issuer.toString(), metadata.path("issuer").asText())) {
+            throw new IllegalArgumentException("Keycloak Discovery 返回的 issuer 与配置不匹配");
+        }
+
+        String tokenEndpoint = requiredMetadata(metadata, "token_endpoint");
+        String authorizationEndpoint = requiredMetadata(metadata, "authorization_endpoint");
+        requireSameOrigin(issuer, tokenEndpoint, "token_endpoint");
+        requireSameOrigin(issuer, authorizationEndpoint, "authorization_endpoint");
+        validateCallbackUri(config.getRedirectUri(), "OAuth2 回调地址");
+        validateCallbackUri(config.getPostLogoutRedirectUri(), "退出登录回调地址");
+        validateClientCredentials(tokenEndpoint, config);
+    }
+
+    private void validateClientCredentials(String tokenEndpoint, KeycloakIntegrationConfig config) {
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("grant_type", "client_credentials");
-        form.add("client_id", input.getServiceAccountClientId().trim());
-        form.add("client_secret", input.getServiceAccountClientSecret());
+        form.add("client_id", config.getServiceAccountClientId().trim());
+        form.add("client_secret", config.getServiceAccountClientSecret());
 
         JsonNode token;
         try {
@@ -138,7 +125,7 @@ public class KeycloakConnectionService {
         }
         validateAdminRoles(accessToken);
 
-        URI adminRealmUri = adminRealmUri(input.getIssuerUri(), input.getRealm());
+        URI adminRealmUri = adminRealmUri(config.getIssuerUri(), config.getRealm());
         try {
             restClient.get()
                     .uri(adminRealmUri)
@@ -147,17 +134,6 @@ public class KeycloakConnectionService {
                     .toBodilessEntity();
         } catch (RestClientException exception) {
             throw new IllegalArgumentException("Keycloak 管理客户端缺少访问 Realm 的权限", exception);
-        }
-    }
-
-    private void validateSetupToken(KeycloakConfigVo input) {
-        if (setupToken == null || setupToken.isBlank()) {
-            throw new IllegalStateException("KEYCLOAK_SETUP_TOKEN must be configured before Keycloak setup");
-        }
-        String submitted = input == null ? null : input.getSetupToken();
-        if (submitted == null || !MessageDigest.isEqual(setupToken.getBytes(StandardCharsets.UTF_8),
-                submitted.getBytes(StandardCharsets.UTF_8))) {
-            throw new IllegalArgumentException("Keycloak setup token is invalid");
         }
     }
 
@@ -195,7 +171,7 @@ public class KeycloakConnectionService {
 
     private URI validateIssuer(String issuerValue, String realmValue) {
         if (issuerValue == null || realmValue == null || realmValue.isBlank()) {
-            throw new IllegalArgumentException("Keycloak issuer 和 Realm 必须填写");
+            throw new IllegalArgumentException("Keycloak issuer 和 Realm 必须配置");
         }
         URI issuer;
         try {
@@ -212,7 +188,7 @@ public class KeycloakConnectionService {
         }
         String expectedRealmPath = "/realms/" + realmValue.trim();
         if (!trimTrailingSlash(Optional.ofNullable(issuer.getPath()).orElse("")).endsWith(expectedRealmPath)) {
-            throw new IllegalArgumentException("Keycloak issuer URI 应指向填写的 Realm");
+            throw new IllegalArgumentException("Keycloak issuer URI 应指向配置的 Realm");
         }
         return issuer;
     }
@@ -250,10 +226,6 @@ public class KeycloakConnectionService {
         }
     }
 
-    private boolean isBlank(String value) {
-        return value == null || value.isBlank();
-    }
-
     private URI adminRealmUri(String issuerValue, String realm) {
         URI issuer = URI.create(trimTrailingSlash(issuerValue.trim()));
         String realmSuffix = "/realms/" + realm;
@@ -282,11 +254,5 @@ public class KeycloakConnectionService {
             normalized = normalized.substring(0, normalized.length() - 1);
         }
         return normalized;
-    }
-
-    private KeycloakConnectionStatusVo toStatus(Optional<KeycloakIntegrationConfig> optionalConfig) {
-        return optionalConfig.map(config -> new KeycloakConnectionStatusVo(true, config.getIssuerUri(),
-                config.getRealm(), config.getClientId(), config.getRedirectUri(), config.getPostLogoutRedirectUri()))
-                .orElseGet(() -> new KeycloakConnectionStatusVo(false, null, null, null, null, null));
     }
 }

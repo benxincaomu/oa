@@ -1,48 +1,43 @@
 package io.github.benxincaomu.oa.base.security;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
-@Entity
-@Table(name = "keycloak_integration_config")
+/**
+ * Keycloak connection settings, bound from {@code app.keycloak.*} in the
+ * application configuration (or the matching environment variables).
+ *
+ * <p>
+ * Settings are no longer stored in the database: the deployment is expected to
+ * provide them through {@code application.yml} / profile-specific configuration or
+ * environment variables. Secrets are kept in memory only and must not be logged.
+ * </p>
+ */
+@Component
+@ConfigurationProperties(prefix = "app.keycloak")
 public class KeycloakIntegrationConfig {
-    public static final long CONFIG_ID = 1L;
-
-    @Id
-    private Long id = CONFIG_ID;
-
-    @Column(nullable = false, length = 512)
     private String issuerUri;
-
-    @Column(nullable = false, length = 128)
     private String realm;
-
-    @Column(nullable = false, length = 256)
     private String clientId;
-
-    @Column(nullable = false, length = 1024)
-    private String encryptedClientSecret;
-
-    @Column(nullable = false, length = 256)
+    private String clientSecret;
     private String serviceAccountClientId;
-
-    @Column(nullable = false, length = 1024)
-    private String encryptedServiceAccountClientSecret;
-
-    @Column(nullable = false, length = 512)
+    private String serviceAccountClientSecret;
     private String redirectUri;
-
-    @Column(nullable = false, length = 512)
     private String postLogoutRedirectUri;
 
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
+    /**
+     * Whether all fields required to run OIDC login and Admin REST calls are set.
+     */
+    public boolean isConfigured() {
+        return StringUtils.hasText(issuerUri)
+                && StringUtils.hasText(realm)
+                && StringUtils.hasText(clientId)
+                && StringUtils.hasText(clientSecret)
+                && StringUtils.hasText(serviceAccountClientId)
+                && StringUtils.hasText(serviceAccountClientSecret)
+                && StringUtils.hasText(redirectUri)
+                && StringUtils.hasText(postLogoutRedirectUri);
     }
 
     public String getIssuerUri() {
@@ -69,12 +64,12 @@ public class KeycloakIntegrationConfig {
         this.clientId = clientId;
     }
 
-    public String getEncryptedClientSecret() {
-        return encryptedClientSecret;
+    public String getClientSecret() {
+        return clientSecret;
     }
 
-    public void setEncryptedClientSecret(String encryptedClientSecret) {
-        this.encryptedClientSecret = encryptedClientSecret;
+    public void setClientSecret(String clientSecret) {
+        this.clientSecret = clientSecret;
     }
 
     public String getServiceAccountClientId() {
@@ -85,12 +80,12 @@ public class KeycloakIntegrationConfig {
         this.serviceAccountClientId = serviceAccountClientId;
     }
 
-    public String getEncryptedServiceAccountClientSecret() {
-        return encryptedServiceAccountClientSecret;
+    public String getServiceAccountClientSecret() {
+        return serviceAccountClientSecret;
     }
 
-    public void setEncryptedServiceAccountClientSecret(String encryptedServiceAccountClientSecret) {
-        this.encryptedServiceAccountClientSecret = encryptedServiceAccountClientSecret;
+    public void setServiceAccountClientSecret(String serviceAccountClientSecret) {
+        this.serviceAccountClientSecret = serviceAccountClientSecret;
     }
 
     public String getRedirectUri() {
