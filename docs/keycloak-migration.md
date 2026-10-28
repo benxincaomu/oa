@@ -58,9 +58,12 @@ go to Keycloak. The old legacy routes (`/user`, `/organize`, `/role`,
 
 1. Start the backend with the environment variables above and the frontend with
    `API_BASE_URL` pointing at the backend.
-2. Open `/init`, fill the Keycloak settings (issuer, realm, OAuth2 client,
-   service-account client, callback URLs, setup token), the root department, and
-   the administrator user.
+2. The backend checks the database at startup. When
+   `keycloak_integration_config` is empty (or the tenant is missing), the log prints
+   an `OA INITIALIZATION REQUIRED` block with the initialization URL computed from
+   `app.base-url` (`{app.base-url}/init`). Open that URL and fill the Keycloak
+   settings (issuer, realm, OAuth2 client, service-account client, callback URLs,
+   setup token), the root department, and the administrator user.
 3. Submit. The backend validates OIDC discovery and Admin API access, creates the
    administrator in Keycloak (client role `oa-admin`), creates the tenant root
    group with the `tenant_id` attribute, provisions the baseline menu/API
