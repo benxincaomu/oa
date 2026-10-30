@@ -40,36 +40,37 @@ go to Keycloak. The old legacy routes (`/user`, `/organize`, `/role`,
 
 ## Configuration
 
-Keycloak connection settings are **not** stored in the database. They are read from
-`app.keycloak.*` in `application.yml` (or a profile-specific file) and can be
-overridden by the matching environment variables:
+Keycloak connection settings are **not** stored in the database. Like `db.*`,
+`redis.*` and `minio.*`, they live in the Maven profile filter files
+(`src/main/filters/{oa,oa1,prod}.properties`) and are injected into
+`application.yml` through `@keycloak.*@` placeholders:
 
-```yaml
-app:
-  keycloak:
-    issuer-uri: ${KEYCLOAK_ISSUER_URI:}
-    realm: ${KEYCLOAK_REALM:}
-    client-id: ${KEYCLOAK_CLIENT_ID:}
-    client-secret: ${KEYCLOAK_CLIENT_SECRET:}
-    service-account-client-id: ${KEYCLOAK_SERVICE_ACCOUNT_CLIENT_ID:}
-    service-account-client-secret: ${KEYCLOAK_SERVICE_ACCOUNT_CLIENT_SECRET:}
-    redirect-uri: ${KEYCLOAK_REDIRECT_URI:}
-    post-logout-redirect-uri: ${KEYCLOAK_POST_LOGOUT_REDIRECT_URI:}
+```properties
+# src/main/filters/oa.properties
+keycloak.issuer-uri=http://10.0.0.102:8080/realms/oa
+keycloak.realm=oa
+keycloak.client-id=oa-web
+keycloak.client-secret=<oa-web client secret>
+keycloak.service-account-client-id=oa-service
+keycloak.service-account-client-secret=<oa-service client secret>
+keycloak.redirect-uri=http://10.0.0.130:4000/server/login/oauth2/code/keycloak
+keycloak.post-logout-redirect-uri=http://10.0.0.130:4000/app
 ```
 
-- `issuer-uri` must point at the realm (`https://<host>/realms/<realm>`). The checked-in
-  `application.yml` already contains all `app.keycloak.*` entries; the OAuth2 redirect
-  URIs default to the local frontend (`http://10.0.0.130:4000`). Fill the remaining
-  values (issuer, realm, client IDs, secrets) or override them with the environment
-  variables shown above.
+Select the environment with the Maven profile (`-Poa` is the default, `-Poa1` for
+QA, `-Pprod` for production); the matching file is filtered into
+`target/classes/application.yml` at build time. Environment variables such as
+`APP_KEYCLOAK_ISSUER_URI` can still override the filtered values at runtime.
+
+- `issuer-uri` must point at the realm (`https://<host>/realms/<realm>`).
 - `client-id` / `client-secret` are the OAuth2 confidential client used by the
   browser login; `redirect-uri` is usually
   `https://<oa-web-host>/server/login/oauth2/code/keycloak`.
 - `service-account-client-id` / `service-account-client-secret` are used for Admin
   REST calls and authorization-resource management.
 - Secrets are read into memory only and are never returned by status endpoints or
-  written to logs. Prefer environment variables for production instead of
-  committing secrets to `application.yml`.
+  written to logs. The filter files are committed, so do not put production
+  secrets there; override them with environment variables in production.
 - `SESSION_COOKIE_SECURE=true` when served over HTTPS.
 
 ## Prerequisites

@@ -92,31 +92,17 @@ management:
 app:
   base-url: @app.base-url@
   data-table-nums: 5
-  # Keycloak 连接配置来自配置文件/环境变量，不再写入数据库。
-  # 直接在本文件填写即可；也可以保留环境变量覆盖，生产环境推荐用环境变量避免把密钥提交到仓库。
-  #
-  # 本地开发示例（把下面 6 个值替换成 Keycloak 控制台中的实际值）：
-  #   issuer-uri: http://10.0.0.102:8080/realms/oa
-  #   realm: oa
-  #   client-id: oa-web
-  #   service-account-client-id: oa-service
-  #   client-secret: <oa-web 客户端密钥>
-  #   service-account-client-secret: <oa-service 客户端密钥>
-  #
-  # 说明：
-  #   client-id/client-secret           —— 浏览器 OIDC 登录使用的 confidential client
-  #   service-account-client-id/secret  —— Admin REST（用户/组/角色/授权资源）使用的服务账号客户端
-  #   redirect-uri                      —— 前端地址 + /server/login/oauth2/code/keycloak
-  #   post-logout-redirect-uri          —— 退出登录后回到的前端页面
+  # Keycloak 连接配置：与 db/redis/minio 一样从 src/main/filters/<profile>.properties 注入，
+  # 不再写入数据库，也不从环境变量占位符读取（外部环境变量仍可作为覆盖手段）。
   keycloak:
-    issuer-uri: ${KEYCLOAK_ISSUER_URI:}
-    realm: ${KEYCLOAK_REALM:}
-    client-id: ${KEYCLOAK_CLIENT_ID:}
-    client-secret: ${KEYCLOAK_CLIENT_SECRET:}
-    service-account-client-id: ${KEYCLOAK_SERVICE_ACCOUNT_CLIENT_ID:}
-    service-account-client-secret: ${KEYCLOAK_SERVICE_ACCOUNT_CLIENT_SECRET:}
-    redirect-uri: ${KEYCLOAK_REDIRECT_URI:http://10.0.0.130:4000/server/login/oauth2/code/keycloak}
-    post-logout-redirect-uri: ${KEYCLOAK_POST_LOGOUT_REDIRECT_URI:http://10.0.0.130:4000/app}
+    issuer-uri: @keycloak.issuer-uri@
+    realm: @keycloak.realm@
+    client-id: @keycloak.client-id@
+    client-secret: @keycloak.client-secret@
+    service-account-client-id: @keycloak.service-account-client-id@
+    service-account-client-secret: @keycloak.service-account-client-secret@
+    redirect-uri: @keycloak.redirect-uri@
+    post-logout-redirect-uri: @keycloak.post-logout-redirect-uri@
 
 camunda:
   bpm:
