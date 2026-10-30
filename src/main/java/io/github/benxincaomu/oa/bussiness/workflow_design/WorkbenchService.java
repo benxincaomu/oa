@@ -42,7 +42,7 @@ public class WorkbenchService {
     private EntityDefinitionRepository entityDefinitionRepository;
 
     @Resource
-    private KeycloakAuthorizationService authorizationService;
+    private KeycloakAuthorizationService keycloakAuthorizationService;
 
     @Resource
     private WorkbenchPublishRepository workbenchPublishRepository;
@@ -140,7 +140,7 @@ public class WorkbenchService {
     public void delete(Long workbenchId) {
         workbenchRepository.findById(workbenchId).ifPresent(workbench -> {
             if (workbench.getWorkbenchKey() != null) {
-                authorizationService.deleteWorkbenchResources(JpaAuditorAware.getCurrentTenantId(),
+                keycloakAuthorizationService.deleteWorkbenchResources(JpaAuditorAware.getCurrentTenantId(),
                         workbench.getWorkbenchKey());
             }
             workflowDefinitionRepository.deleteByWorkbenchId(workbenchId);
@@ -160,22 +160,22 @@ public class WorkbenchService {
             throw new IllegalStateException("发布工作台需要 OA 租户上下文");
         }
         String workbenchKey = workbench.getWorkbenchKey();
-        String menuGroup = authorizationService.ensureMenuGroup(tenantId, "wb:" + workbenchKey,
+        String menuGroup = keycloakAuthorizationService.ensureMenuGroup(tenantId, "wb:" + workbenchKey,
                 workbench.getName(), null, 100);
         String baseRoute = "/app/workflow/" + workbench.getId();
         List<String> resourceKeys = new ArrayList<>();
         resourceKeys.add(menuGroup);
-        resourceKeys.add(authorizationService.ensureMenuPage(tenantId, baseRoute + "/myStart", "我发起的",
+        resourceKeys.add(keycloakAuthorizationService.ensureMenuPage(tenantId, baseRoute + "/myStart", "我发起的",
                 menuGroup, 0));
-        resourceKeys.add(authorizationService.ensureMenuPage(tenantId, baseRoute + "/myTodo", "我的待办",
+        resourceKeys.add(keycloakAuthorizationService.ensureMenuPage(tenantId, baseRoute + "/myTodo", "我的待办",
                 menuGroup, 1));
-        resourceKeys.add(authorizationService.ensureMenuPage(tenantId, baseRoute + "/myDone", "我的已办",
+        resourceKeys.add(keycloakAuthorizationService.ensureMenuPage(tenantId, baseRoute + "/myDone", "我的已办",
                 menuGroup, 2));
-        resourceKeys.add(authorizationService.ensureApiResource(tenantId,
+        resourceKeys.add(keycloakAuthorizationService.ensureApiResource(tenantId,
                 "/flowForm/" + workbench.getId() + "/**", workbench.getName() + "表单接口", workbenchKey));
-        resourceKeys.add(authorizationService.ensureApiResource(tenantId,
+        resourceKeys.add(keycloakAuthorizationService.ensureApiResource(tenantId,
                 "/workflow/" + workbench.getId() + "/**", workbench.getName() + "流程接口", workbenchKey));
-        authorizationService.grantToRole(KeycloakAdminClient.OA_ADMIN_CLIENT_ROLE, resourceKeys);
+        keycloakAuthorizationService.grantToRole(KeycloakAdminClient.OA_ADMIN_CLIENT_ROLE, resourceKeys);
         logger.info("Registered Keycloak authorization resources for workbench {} (key={})",
                 workbench.getId(), workbenchKey);
     }
