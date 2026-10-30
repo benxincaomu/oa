@@ -57,7 +57,11 @@ app:
     post-logout-redirect-uri: ${KEYCLOAK_POST_LOGOUT_REDIRECT_URI:}
 ```
 
-- `issuer-uri` must point at the realm (`https://<host>/realms/<realm>`).
+- `issuer-uri` must point at the realm (`https://<host>/realms/<realm>`). The checked-in
+  `application.yml` already contains all `app.keycloak.*` entries; the OAuth2 redirect
+  URIs default to the local frontend (`http://10.0.0.130:4000`). Fill the remaining
+  values (issuer, realm, client IDs, secrets) or override them with the environment
+  variables shown above.
 - `client-id` / `client-secret` are the OAuth2 confidential client used by the
   browser login; `redirect-uri` is usually
   `https://<oa-web-host>/server/login/oauth2/code/keycloak`.
