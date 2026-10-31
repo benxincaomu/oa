@@ -9,6 +9,7 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import io.github.benxincaomu.oa.base.init.OaTenantProvider;
 import io.github.benxincaomu.oa.bussiness.user.User;
 
 /**
@@ -26,10 +27,13 @@ public class OaOidcUserService implements OAuth2UserService<OidcUserRequest, Oid
     private final OidcUserService delegate = new OidcUserService();
     private final KeycloakDirectoryService directoryService;
     private final OaNumericIdService numericIdService;
+    private final OaTenantProvider tenantProvider;
 
-    public OaOidcUserService(KeycloakDirectoryService directoryService, OaNumericIdService numericIdService) {
+    public OaOidcUserService(KeycloakDirectoryService directoryService, OaNumericIdService numericIdService,
+            OaTenantProvider tenantProvider) {
         this.directoryService = directoryService;
         this.numericIdService = numericIdService;
+        this.tenantProvider = tenantProvider;
     }
 
     @Override
@@ -38,7 +42,11 @@ public class OaOidcUserService implements OAuth2UserService<OidcUserRequest, Oid
         String subject = oidcUser.getSubject();
         Long tenantId = directoryService.resolveTenantIdForUser(subject);
         if (tenantId == null) {
-            throw denied("Keycloak 用户尚未分配到任何 OA 租户组");
+            // 单租户模式：未加入任何 Keycloak 组的用户也归属默认租户
+            tenantId = tenantProvider.getTenantId();
+        }
+        if (tenantId == null) {
+            throw denied("OA 尚未初始化出默认租户，请检查启动日志");
         }
         KeycloakUserProfile profile = new KeycloakUserProfile(
                 subject,

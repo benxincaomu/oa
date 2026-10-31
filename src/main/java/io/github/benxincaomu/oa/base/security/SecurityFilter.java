@@ -48,17 +48,8 @@ public class SecurityFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        // 判断项目是否已经初始话，未初始化要跳转到初始化页面
-        String servletPath = request.getServletPath();
-        if (!initService.isInitialized() && !(servletPath.equals("/initProject")&& request.getMethod().equals("POST"))) {
-
-            String referer = request.getHeader("Referer");
-            // String userAgent = request.getHeader("User-Agent");
-            // String origin = request.getHeader("Origin");
-            if (referer != null && referer.endsWith("/init")) {
-                return;
-            }
-
+        // 判断项目是否已经完成启动初始化，未完成时拒绝业务请求
+        if (!initService.isInitialized()) {
             ResponseMessage<String> responseMessage = new ResponseMessage<>(OaResponseCode.PROJECT_NOT_INITIALIZED,
                     null);
             response.setHeader("Content-Type", "application/json;charset=UTF-8");
@@ -68,7 +59,7 @@ public class SecurityFilter extends OncePerRequestFilter {
 
             return;
         }
-        // String servletPath = request.getServletPath();
+        String servletPath = request.getServletPath();
         AntPathMatcher matcher = new AntPathMatcher();
         for (String url : SecurityConsts.PUBLIC_URLS) {
             if (matcher.match(url, servletPath)) {

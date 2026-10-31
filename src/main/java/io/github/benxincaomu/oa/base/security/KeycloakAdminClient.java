@@ -26,8 +26,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import io.github.benxincaomu.oa.base.init.vo.UserInitVo;
-
 @Service
 public class KeycloakAdminClient {
     private static final int PAGE_SIZE = 100;
@@ -49,33 +47,18 @@ public class KeycloakAdminClient {
         this.objectMapper = objectMapper;
     }
 
-    public KeycloakBootstrapIdentity bootstrapAdministrator(UserInitVo user, String rootGroupName) {
-        KeycloakIntegrationConfig config = connectionService.getConfiguration()
-                .orElseThrow(() -> new IllegalStateException("Keycloak 尚未配置"));
-        String adminBase = adminRealmBase(config);
-
-        String userId = findUser(config, user.getUserName())
-                .orElseGet(() -> createUser(config, user));
-        String groupId = findGroup(config, rootGroupName)
-                .orElseGet(() -> createGroup(config, rootGroupName));
+    /**
+     * Ensures the application client role that owns platform administration exists
+     * and that Authorization Services is enabled on the configured application
+     * client. No users or groups are created: directory data is managed in Keycloak.
+     */
+    public void ensureAdminRole() {
+        KeycloakIntegrationConfig config = configured();
         String applicationClientUuid = clientUuid(config);
         enableAuthorizationServices(config, applicationClientUuid);
-        JsonNode managementRole = findClientRole(config, applicationClientUuid, OA_ADMIN_CLIENT_ROLE)
+        findClientRole(config, applicationClientUuid, OA_ADMIN_CLIENT_ROLE)
                 .orElseGet(() -> createClientRole(config, applicationClientUuid,
                         new KeycloakRoleProfile(null, OA_ADMIN_CLIENT_ROLE, "OA platform administrator")));
-
-        authorizedPut(config, adminBase + "/users/{userId}/groups/{groupId}", userId, groupId)
-                .retrieve()
-                .toBodilessEntity();
-
-        authorizedPost(config,
-                adminBase + "/users/{userId}/role-mappings/clients/{clientUuid}", userId, applicationClientUuid)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(List.of(managementRole))
-                .retrieve()
-                .toBodilessEntity();
-
-        return new KeycloakBootstrapIdentity(userId, groupId, managementRole.path("id").asText());
     }
 
     /**
@@ -713,30 +696,6 @@ public class KeycloakAdminClient {
             return object;
         }
         throw new IllegalStateException("Keycloak user representation is missing");
-    }
-
-    private String createUser(KeycloakIntegrationConfig config, UserInitVo user) {
-        Map<String, Object> payload = Map.of(
-                "username", user.getUserName(),
-                "enabled", true,
-                "email", user.getEmail(),
-                "emailVerified", false,
-                "firstName", user.getName(),
-                "credentials", List.of(Map.of(
-                        "type", "password",
-                        "value", user.getPassword(),
-                        "temporary", true)));
-        var response = authorizedPost(config, adminRealmBase(config) + "/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(payload)
-                .retrieve()
-                .toBodilessEntity();
-        String id = locationId(response.getHeaders());
-        if (id == null) {
-            return findUser(config, user.getUserName())
-                    .orElseThrow(() -> new IllegalStateException("Keycloak 已创建管理员但未返回用户 ID"));
-        }
-        return id;
     }
 
     private Optional<String> findGroup(KeycloakIntegrationConfig config, String name) {

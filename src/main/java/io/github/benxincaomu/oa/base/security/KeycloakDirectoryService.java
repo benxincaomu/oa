@@ -16,6 +16,7 @@ import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import io.github.benxincaomu.oa.base.init.OaTenantProvider;
 import io.github.benxincaomu.oa.bussiness.organization.Department;
 import io.github.benxincaomu.oa.bussiness.organization.vo.DeptVo;
 import io.github.benxincaomu.oa.bussiness.user.User;
@@ -33,9 +34,9 @@ import io.github.benxincaomu.oa.bussiness.user.vo.UserIdNameVo;
  * </p>
  *
  * <p>
- * Tenant scope is derived from Keycloak groups: the tenant root group carries a
- * {@code tenant_id} attribute and all of its descendants belong to that tenant.
- * Users are in scope when they are a member of at least one tenant group.
+ * Tenant scope: OA runs as a single-tenant application. Every Keycloak group
+ * belongs to the default local tenant; groups are created and organised by the
+ * Keycloak administrator and no {@code tenant_id} attribute is required.
  * </p>
  */
 @Service
@@ -44,15 +45,17 @@ public class KeycloakDirectoryService {
 
     private final KeycloakAdminClient adminClient;
     private final OaNumericIdService numericIdService;
+    private final OaTenantProvider tenantProvider;
 
     private volatile CachedGroups cachedGroups;
     private volatile CachedUsers cachedUsers;
     private volatile CachedMembers cachedMembers;
 
     public KeycloakDirectoryService(KeycloakAdminClient adminClient,
-            OaNumericIdService numericIdService) {
+            OaNumericIdService numericIdService, OaTenantProvider tenantProvider) {
         this.adminClient = adminClient;
         this.numericIdService = numericIdService;
+        this.tenantProvider = tenantProvider;
     }
 
     // ------------------------------------------------------------- tenant scope
@@ -68,13 +71,22 @@ public class KeycloakDirectoryService {
                 return tenantId;
             }
         }
-        return null;
+        // 单租户模式：即使 Keycloak 用户没有加入任何组，也归属默认租户
+        return tenantProvider.getTenantId();
     }
 
     public Optional<OaKeycloakGroup> findTenantRootGroup(Long tenantId) {
-        return groups().stream()
+        List<OaKeycloakGroup> roots = groups().stream()
+                .filter(group -> parentPath(group.path()) == null)
+                .toList();
+        Optional<OaKeycloakGroup> marked = roots.stream()
                 .filter(group -> tenantId.equals(group.tenantId()))
                 .min(Comparator.comparingInt(group -> group.path().split("/").length));
+        if (marked.isPresent()) {
+            return marked;
+        }
+        // 没有 tenant_id 标记时：只有一个顶级组就用它，多个顶级组则不强行指定根组
+        return roots.size() == 1 ? Optional.of(roots.get(0)) : Optional.empty();
     }
 
     public List<OaKeycloakGroup> listTenantGroups(Long tenantId) {
@@ -362,9 +374,8 @@ public class KeycloakDirectoryService {
         }
         KeycloakUserProfile saved = adminClient.upsertUser(requested, existingId);
         if (creating || needsTenantAssignment) {
-            OaKeycloakGroup rootGroup = findTenantRootGroup(tenantId)
-                    .orElseThrow(() -> new IllegalStateException("The tenant root group is not provisioned"));
-            adminClient.setGroupMembership(saved.id(), rootGroup.id(), true);
+            findTenantRootGroup(tenantId)
+                    .ifPresent(rootGroup -> adminClient.setGroupMembership(saved.id(), rootGroup.id(), true));
         }
         if (StringUtils.hasText(password)) {
             adminClient.resetUserPassword(saved.id(), password, temporary);
@@ -400,9 +411,10 @@ public class KeycloakDirectoryService {
         }
         String parentId = StringUtils.hasText(requested.parentId())
                 ? requested.parentId()
-                : findTenantRootGroup(tenantId)
-                        .orElseThrow(() -> new IllegalStateException("The tenant root group is not provisioned")).id();
-        requireTenantGroup(parentId, tenantId);
+                : findTenantRootGroup(tenantId).map(OaKeycloakGroup::id).orElse(null);
+        if (StringUtils.hasText(parentId)) {
+            requireTenantGroup(parentId, tenantId);
+        }
         String groupId = requested.id();
         if (StringUtils.hasText(groupId)) {
             requireTenantGroup(groupId, tenantId);
@@ -535,7 +547,9 @@ public class KeycloakDirectoryService {
         }
         String parent = parentPath(group.path());
         OaKeycloakGroup parentGroup = parent == null ? null : byPath.get(parent);
-        Long tenantId = parentGroup == null ? null : resolveTenant(parentGroup, byPath, computed);
+        // 没有 tenant_id 标记的组（包括所有顶级组）归属于默认租户
+        Long tenantId = parentGroup == null ? tenantProvider.getTenantId()
+                : resolveTenant(parentGroup, byPath, computed);
         computed.put(group.path(), tenantId);
         return tenantId;
     }

@@ -13,9 +13,10 @@ import io.github.benxincaomu.oa.base.security.KeycloakAuthorizationService;
  * them to the platform administrator role.
  *
  * <p>
- * Runs during first-run initialization, after the tenant exists and the
- * administrator identity is linked, and is idempotent: re-running it updates the
- * same resources instead of duplicating them.
+ * Runs on every startup after the application client role and Authorization
+ * Services are ensured, and is idempotent: re-running it updates the same
+ * resources instead of duplicating them. It never creates users, groups or
+ * tenants.
  * </p>
  */
 @Component

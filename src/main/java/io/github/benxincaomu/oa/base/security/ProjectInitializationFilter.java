@@ -15,29 +15,28 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+/**
+ * Rejects business requests until startup provisioning of the Keycloak
+ * role/resource/permission model has succeeded. There is no initialization page
+ * any more: the application provisions itself at startup and only health checks
+ * remain reachable while it is not ready.
+ */
 public class ProjectInitializationFilter extends OncePerRequestFilter {
-    private static final String[] INITIALIZATION_URLS = { "/initProject/**", "/actuator/health" };
+    private static final String[] PUBLIC_PATTERNS = { "/actuator/health" };
 
     private final InitService initService;
-    private final KeycloakConnectionService keycloakConnectionService;
     private final ObjectMapper objectMapper;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
-    public ProjectInitializationFilter(InitService initService,
-            KeycloakConnectionService keycloakConnectionService, ObjectMapper objectMapper) {
+    public ProjectInitializationFilter(InitService initService, ObjectMapper objectMapper) {
         this.initService = initService;
-        this.keycloakConnectionService = keycloakConnectionService;
         this.objectMapper = objectMapper;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        // 需要同时满足“已有租户数据”“已配置 Keycloak”“管理员/根部门/角色已建立 Keycloak 链接”才认为可以对外服务
-        boolean ready = initService.isInitialized()
-                && keycloakConnectionService.getConfiguration().isPresent()
-                && initService.hasKeycloakLinks();
-        if (ready || isInitializationUrl(request.getServletPath())) {
+        if (initService.isReady() || isPublicUrl(request.getServletPath())) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -48,8 +47,8 @@ public class ProjectInitializationFilter extends OncePerRequestFilter {
                 new ResponseMessage<>(OaResponseCode.PROJECT_NOT_INITIALIZED, null)));
     }
 
-    private boolean isInitializationUrl(String servletPath) {
-        for (String pattern : INITIALIZATION_URLS) {
+    private boolean isPublicUrl(String servletPath) {
+        for (String pattern : PUBLIC_PATTERNS) {
             if (pathMatcher.match(pattern, servletPath)) {
                 return true;
             }

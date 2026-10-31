@@ -41,7 +41,6 @@ public class KeycloakRequestAuthorizationManager
     private static final String[] EXEMPT_PATTERNS = {
             "/error",
             "/actuator/health",
-            "/initProject/**",
             "/oauth2/**",
             "/login/oauth2/**",
             "/login/myInfo",
